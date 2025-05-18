@@ -14,7 +14,10 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 app.post('/api/send-invite', async (req, res) => {
   const { to, name, employerId } = req.body;
 
+  console.log('Verzoek ontvangen voor:', { to, name, employerId });
+
   if (!to || !name || !employerId) {
+    console.warn('Verzoek geweigerd: ontbrekende velden');
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -32,8 +35,11 @@ app.post('/api/send-invite', async (req, res) => {
       `,
     });
 
+    console.log('E-mail verzonden naar:', to, '| ID:', emailResponse.id);
+
     res.status(200).json({ success: true, id: emailResponse.id });
   } catch (error) {
+    console.error('Fout bij verzenden e-mail:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
