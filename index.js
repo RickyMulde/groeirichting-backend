@@ -24,18 +24,17 @@ app.post('/api/send-invite', async (req, res) => {
   const frontendUrl = process.env.FRONTEND_URL || 'https://groeirichting.nl';
   const registerUrl = `${frontendUrl}/registreer-werknemer?email=${encodeURIComponent(to)}&employer=${employerId}`;
 
-
   try { 
     const emailResponse = await resend.emails.send({
       from: 'GroeiRichting <noreply@groeirichting.nl>',
       to,
       subject: 'Je bent uitgenodigd voor GroeiRichting',
-    html: [
-    `<p>Hallo ${name},</p>`,
-    `<p>Je werkgever heeft je uitgenodigd voor GroeiRichting.</p>`,
-    `<p><a href="${registerUrl}">Klik hier om je aan te melden</a></p>`
-    ].join(''),
-
+      html: [
+        `<p>Hallo ${name},</p>`,
+        `<p>Je werkgever heeft je uitgenodigd voor GroeiRichting.</p>`,
+        `<p><a href="${registerUrl}">Klik hier om je aan te melden</a></p>`,
+        `<p>Of plak deze link in je browser: ${registerUrl}</p>`
+      ].join(''),
     });
 
     console.log('E-mail verzonden naar:', to, '| ID:', emailResponse.id);
