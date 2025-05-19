@@ -3,7 +3,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const { Resend } = require('resend');
 const cors = require('cors');
-const registerEmployee = require('./routes/register-employee'); // ✅ Toegevoegd
+const registerEmployee = require('./register-employee')
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
