@@ -4,6 +4,9 @@ const dotenv = require('dotenv');
 const { Resend } = require('resend');
 const cors = require('cors');
 const registerEmployee = require('./register-employee')
+const registerEmployer = require('./register-employer')
+
+
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
@@ -12,6 +15,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/register-employer', registerEmployer)
 
 // ✅ Route toegevoegd
 app.use('/api/register-employee', registerEmployee);
