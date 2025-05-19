@@ -21,9 +21,11 @@ app.post('/api/send-invite', async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const registerUrl = `https://groeirichting.nl/registreer-werknemer?email=${encodeURIComponent(to)}&employer=${employerId}`;
+  const frontendUrl = process.env.FRONTEND_URL || 'https://groeirichting.nl';
+  const registerUrl = `${frontendUrl}/registreer-werknemer?email=${encodeURIComponent(to)}&employer=${employerId}`;
 
-  try {
+
+  try { 
     const emailResponse = await resend.emails.send({
       from: 'GroeiRichting <noreply@groeirichting.nl>',
       to,
