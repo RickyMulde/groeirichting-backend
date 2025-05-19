@@ -58,7 +58,7 @@ router.post('/', async (req, res) => {
   const { error: userError } = await supabase.from('users').insert({
     id: userId,
     email,
-    role: 'werkgever',
+    role: 'employer',
     employer_id: employer.id,
     first_name,
     middle_name,
