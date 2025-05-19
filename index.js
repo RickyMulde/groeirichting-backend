@@ -1,14 +1,20 @@
+
 const express = require('express');
 const dotenv = require('dotenv');
 const { Resend } = require('resend');
+const cors = require('cors');
+const registerEmployee = require('./routes/register-employee'); // ✅ Toegevoegd
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
 dotenv.config();
 const app = express();
-const cors = require('cors');
+
 app.use(cors());
 app.use(express.json());
+
+// ✅ Route toegevoegd
+app.use('/api/register-employee', registerEmployee);
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
