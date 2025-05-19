@@ -30,11 +30,12 @@ app.post('/api/send-invite', async (req, res) => {
       from: 'GroeiRichting <noreply@groeirichting.nl>',
       to,
       subject: 'Je bent uitgenodigd voor GroeiRichting',
-      html: `
-        <p>Hallo ${name},</p>
-        <p>Je werkgever heeft je uitgenodigd voor GroeiRichting.</p>
-        <p><a href="${registerUrl}">Klik hier om je aan te melden</a></p>
-      `,
+    html: [
+    `<p>Hallo ${name},</p>`,
+    `<p>Je werkgever heeft je uitgenodigd voor GroeiRichting.</p>`,
+    `<p><a href="${registerUrl}">Klik hier om je aan te melden</a></p>`
+    ].join(''),
+
     });
 
     console.log('E-mail verzonden naar:', to, '| ID:', emailResponse.id);
