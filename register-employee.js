@@ -57,8 +57,10 @@ router.post('/', async (req, res) => {
   })
 
   if (insertError) {
-    return res.status(500).json({ error: 'Opslaan in gebruikersdatabase mislukt.' })
+  console.error('❌ Insert error:', insertError)
+  return res.status(500).json({ error: insertError.message || 'Opslaan in gebruikersdatabase mislukt.' })
   }
+
 
   // 4. Uitnodiging bijwerken
   await supabase
