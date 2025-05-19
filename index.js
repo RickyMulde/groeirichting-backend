@@ -3,6 +3,8 @@ const express = require('express');
 const dotenv = require('dotenv');
 const { Resend } = require('resend');
 
+console.log("🚀 Force redeploy: build dwingen");
+
 dotenv.config();
 const app = express();
 const cors = require('cors');
