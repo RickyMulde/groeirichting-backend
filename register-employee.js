@@ -22,10 +22,10 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Niet alle verplichte velden zijn ingevuld.' })
   }
 
-  // Token controleren en gegevens ophalen
+  // 1. Token controleren en gegevens ophalen
   const { data: invitation, error: invitationError } = await supabase
     .from('invitations')
-    .select('email, bedrijf, status')
+    .select('email, employer_id, status')
     .eq('token', token)
     .single()
 
@@ -33,7 +33,7 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Ongeldige of verlopen uitnodiging.' })
   }
 
-  // Gebruiker aanmaken in Supabase Auth
+  // 2. Gebruiker aanmaken in Supabase Auth
   const { data: user, error: authError } = await supabase.auth.admin.createUser({
     email: invitation.email,
     password,
@@ -44,7 +44,7 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Account aanmaken mislukt: ' + authError.message })
   }
 
-  // Gebruiker toevoegen aan users-tabel
+  // 3. Toevoegen aan users-tabel
   const { error: insertError } = await supabase.from('users').insert({
     id: user.user.id,
     email: invitation.email,
@@ -54,20 +54,20 @@ router.post('/', async (req, res) => {
     birthdate,
     gender,
     role: 'employee',
-    employer_id: invitation.bedrijf
+    employer_id: invitation.employer_id
   })
 
   if (insertError) {
     return res.status(500).json({ error: 'Opslaan in gebruikersdatabase mislukt.' })
   }
 
-  // Uitnodiging bijwerken
+  // 4. Uitnodiging bijwerken
   await supabase
     .from('invitations')
     .update({ status: 'accepted' })
     .eq('token', token)
 
-  return res.status(200).json({ message: 'Medewerker succesvol geregistreerd.' })
+  return res.status(200).json({ success: true })
 })
 
 module.exports = router
