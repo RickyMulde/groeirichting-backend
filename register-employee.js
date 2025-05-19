@@ -46,7 +46,6 @@ router.post('/', async (req, res) => {
 
   // 3. Toevoegen aan users-tabel
   const { error: insertError } = await supabase.from('users').insert({
-    id: user.user.id,
     email: invitation.email,
     first_name,
     middle_name,
