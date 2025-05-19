@@ -2,7 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const { Resend } = require('resend');
 
-console.log("🚀 Force redeploy: build dwingen");
+console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
 dotenv.config();
 const app = express();
@@ -25,21 +25,29 @@ app.post('/api/send-invite', async (req, res) => {
   const frontendUrl = process.env.FRONTEND_URL || 'https://groeirichting.nl';
   const registerUrl = `${frontendUrl}/registreer-werknemer?token=${token}`;
 
+  const htmlBody = [
+    `<p>Hallo ${name},</p>`,
+    `<p>Je werkgever heeft je uitgenodigd voor GroeiRichting.</p>`,
+    `<p><a href="${registerUrl}" target="_blank" rel="noopener noreferrer" style="color:#1a73e8;text-decoration:underline;">Klik hier om je aan te melden</a></p>`,
+    `<p style="font-size: 12px; color: #888;">Of plak deze link in je browser:<br><span style="color:#000;">${registerUrl}</span></p>`
+  ].join('');
+
+  const textBody = `Hallo ${name},
+
+Je werkgever heeft je uitgenodigd voor GroeiRichting.
+Klik op deze link om je aan te melden:
+${registerUrl}`;
+
   try { 
     const emailResponse = await resend.emails.send({
       from: 'GroeiRichting <noreply@groeirichting.nl>',
       to,
       subject: 'Je bent uitgenodigd voor GroeiRichting',
-      html: [
-        `<p>Hallo ${name},</p>`,
-        `<p>Je werkgever heeft je uitgenodigd voor GroeiRichting.</p>`,
-        `<p><a href="${registerUrl}">Klik hier om je aan te melden</a></p>`,
-        `<p>Of plak deze link in je browser: ${registerUrl}</p>`
-      ].join(''),
+      html: htmlBody,
+      text: textBody
     });
 
     console.log('E-mail verzonden naar:', to, '| ID:', emailResponse.id);
-
     res.status(200).json({ success: true, id: emailResponse.id });
   } catch (error) {
     console.error('Fout bij verzenden e-mail:', error.message);
