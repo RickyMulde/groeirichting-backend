@@ -52,7 +52,7 @@ router.post('/', async (req, res) => {
     last_name,
     birthdate,
     gender,
-    role: 'employee',
+    role: 'medewerker',
     employer_id: invitation.employer_id
   })
 
