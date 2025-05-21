@@ -34,19 +34,20 @@ router.post('/', async (req, res) => {
   }
 
   // 2. Gebruiker aanmaken in Supabase Auth
-  const { data: user, error: authError } = await supabase.auth.admin.createUser({
+  const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
     email: invitation.email,
     password,
     email_confirm: true
   })
 
-  if (authError) {
-    return res.status(400).json({ error: 'Account aanmaken mislukt: ' + authError.message })
+  if (authError || !authUser?.user?.id) {
+    return res.status(400).json({ error: 'Account aanmaken mislukt: ' + (authError?.message || 'Onbekende fout') })
   }
 
   // 3. Toevoegen aan users-tabel
   const { error: insertError } = await supabase.from('users').insert({
-    id: user.user.id, // ✅ belangrijk!
+    id: authUser.user.id,            // ✅ correct id
+    email: invitation.email,         // ✅ email meegeven
     first_name,
     middle_name,
     last_name,
@@ -57,10 +58,9 @@ router.post('/', async (req, res) => {
   })
 
   if (insertError) {
-  console.error('❌ Insert error:', insertError)
-  return res.status(500).json({ error: insertError.message || 'Opslaan in gebruikersdatabase mislukt.' })
+    console.error('❌ Insert error:', insertError)
+    return res.status(500).json({ error: insertError.message || 'Opslaan in gebruikersdatabase mislukt.' })
   }
-
 
   // 4. Uitnodiging bijwerken
   await supabase
