@@ -21,6 +21,15 @@ router.post('/', async (req, res) => {
     })
   }
 
+  // Extra defensieve sanitatie voor datumvelden
+  ['zichtbaar_vanaf', 'zichtbaar_tot'].forEach((key) => {
+    if (thema[key] === '') thema[key] = null
+    if (Array.isArray(thema[key])) {
+      console.warn(`⚠️ ${key} is per ongeluk een array:`, thema[key])
+      thema[key] = thema[key][0] || null
+    }
+  })
+
   try {
     const { data: insertedThemes, error: themeError } = await supabase
       .from('themes')
