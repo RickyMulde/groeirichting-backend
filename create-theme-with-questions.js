@@ -11,12 +11,17 @@ const supabase = createClient(
 router.post('/', async (req, res) => {
   const { thema, vragen } = req.body
 
+  console.log('Ontvangen thema:', thema)
+  console.log('Ontvangen vragen:', vragen)
+
   if (!thema || !vragen || !Array.isArray(vragen)) {
-    return res.status(400).json({ error: 'Verplichte velden ontbreken of verkeerd formaat.' })
+    return res.status(400).json({
+      error: 'Verplichte velden ontbreken of verkeerd formaat.',
+      ontvangen: { thema, vragen }
+    })
   }
 
   try {
-    // 1. Voeg thema toe
     const { data: insertedThemes, error: themeError } = await supabase
       .from('themes')
       .insert([thema])
@@ -24,12 +29,11 @@ router.post('/', async (req, res) => {
 
     if (themeError || !insertedThemes || insertedThemes.length === 0) {
       console.error('Fout bij aanmaken thema:', themeError)
-      return res.status(500).json({ error: 'Thema toevoegen mislukt.' })
+      return res.status(500).json({ error: 'Thema toevoegen mislukt.', details: themeError?.message })
     }
 
     const themeId = insertedThemes[0].id
 
-    // 2. Voeg vragen toe met juiste theme_id
     const vragenMetKoppeling = vragen.map((vraag, index) => ({
       ...vraag,
       theme_id: themeId,
@@ -42,13 +46,13 @@ router.post('/', async (req, res) => {
 
     if (vragenError) {
       console.error('Fout bij vragen toevoegen:', vragenError)
-      return res.status(500).json({ error: 'Vragen toevoegen mislukt.' })
+      return res.status(500).json({ error: 'Vragen toevoegen mislukt.', details: vragenError?.message })
     }
 
     return res.status(200).json({ success: true, theme_id: themeId })
   } catch (e) {
     console.error('Onverwachte fout:', e)
-    return res.status(500).json({ error: 'Interne serverfout.' })
+    return res.status(500).json({ error: 'Interne serverfout.', message: e.message })
   }
 })
 
