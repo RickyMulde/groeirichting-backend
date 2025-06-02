@@ -30,6 +30,20 @@ router.post('/', async (req, res) => {
     }
   })
 
+  // Zet lege of foutieve json-velden om naar null
+  const parseableFields = ['vragenlijst', 'vervolgvragen', 'ai_configuratie', 'versiebeheer', 'verwachte_signalen']
+  parseableFields.forEach((key) => {
+    try {
+      if (typeof thema[key] === 'string') {
+        const parsed = JSON.parse(thema[key])
+        thema[key] = parsed && typeof parsed === 'object' ? parsed : null
+      }
+    } catch {
+      console.warn(`⚠️ ${key} kon niet worden geparsed, veld genegeerd.`)
+      thema[key] = null
+    }
+  })
+
   try {
     const { data: insertedThemes, error: themeError } = await supabase
       .from('themes')
