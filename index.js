@@ -6,6 +6,7 @@ const cors = require('cors');
 const registerEmployee = require('./register-employee')
 const registerEmployer = require('./register-employer')
 const createThemeWithQuestions = require('./create-theme-with-questions')
+const saveConversation = require('./save-conversation')
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use('/api/register-employer', registerEmployer)
 app.use('/api/register-employee', registerEmployee);
 app.use('/api/create-theme-with-questions', createThemeWithQuestions);
+app.use('/api/save-conversation', saveConversation)
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
