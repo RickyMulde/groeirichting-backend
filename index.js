@@ -13,7 +13,13 @@ console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 dotenv.config();
 const app = express();
 
-app.use(cors());
+const allowedOrigins = ['https://groeirichting-frontend.onrender.com']
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 app.use(express.json());
 app.use('/api/register-employer', registerEmployer)
 app.use('/api/register-employee', registerEmployee);
