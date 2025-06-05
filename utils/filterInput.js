@@ -12,17 +12,25 @@ const patterns = {
   email: /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i,
   phone: /\+?\d{6,15}/,
   iban: /\bNL\d{2}[A-Z]{4}\d{10}\b/i,
+  xss: /<\s*script.*?>.*?<\s*\/\s*script\s*>/gi,
+  suspiciousFileLink: /(https?:\/\/)?[a-z0-9.-]+\.(exe|zip|scr|php|bat|cmd|sh)(\b|\/|$)/i,
+  base64: /\b([A-Za-z0-9+\/]{40,}={0,2})\b/
 };
 
 function containsSensitiveInfo(text) {
   const lowered = text.toLowerCase();
 
+  // Regex-patterns controleren
   for (const [type, regex] of Object.entries(patterns)) {
     if (regex.test(text)) {
-      return { flagged: true, reason: `Vul a.u.b. geen ${type} in.` };
+      return {
+        flagged: true,
+        reason: `Vul a.u.b. geen persoonsgegevens of belangrijke gegevens in.`
+      };
     }
   }
 
+  // Woordenlijst-checks
   const woorden = lowered.split(/[^\w]+/);
   for (const woord of woorden) {
     if (voornamenSet.has(woord)) {
@@ -45,10 +53,15 @@ function containsSensitiveInfo(text) {
     }
   }
 
-  const doc = nlp(text);
-  const names = doc.people().out('array');
-  if (names.length > 0) {
-    return { flagged: true, reason: `Naam gedetecteerd: "${names[0]}"` };
+  // Compromise-naamdetectie
+  try {
+    const doc = nlp(text);
+    const names = doc.people().out('array');
+    if (names.length > 0) {
+      return { flagged: true, reason: `Naam gedetecteerd: "${names[0]}"` };
+    }
+  } catch (err) {
+    console.warn('Compromise error:', err.message);
   }
 
   return { flagged: false };
