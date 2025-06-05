@@ -48,67 +48,21 @@ router.post('/', async (req, res) => {
     }
   });
 
-// Voeg de eerste 5 vragen als losse velden toe aan het thema
-  const vragenVoorVelden = vragen.slice(0, 5).map((v) => v.tekst?.trim() || null);
-  while (vragenVoorVelden.length < 5) vragenVoorVelden.push(null);
+// ❌ Verwijderd: frontend stuurt vraag_1 t/m vraag_5 zelf al correct mee
 
-  thema.vraag_1 = vragenVoorVelden[0];
-  thema.vraag_2 = vragenVoorVelden[1];
-  thema.vraag_3 = vragenVoorVelden[2];
-  thema.vraag_4 = vragenVoorVelden[3];
-  thema.vraag_5 = vragenVoorVelden[4];
+  thema.vraag_1_verplicht = thema.vraag_1_verplicht ?? null;
+  thema.vraag_1_type = thema.vraag_1_type ?? null;
+  thema.vraag_2_verplicht = thema.vraag_2_verplicht ?? null;
+  thema.vraag_2_type = thema.vraag_2_type ?? null;
+  thema.vraag_3_verplicht = thema.vraag_3_verplicht ?? null;
+  thema.vraag_3_type = thema.vraag_3_type ?? null;
+  thema.vraag_4_verplicht = thema.vraag_4_verplicht ?? null;
+  thema.vraag_4_type = thema.vraag_4_type ?? null;
+  thema.vraag_5_verplicht = thema.vraag_5_verplicht ?? null;
+  thema.vraag_5_type = thema.vraag_5_type ?? null;
+
 
   try {
-    
-  // Als er een ID is, dan gaan we updaten in plaats van nieuw toevoegen
-  if (thema.id) {
-    const themeId = thema.id;
-
-    const vragenVoorVelden = vragen.slice(0, 5).map((v) => v.tekst?.trim() || null);
-    while (vragenVoorVelden.length < 5) vragenVoorVelden.push(null);
-
-    const updatePayload = {
-      ...thema,
-      vraag_1: vragenVoorVelden[0],
-      vraag_2: vragenVoorVelden[1],
-      vraag_3: vragenVoorVelden[2],
-      vraag_4: vragenVoorVelden[3],
-      vraag_5: vragenVoorVelden[4],
-    };
-
-    const { error: updateError } = await supabase
-      .from('themes')
-      .update(updatePayload)
-      .eq('id', themeId);
-
-    if (updateError) {
-      console.error('Fout bij updaten thema:', updateError);
-      return res.status(500).json({ error: 'Thema bijwerken mislukt.', details: updateError?.message });
-    }
-
-    // Oude vragen verwijderen
-    await supabase.from('theme_questions').delete().eq('theme_id', themeId);
-
-    // Nieuwe vragen invoegen
-    const vragenMetKoppeling = vragen.map((vraag, index) => ({
-      ...vraag,
-      theme_id: themeId,
-      volgorde_index: vraag.volgorde_index ?? index
-    }));
-
-    const { error: vragenError } = await supabase
-      .from('theme_questions')
-      .insert(vragenMetKoppeling);
-
-    if (vragenError) {
-      console.error('Fout bij vervangen vragen:', vragenError);
-      return res.status(500).json({ error: 'Vragen vervangen mislukt.', details: vragenError?.message });
-    }
-
-    return res.status(200).json({ success: true, theme_id: themeId });
-  }
-
-
     const { data: insertedThemes, error: themeError } = await supabase
       .from('themes')
       .insert([thema])
