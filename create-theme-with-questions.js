@@ -75,7 +75,27 @@ router.post('/', async (req, res) => {
 
     const themeId = insertedThemes[0].id;
 
-    const vragenMetKoppeling = vragen.map((vraag, index) => ({
+    
+// Als vragen[] leeg is, maak dan vragen aan uit thema.vraag_1 t/m vraag_5
+let ingevuldeVragen = vragen;
+if ((!vragen || vragen.length === 0) && thema.vraag_1) {
+  ingevuldeVragen = [];
+  for (let i = 1; i <= 5; i++) {
+    const tekst = thema[`vraag_${i}`];
+    if (tekst && tekst.trim() !== '') {
+      ingevuldeVragen.push({
+        tekst: tekst.trim(),
+        verplicht: thema[`vraag_${i}_verplicht`] ?? false,
+        type: thema[`vraag_${i}_type`] ?? 'text',
+        type_vraag: thema[`vraag_${i}_type`] ?? 'initieel',
+        taalcode: thema.taalcode ?? 'nl',
+      });
+    }
+  }
+}
+
+
+const vragenMetKoppeling = ingevuldeVragen.map((vraag, index) => ({
       ...vraag,
       theme_id: themeId,
       volgorde_index: vraag.volgorde_index ?? index
