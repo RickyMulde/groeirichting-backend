@@ -36,7 +36,7 @@ router.post('/', async (req, res) => {
     }
   });
 
-  const parseableFields = ['vragenlijst', 'vervolgvragen', 'ai_configuratie', 'versiebeheer', 'verwachte_signalen'];
+  const parseableFields = ['ai_configuratie', 'versiebeheer', 'verwachte_signalen'];
   parseableFields.forEach((key) => {
     try {
       if (typeof thema[key] === 'string') {
