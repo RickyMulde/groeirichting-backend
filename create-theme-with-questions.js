@@ -90,20 +90,17 @@ router.post('/', async (req, res) => {
       console.log('Bestaande vragen succesvol verwijderd');
 
       // Opnieuw opbouwen van vragen (gebruik fallback als nodig)
-      let ingevuldeVragen = vragen;
-      if ((!vragen || vragen.length === 0) && thema.vraag_1) {
-        ingevuldeVragen = [];
-        for (let i = 1; i <= 5; i++) {
-          const tekst = thema[`vraag_${i}`];
-          if (typeof tekst === 'string' && tekst.trim() !== '') {
-            ingevuldeVragen.push({
-              tekst: tekst.trim(),
-              verplicht: thema[`vraag_${i}_verplicht`] ?? false,
-              type_vraag: thema[`vraag_${i}_type`] ?? 'initieel',
-              type: thema[`vraag_${i}_type`] ?? 'initieel',
-              taalcode: thema.taalcode ?? 'nl'
-            });
-          }
+      let ingevuldeVragen = [];
+      // Gebruik vraag_1 t/m vraag_5 voor nieuwe vragen
+      for (let i = 1; i <= 5; i++) {
+        const tekst = thema[`vraag_${i}`];
+        if (typeof tekst === 'string' && tekst.trim() !== '') {
+          ingevuldeVragen.push({
+            tekst: tekst.trim(),
+            verplicht: thema[`vraag_${i}_verplicht`] ?? false,
+            type: thema[`vraag_${i}_type`] ?? 'initieel',
+            taalcode: thema.taalcode ?? 'nl'
+          });
         }
       }
 
@@ -143,20 +140,17 @@ router.post('/', async (req, res) => {
     const themeId = insertedThemes[0].id;
 
     // Als vragen[] leeg is, maak dan vragen aan uit thema.vraag_1 t/m vraag_5
-    let ingevuldeVragen = vragen;
-    if ((!vragen || vragen.length === 0) && thema.vraag_1) {
-      ingevuldeVragen = [];
-      for (let i = 1; i <= 5; i++) {
-        const tekst = thema[`vraag_${i}`];
-        if (tekst && tekst.trim() !== '') {
-          ingevuldeVragen.push({
-            tekst: tekst.trim(),
-            verplicht: thema[`vraag_${i}_verplicht`] ?? false,
-            type: thema[`vraag_${i}_type`] ?? 'text',
-            type_vraag: thema[`vraag_${i}_type`] ?? 'initieel',
-            taalcode: thema.taalcode ?? 'nl',
-          });
-        }
+    let ingevuldeVragen = [];
+    // Gebruik vraag_1 t/m vraag_5 voor nieuwe vragen
+    for (let i = 1; i <= 5; i++) {
+      const tekst = thema[`vraag_${i}`];
+      if (typeof tekst === 'string' && tekst.trim() !== '') {
+        ingevuldeVragen.push({
+          tekst: tekst.trim(),
+          verplicht: thema[`vraag_${i}_verplicht`] ?? false,
+          type: thema[`vraag_${i}_type`] ?? 'initieel',
+          taalcode: thema.taalcode ?? 'nl'
+        });
       }
     }
 
