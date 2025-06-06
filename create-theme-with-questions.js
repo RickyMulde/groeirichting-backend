@@ -13,6 +13,7 @@ router.post('/', async (req, res) => {
 
   console.log('Ontvangen thema:', thema);
   console.log('Ontvangen vragen:', vragen);
+  console.log('Thema ID aanwezig:', !!thema.id);
 
   if (!thema || !vragen || !Array.isArray(vragen)) {
     return res.status(400).json({
@@ -61,6 +62,8 @@ router.post('/', async (req, res) => {
 
   try {
     if (thema.id) {
+      console.log('Start update proces voor thema ID:', thema.id);
+      
       // Update bestaand thema
       const { error: updateError } = await supabase
         .from('themes')
@@ -71,9 +74,20 @@ router.post('/', async (req, res) => {
         console.error('Fout bij updaten thema:', updateError);
         return res.status(500).json({ error: 'Thema bijwerken mislukt.', details: updateError.message });
       }
+      console.log('Thema succesvol bijgewerkt');
 
       // Verwijder gekoppelde vragen
-      await supabase.from('theme_questions').delete().eq('theme_id', thema.id);
+      console.log('Start verwijderen van bestaande vragen');
+      const { error: deleteError } = await supabase
+        .from('theme_questions')
+        .delete()
+        .eq('theme_id', thema.id);
+      
+      if (deleteError) {
+        console.error('Fout bij verwijderen vragen:', deleteError);
+        return res.status(500).json({ error: 'Verwijderen vragen mislukt.', details: deleteError.message });
+      }
+      console.log('Bestaande vragen succesvol verwijderd');
 
       // Opnieuw opbouwen van vragen (gebruik fallback als nodig)
       let ingevuldeVragen = vragen;
@@ -93,12 +107,15 @@ router.post('/', async (req, res) => {
         }
       }
 
+      console.log('Nieuwe vragen voorbereid:', ingevuldeVragen);
+
       const vragenMetKoppeling = ingevuldeVragen.map((vraag, index) => ({
         ...vraag,
         theme_id: thema.id,
         volgorde_index: vraag.volgorde_index ?? index
       }));
 
+      console.log('Start toevoegen nieuwe vragen');
       const { error: vragenError } = await supabase
         .from('theme_questions')
         .insert(vragenMetKoppeling);
@@ -107,6 +124,7 @@ router.post('/', async (req, res) => {
         console.error('Fout bij vervangen vragen:', vragenError);
         return res.status(500).json({ error: 'Vragen bijwerken mislukt.', details: vragenError.message });
       }
+      console.log('Nieuwe vragen succesvol toegevoegd');
 
       return res.status(200).json({ success: true, theme_id: thema.id });
     }
