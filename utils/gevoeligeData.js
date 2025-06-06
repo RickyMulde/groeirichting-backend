@@ -773,7 +773,6 @@ export const voornamenSet = new Set([
   'emma',
   'emmanuel',
   'emre',
-  'en',
   'enea',
   'enes',
   'enis',
