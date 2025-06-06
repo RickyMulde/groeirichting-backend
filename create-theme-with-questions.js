@@ -37,33 +37,106 @@ router.post('/', async (req, res) => {
 
   const parseableFields = ['vragenlijst', 'vervolgvragen', 'ai_configuratie', 'versiebeheer', 'verwachte_signalen'];
   parseableFields.forEach((key) => {
-    
-try {
-  if (thema.id) {
-    const { error: updateError } = await supabase
-      .from('themes')
-      .update(thema)
-      .eq('id', thema.id);
+    try {
+      if (typeof thema[key] === 'string') {
+        const parsed = JSON.parse(thema[key]);
+        thema[key] = parsed && typeof parsed === 'object' ? parsed : null;
+      }
+    } catch {
+      console.warn(`⚠️ ${key} kon niet worden geparsed, veld genegeerd.`);
+      thema[key] = null;
+    }
+  });
 
-    if (updateError) {
-      console.error('Fout bij updaten thema:', updateError);
-      return res.status(500).json({ error: 'Thema bijwerken mislukt.', details: updateError.message });
+  thema.vraag_1_verplicht = thema.vraag_1_verplicht ?? null;
+  thema.vraag_1_type = thema.vraag_1_type ?? null;
+  thema.vraag_2_verplicht = thema.vraag_2_verplicht ?? null;
+  thema.vraag_2_type = thema.vraag_2_type ?? null;
+  thema.vraag_3_verplicht = thema.vraag_3_verplicht ?? null;
+  thema.vraag_3_type = thema.vraag_3_type ?? null;
+  thema.vraag_4_verplicht = thema.vraag_4_verplicht ?? null;
+  thema.vraag_4_type = thema.vraag_4_type ?? null;
+  thema.vraag_5_verplicht = thema.vraag_5_verplicht ?? null;
+  thema.vraag_5_type = thema.vraag_5_type ?? null;
+
+  try {
+    if (thema.id) {
+      // Update bestaand thema
+      const { error: updateError } = await supabase
+        .from('themes')
+        .update(thema)
+        .eq('id', thema.id);
+
+      if (updateError) {
+        console.error('Fout bij updaten thema:', updateError);
+        return res.status(500).json({ error: 'Thema bijwerken mislukt.', details: updateError.message });
+      }
+
+      // Verwijder gekoppelde vragen
+      await supabase.from('theme_questions').delete().eq('theme_id', thema.id);
+
+      // Opnieuw opbouwen van vragen (gebruik fallback als nodig)
+      let ingevuldeVragen = vragen;
+      if ((!vragen || vragen.length === 0) && thema.vraag_1) {
+        ingevuldeVragen = [];
+        for (let i = 1; i <= 5; i++) {
+          const tekst = thema[`vraag_${i}`];
+          if (typeof tekst === 'string' && tekst.trim() !== '') {
+            ingevuldeVragen.push({
+              tekst: tekst.trim(),
+              verplicht: thema[`vraag_${i}_verplicht`] ?? false,
+              type_vraag: thema[`vraag_${i}_type`] ?? 'initieel',
+              type: thema[`vraag_${i}_type`] ?? 'initieel',
+              taalcode: thema.taalcode ?? 'nl'
+            });
+          }
+        }
+      }
+
+      const vragenMetKoppeling = ingevuldeVragen.map((vraag, index) => ({
+        ...vraag,
+        theme_id: thema.id,
+        volgorde_index: vraag.volgorde_index ?? index
+      }));
+
+      const { error: vragenError } = await supabase
+        .from('theme_questions')
+        .insert(vragenMetKoppeling);
+
+      if (vragenError) {
+        console.error('Fout bij vervangen vragen:', vragenError);
+        return res.status(500).json({ error: 'Vragen bijwerken mislukt.', details: vragenError.message });
+      }
+
+      return res.status(200).json({ success: true, theme_id: thema.id });
     }
 
-    await supabase.from('theme_questions').delete().eq('theme_id', thema.id);
+    // Nieuwe thema aanmaken
+    const { data: insertedThemes, error: themeError } = await supabase
+      .from('themes')
+      .insert([thema])
+      .select();
 
+    if (themeError || !insertedThemes || insertedThemes.length === 0) {
+      console.error('Fout bij aanmaken thema:', themeError);
+      return res.status(500).json({ error: 'Thema toevoegen mislukt.', details: themeError?.message });
+    }
+
+    const themeId = insertedThemes[0].id;
+
+    // Als vragen[] leeg is, maak dan vragen aan uit thema.vraag_1 t/m vraag_5
     let ingevuldeVragen = vragen;
     if ((!vragen || vragen.length === 0) && thema.vraag_1) {
       ingevuldeVragen = [];
       for (let i = 1; i <= 5; i++) {
         const tekst = thema[`vraag_${i}`];
-        if (typeof tekst === 'string' && tekst.trim() !== '') {
+        if (tekst && tekst.trim() !== '') {
           ingevuldeVragen.push({
             tekst: tekst.trim(),
             verplicht: thema[`vraag_${i}_verplicht`] ?? false,
+            type: thema[`vraag_${i}_type`] ?? 'text',
             type_vraag: thema[`vraag_${i}_type`] ?? 'initieel',
-            type: thema[`vraag_${i}_type`] ?? 'initieel',
-            taalcode: thema.taalcode ?? 'nl'
+            taalcode: thema.taalcode ?? 'nl',
           });
         }
       }
@@ -71,7 +144,7 @@ try {
 
     const vragenMetKoppeling = ingevuldeVragen.map((vraag, index) => ({
       ...vraag,
-      theme_id: thema.id,
+      theme_id: themeId,
       volgorde_index: vraag.volgorde_index ?? index
     }));
 
@@ -80,62 +153,15 @@ try {
       .insert(vragenMetKoppeling);
 
     if (vragenError) {
-      console.error('Fout bij vervangen vragen:', vragenError);
-      return res.status(500).json({ error: 'Vragen bijwerken mislukt.', details: vragenError.message });
+      console.error('Fout bij vragen toevoegen:', vragenError);
+      return res.status(500).json({ error: 'Vragen toevoegen mislukt.', details: vragenError?.message });
     }
 
-    return res.status(200).json({ success: true, theme_id: thema.id });
+    return res.status(200).json({ success: true, theme_id: themeId });
+  } catch (e) {
+    console.error('Onverwachte fout:', e);
+    return res.status(500).json({ error: 'Interne serverfout.', message: e.message });
   }
-
-  // Insert nieuw thema
-  const { data: insertedThemes, error: themeError } = await supabase
-    .from('themes')
-    .insert([thema])
-    .select();
-
-  if (themeError || !insertedThemes || insertedThemes.length === 0) {
-    console.error('Fout bij aanmaken thema:', themeError);
-    return res.status(500).json({ error: 'Thema toevoegen mislukt.', details: themeError?.message });
-  }
-
-  const themeId = insertedThemes[0].id;
-
-  let ingevuldeVragen = vragen;
-  if ((!vragen || vragen.length === 0) && thema.vraag_1) {
-    ingevuldeVragen = [];
-    for (let i = 1; i <= 5; i++) {
-      const tekst = thema[`vraag_${i}`];
-      if (typeof tekst === 'string' && tekst.trim() !== '') {
-        ingevuldeVragen.push({
-          tekst: tekst.trim(),
-          verplicht: thema[`vraag_${i}_verplicht`] ?? false,
-          type_vraag: thema[`vraag_${i}_type`] ?? 'initieel',
-          type: thema[`vraag_${i}_type`] ?? 'initieel',
-          taalcode: thema.taalcode ?? 'nl'
-        });
-      }
-    }
-  }
-
-  const vragenMetKoppeling = ingevuldeVragen.map((vraag, index) => ({
-    ...vraag,
-    theme_id: themeId,
-    volgorde_index: vraag.volgorde_index ?? index
-  }));
-
-  const { error: vragenError } = await supabase
-    .from('theme_questions')
-    .insert(vragenMetKoppeling);
-
-  if (vragenError) {
-    console.error('Fout bij vragen toevoegen:', vragenError);
-    return res.status(500).json({ error: 'Vragen toevoegen mislukt.', details: vragenError.message });
-  }
-
-  return res.status(200).json({ success: true, theme_id: themeId });
-} catch (e) {
-  console.error('Onverwachte fout:', e);
-  return res.status(500).json({ error: 'Interne serverfout.', message: e.message });
-}
+});
 
 module.exports = router;
