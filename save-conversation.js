@@ -10,105 +10,99 @@ const supabase = createClient(
 );
 
 router.post('/', async (req, res) => {
-  const { employee_id, theme_id, antwoorden, is_afgerond } = req.body;
-
-  console.log('Ontvangen gesprek data:', {
-    employee_id,
+  const {
+    werknemer_id,
     theme_id,
-    aantal_antwoorden: antwoorden?.length,
-    is_afgerond
-  });
-  console.log('Antwoorden:', antwoorden);
+    gesprek_id,
+    theme_question_id,
+    antwoord,
+    status // optioneel
+  } = req.body;
 
-  if (!employee_id || !theme_id || !Array.isArray(antwoorden)) {
-    console.error('Verplichte velden ontbreken:', { employee_id, theme_id, antwoorden });
-    return res.status(400).json({ error: 'Verplichte velden ontbreken' });
+  const now = new Date().toISOString();
+
+  if (!werknemer_id || !theme_id) {
+    return res.status(400).json({ error: 'werknemer_id en theme_id zijn verplicht.' });
   }
 
   try {
-    // Eerst een gesprek record aanmaken
-    const now = new Date().toISOString();
-    const { data: gesprekData, error: gesprekError } = await supabase
-      .from('gesprek')
-      .insert([{
-        werknemer_id: employee_id,
-        theme_id,
-        gestart_op: now,
-        beeindigd_op: now,
-        status: is_afgerond ? 'Afgerond' : 'Nog niet afgerond',
-        taalcode: 'nl'
-      }])
-      .select();
+    // 1️⃣ Gesprek aanmaken
+    if (!gesprek_id && !theme_question_id && status === 'Nog niet afgerond') {
+      const { data, error } = await supabase
+        .from('gesprek')
+        .insert([{
+          werknemer_id,
+          theme_id,
+          gestart_op: now,
+          status: 'Nog niet afgerond',
+          taalcode: 'nl',
+          aangemaakt_op: now
+        }])
+        .select();
 
-    if (gesprekError) {
-      console.error('Fout bij aanmaken gesprek:', gesprekError);
-      return res.status(500).json({ 
-        error: 'Gesprek aanmaken mislukt', 
-        detail: gesprekError.message 
-      });
+      if (error) {
+        console.error('Fout bij aanmaken gesprek:', error);
+        return res.status(500).json({ error: 'Gesprek aanmaken mislukt', detail: error.message });
+      }
+
+      return res.status(200).json({ gesprek_id: data[0].id });
     }
 
-    const gesprekId = gesprekData[0].id;
+    // 2️⃣ Gesprek afsluiten
+    if (gesprek_id && status === 'Afgerond') {
+      const { error } = await supabase
+        .from('gesprek')
+        .update({
+          beeindigd_op: now,
+          status: 'Afgerond'
+        })
+        .eq('id', gesprek_id);
 
-    // Dan de antwoorden opslaan
-    for (const { vraag, antwoord } of antwoorden) {
-      console.log('Verwerken antwoord:', { vraag, antwoord });
+      if (error) {
+        console.error('Fout bij afronden gesprek:', error);
+        return res.status(500).json({ error: 'Gesprek afronden mislukt', detail: error.message });
+      }
 
+      return res.status(200).json({ success: true, message: 'Gesprek afgerond' });
+    }
+
+    // 3️⃣ Antwoord opslaan
+    if (gesprek_id && theme_question_id && antwoord !== undefined) {
       const check = containsSensitiveInfo(antwoord);
       if (check.flagged) {
-        console.error('Gevoelige informatie gedetecteerd:', check.reason);
         return res.status(400).json({
           error: 'Antwoord bevat gevoelige gegevens en is niet opgeslagen.',
           reason: check.reason,
         });
       }
 
-      console.log('Opslaan in database:', { 
-        werknemer_id: employee_id, 
-        theme_id, 
-        vraag,
-        antwoord,
-        gestart_op: now,
-        beeindigd_op: now,
-        taalcode: 'nl',
-        gesprek_id: gesprekId
-      });
-
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('antwoordpervraag')
-        .insert([{ 
-          werknemer_id: employee_id, 
-          theme_id, 
-          vraag,
+        .insert([{
+          werknemer_id,
+          theme_id,
+          theme_question_id,
           antwoord,
           gestart_op: now,
           beeindigd_op: now,
           taalcode: 'nl',
-          gesprek_id: gesprekId
-        }])
-        .select();
+          status: 'voltooid',
+          gesprek_id
+        }]);
 
       if (error) {
         console.error('Fout bij opslaan antwoord:', error);
-        return res.status(500).json({ 
-          error: 'Opslaan mislukt', 
-          detail: error.message,
-          code: error.code,
-          hint: error.hint
-        });
+        return res.status(500).json({ error: 'Opslaan mislukt', detail: error.message });
       }
-      console.log('Antwoord succesvol opgeslagen:', data);
+
+      return res.status(200).json({ success: true });
     }
 
-    console.log('Alle antwoorden succesvol opgeslagen');
-    return res.status(200).json({ success: true, gesprek_id: gesprekId });
+    return res.status(400).json({ error: 'Ongeldig verzoek. Verplichte velden ontbreken of incorrecte combinatie.' });
+
   } catch (e) {
-    console.error('Onverwachte fout bij opslaan gesprek:', e);
-    return res.status(500).json({ 
-      error: 'Interne serverfout', 
-      detail: e.message,
-      stack: e.stack
-    });
+    console.error('Onverwachte fout:', e);
+    return res.status(500).json({ error: 'Interne serverfout', detail: e.message });
   }
 });
 
