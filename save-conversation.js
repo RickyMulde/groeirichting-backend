@@ -10,12 +10,13 @@ const supabase = createClient(
 );
 
 router.post('/', async (req, res) => {
-  const { employee_id, theme_id, antwoorden } = req.body;
+  const { employee_id, theme_id, antwoorden, is_afgerond } = req.body;
 
   console.log('Ontvangen gesprek data:', {
     employee_id,
     theme_id,
-    aantal_antwoorden: antwoorden?.length
+    aantal_antwoorden: antwoorden?.length,
+    is_afgerond
   });
   console.log('Antwoorden:', antwoorden);
 
@@ -25,8 +26,33 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    for (const { vraag_id, antwoord } of antwoorden) {
-      console.log('Verwerken antwoord:', { vraag_id, antwoord });
+    // Eerst een gesprek record aanmaken
+    const now = new Date().toISOString();
+    const { data: gesprekData, error: gesprekError } = await supabase
+      .from('gesprek')
+      .insert([{
+        werknemer_id: employee_id,
+        theme_id,
+        gestart_op: now,
+        beeindigd_op: now,
+        status: is_afgerond ? 'Afgerond' : 'Nog niet afgerond',
+        taalcode: 'nl'
+      }])
+      .select();
+
+    if (gesprekError) {
+      console.error('Fout bij aanmaken gesprek:', gesprekError);
+      return res.status(500).json({ 
+        error: 'Gesprek aanmaken mislukt', 
+        detail: gesprekError.message 
+      });
+    }
+
+    const gesprekId = gesprekData[0].id;
+
+    // Dan de antwoorden opslaan
+    for (const { vraag, antwoord } of antwoorden) {
+      console.log('Verwerken antwoord:', { vraag, antwoord });
 
       const check = containsSensitiveInfo(antwoord);
       if (check.flagged) {
@@ -37,10 +63,29 @@ router.post('/', async (req, res) => {
         });
       }
 
-      console.log('Opslaan in database:', { employee_id, theme_id, vraag_id, antwoord });
+      console.log('Opslaan in database:', { 
+        werknemer_id: employee_id, 
+        theme_id, 
+        vraag,
+        antwoord,
+        gestart_op: now,
+        beeindigd_op: now,
+        taalcode: 'nl',
+        gesprek_id: gesprekId
+      });
+
       const { data, error } = await supabase
-        .from('conversations')
-        .insert([{ employee_id, theme_id, vraag_id, antwoord }])
+        .from('antwoordpervraag')
+        .insert([{ 
+          werknemer_id: employee_id, 
+          theme_id, 
+          vraag,
+          antwoord,
+          gestart_op: now,
+          beeindigd_op: now,
+          taalcode: 'nl',
+          gesprek_id: gesprekId
+        }])
         .select();
 
       if (error) {
@@ -56,7 +101,7 @@ router.post('/', async (req, res) => {
     }
 
     console.log('Alle antwoorden succesvol opgeslagen');
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, gesprek_id: gesprekId });
   } catch (e) {
     console.error('Onverwachte fout bij opslaan gesprek:', e);
     return res.status(500).json({ 
