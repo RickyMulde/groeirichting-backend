@@ -86,7 +86,7 @@ router.post('/', async (req, res) => {
           gestart_op: now,
           beeindigd_op: now,
           taalcode: 'nl',
-          status: 'voltooid',
+          status: 'verzonden',
           gesprek_id
         }]);
 
