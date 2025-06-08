@@ -54,15 +54,24 @@ function containsSensitiveInfo(text) {
   }
 
   // Compromise-naamdetectie
+  /*
   try {
     const doc = nlp(text);
     const names = doc.people().out('array');
     if (names.length > 0) {
-      return { flagged: true, reason: `Naam gedetecteerd: "${names[0]}"` };
+      // Filter vals positieven
+      const falsePositives = ['dit', 'dat', 'deze', 'die', 'het', 'een', 'de'];
+      const detectedName = names[0].toLowerCase();
+      
+      // Alleen blokkeren als het geen vals positief is
+      if (!falsePositives.includes(detectedName)) {
+        return { flagged: true, reason: `Naam gedetecteerd: "${names[0]}"` };
+      }
     }
   } catch (err) {
     console.warn('Compromise error:', err.message);
   }
+  */
 
   return { flagged: false };
 }
