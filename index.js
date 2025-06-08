@@ -7,7 +7,7 @@ const registerEmployee = require('./register-employee')
 const registerEmployer = require('./register-employer')
 const createThemeWithQuestions = require('./create-theme-with-questions')
 const saveConversation = require('./save-conversation')
-const getConversationAnswers = require('./routes/get-conversation-answers');
+const getConversationAnswers = require('./get-conversation-answers');
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
