@@ -19,10 +19,12 @@ const patterns = {
 
 function containsSensitiveInfo(text) {
   const lowered = text.toLowerCase();
+  console.log('Checking text:', text);
 
   // Regex-patterns controleren
   for (const [type, regex] of Object.entries(patterns)) {
     if (regex.test(text)) {
+      console.log('Blocked by regex pattern:', type);
       return {
         flagged: true,
         reason: `Vul a.u.b. geen persoonsgegevens of belangrijke gegevens in.`
@@ -32,28 +34,35 @@ function containsSensitiveInfo(text) {
 
   // Woordenlijst-checks
   const woorden = lowered.split(/[^\w]+/);
+  console.log('Split words:', woorden);
   for (const woord of woorden) {
     if (voornamenSet.has(woord)) {
+      console.log('Blocked by voornamen:', woord);
       return { flagged: true, reason: `Noem liever geen voornamen zoals "${woord}".` };
     }
     if (achternamenSet.has(woord)) {
+      console.log('Blocked by achternamen:', woord);
       return { flagged: true, reason: `Noem liever geen achternamen zoals "${woord}".` };
     }
     if (medischeSet.has(woord)) {
+      console.log('Blocked by medische termen:', woord);
       return { flagged: true, reason: `Vermijd medische termen zoals "${woord}".` };
     }
     if (seksueleSet.has(woord)) {
+      console.log('Blocked by seksuele termen:', woord);
       return { flagged: true, reason: `Vermijd termen over seksuele voorkeur zoals "${woord}".` };
     }
     if (religieuzeSet.has(woord)) {
+      console.log('Blocked by religieuze termen:', woord);
       return { flagged: true, reason: `Vermijd religieuze termen zoals "${woord}".` };
     }
     if (politiekeSet.has(woord)) {
+      console.log('Blocked by politieke termen:', woord);
       return { flagged: true, reason: `Vermijd politieke termen zoals "${woord}".` };
     }
   }
 
-  // Compromise-naamdetectie
+  // Compromise-naamdetectie is uitgeschakeld
   /*
   try {
     const doc = nlp(text);
