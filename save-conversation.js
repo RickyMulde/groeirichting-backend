@@ -71,8 +71,7 @@ router.post('/', async (req, res) => {
       const check = containsSensitiveInfo(antwoord);
       if (check.flagged) {
         return res.status(400).json({
-          error: 'Antwoord bevat gevoelige gegevens en is niet opgeslagen.',
-          reason: check.reason,
+          error: check.reason
         });
       }
 
