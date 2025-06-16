@@ -59,6 +59,8 @@ router.post('/', async (req, res) => {
   thema.vraag_4_type = thema.vraag_4_type ?? null;
   thema.vraag_5_verplicht = thema.vraag_5_verplicht ?? null;
   thema.vraag_5_type = thema.vraag_5_type ?? null;
+  thema.gebruik_gpt_vragen = thema.gebruik_gpt_vragen ?? false;
+
 
   try {
     if (thema.id) {

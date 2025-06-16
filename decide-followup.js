@@ -54,12 +54,12 @@ router.post('/', async (req, res) => {
             `Doel: bepaal of er voldoende inzicht is verkregen. Als dat niet zo is, stel 1 vervolgvraag. Gebruik GEEN religie, afkomst, seksuele geaardheid of andere gevoelige thema's. Gebruik neutrale, werkgerelateerde formuleringen.`
         },
         {
-          role: 'user',
-          content:
-            `Thema: ${thema}\n\nAlle antwoorden tot nu toe:\n` +
-            alleAntwoorden.map((a, i) => `Antwoord ${i + 1}: ${a}`).join('\n') +
-            `\n\nGeef output als JSON:\n{\n  "doorgaan": true/false,\n  "vervolgvraag": "tekst of null",\n  "toelichting": "waarom je wel/niet doorgaat"\n}`
-        }
+            role: 'user',
+            content:
+              `Thema: ${thema}\n\nAlle antwoorden tot nu toe:\n` +
+              alleAntwoorden.map((a, i) => `Antwoord ${i + 1}: ${a}`).join('\n') +
+              `\n\nBeantwoord als JSON met:\n{\n  "doorgaan": true/false,\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de werknemer uit waarom je wel of niet doorgaat"\n}\n\nVoorbeelden:\n- "Ik stel een vervolgvraag omdat het antwoord nog algemeen is."\n- "Je antwoord was concreet en inzichtgevend, daarom ga ik niet verder doorvragen."`
+          }          
       ]
     });
 
