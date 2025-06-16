@@ -67,7 +67,7 @@ router.post('/', async (req, res) => {
     }
 
     // 3️⃣ Antwoord opslaan
-    if (gesprek_id && theme_question_id && antwoord !== undefined) {
+    if (gesprek_id && antwoord !== undefined) {
       const check = containsSensitiveInfo(antwoord);
       if (check.flagged) {
         return res.status(400).json({
@@ -80,7 +80,7 @@ router.post('/', async (req, res) => {
         .insert([{
           werknemer_id,
           theme_id,
-          theme_question_id,
+          theme_question_id: theme_question_id?.startsWith('gpt-') ? null : theme_question_id,
           antwoord,
           gestart_op: now,
           beeindigd_op: now,
