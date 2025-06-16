@@ -50,11 +50,20 @@ router.post('/', async (req, res) => {
 
     // 2️⃣ Gesprek afsluiten
     if (gesprek_id && status === 'Afgerond') {
+      const { afrondingsreden } = req.body;
+      
+      if (!afrondingsreden || !['MAX_ANTWOORDEN', 'VOLDENDE_DUIDELIJK'].includes(afrondingsreden)) {
+        return res.status(400).json({ 
+          error: 'Ongeldige afrondingsreden. Moet MAX_ANTWOORDEN of VOLDENDE_DUIDELIJK zijn.' 
+        });
+      }
+
       const { error } = await supabase
         .from('gesprek')
         .update({
           beeindigd_op: now,
-          status: 'Afgerond'
+          status: 'Afgerond',
+          afrondingsreden
         })
         .eq('id', gesprek_id);
 
