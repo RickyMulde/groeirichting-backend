@@ -3,18 +3,20 @@ const express = require('express');
 const dotenv = require('dotenv');
 const { Resend } = require('resend');
 const cors = require('cors');
-const registerEmployee = require('./register-employee')
-const registerEmployer = require('./register-employer')
-const createThemeWithQuestions = require('./create-theme-with-questions')
-const saveConversation = require('./save-conversation')
+
+const registerEmployee = require('./register-employee');
+const registerEmployer = require('./register-employer');
+const createThemeWithQuestions = require('./create-theme-with-questions');
+const saveConversation = require('./save-conversation');
 const getConversationAnswers = require('./get-conversation-answers');
+const decideFollowup = require('./decide-followup'); // ✅ Nieuw toegevoegd
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
 dotenv.config();
 const app = express();
 
-const allowedOrigins = ['https://groeirichting-frontend.onrender.com']
+const allowedOrigins = ['https://groeirichting-frontend.onrender.com'];
 
 app.use(cors({
   origin: allowedOrigins,
@@ -22,11 +24,13 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-app.use('/api/register-employer', registerEmployer)
+
+app.use('/api/register-employer', registerEmployer);
 app.use('/api/register-employee', registerEmployee);
 app.use('/api/create-theme-with-questions', createThemeWithQuestions);
-app.use('/api/save-conversation', saveConversation)
+app.use('/api/save-conversation', saveConversation);
 app.use('/api/get-conversation-answers', getConversationAnswers);
+app.use('/api/decide-followup', decideFollowup); // ✅ Nieuwe route toegevoegd
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
