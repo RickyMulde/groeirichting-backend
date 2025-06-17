@@ -95,7 +95,9 @@ router.post('/', async (req, res) => {
           beeindigd_op: now,
           taalcode: 'nl',
           status: 'verzonden',
-          gesprek_id
+          gesprek_id,
+          is_vaste_vraag: !theme_question_id?.startsWith('gpt-'),
+          hoort_bij_question_id: theme_question_id?.startsWith('gpt-') ? theme_question_id : null
         }]);
 
       if (error) {

@@ -101,6 +101,7 @@ router.post('/', async (req, res) => {
             tekst: tekst.trim(),
             verplicht: thema[`vraag_${i}_verplicht`] ?? false,
             type: thema[`vraag_${i}_type`] ?? 'initieel',
+            doel_vraag: thema[`vraag_${i}_doel`] ?? null,
             taalcode: thema.taalcode ?? 'nl'
           });
         }
@@ -151,6 +152,7 @@ router.post('/', async (req, res) => {
           tekst: tekst.trim(),
           verplicht: thema[`vraag_${i}_verplicht`] ?? false,
           type: thema[`vraag_${i}_type`] ?? 'initieel',
+          doel_vraag: thema[`vraag_${i}_doel`] ?? null,
           taalcode: thema.taalcode ?? 'nl'
         });
       }
