@@ -11,7 +11,7 @@ const openai = new OpenAI({
 });
 
 router.post('/', async (req, res) => {
-  const { thema, eerdereAntwoorden = [], laatsteAntwoord } = req.body;
+  const { thema, eerdereAntwoorden = [], laatsteAntwoord, doel_vraag } = req.body;
 
   if (!thema || !laatsteAntwoord) {
     return res.status(400).json({ error: 'Thema en laatsteAntwoord zijn verplicht.' });
@@ -56,9 +56,12 @@ router.post('/', async (req, res) => {
         {
           role: 'user',
           content:
-            `Thema: ${thema}\n\nAlle antwoorden tot nu toe:\n` +
+            `Thema: ${thema}\n\n` +
+            (doel_vraag ? `Doel van de vraag: ${doel_vraag}\n\n` : '') +
+            `Alle antwoorden tot nu toe:\n` +
             alleAntwoorden.map((a, i) => `Antwoord ${i + 1}: ${a}`).join('\n') +
-            `\n\nBeantwoord als JSON met:\n{\n  "doorgaan": true/false,\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de werknemer uit waarom je wel of niet doorgaat"\n}\n\nVoorbeelden:\n- "Ik stel een vervolgvraag omdat het antwoord nog algemeen is."\n- "Je antwoord was concreet en inzichtgevend, daarom ga ik niet verder doorvragen."`
+            `\n\nBeantwoord als JSON met:\n{\n  "doorgaan": true/false,\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de werknemer uit waarom je wel of niet doorgaat"\n}\n\n` +
+            (doel_vraag ? `Gebruik het doel van de vraag om te bepalen of er voldoende inzicht is verkregen. Als je een vervolgvraag stelt, zorg dat deze aansluit bij het doel.` : '')
         }
       ]
     });
