@@ -15,6 +15,12 @@ router.post('/', async (req, res) => {
   console.log('Ontvangen vragen:', vragen);
   console.log('Thema ID aanwezig:', !!thema.id);
 
+  // Verwijder doel_vraag velden uit thema object
+  delete thema.doel_vraag;
+  for (let i = 1; i <= 5; i++) {
+    delete thema[`vraag_${i}_doel`];
+  }
+
   if (!thema || !vragen || !Array.isArray(vragen)) {
     return res.status(400).json({
       error: 'Verplichte velden ontbreken of verkeerd formaat.',
@@ -91,28 +97,11 @@ router.post('/', async (req, res) => {
       }
       console.log('Bestaande vragen succesvol verwijderd');
 
-      // Opnieuw opbouwen van vragen (gebruik fallback als nodig)
-      let ingevuldeVragen = [];
-      // Gebruik vraag_1 t/m vraag_5 voor nieuwe vragen
-      for (let i = 1; i <= 5; i++) {
-        const tekst = thema[`vraag_${i}`];
-        if (typeof tekst === 'string' && tekst.trim() !== '') {
-          ingevuldeVragen.push({
-            tekst: tekst.trim(),
-            verplicht: thema[`vraag_${i}_verplicht`] ?? false,
-            type: thema[`vraag_${i}_type`] ?? 'initieel',
-            doel_vraag: thema[`vraag_${i}_doel`] ?? null,
-            taalcode: thema.taalcode ?? 'nl'
-          });
-        }
-      }
-
-      console.log('Nieuwe vragen voorbereid:', ingevuldeVragen);
-
-      const vragenMetKoppeling = ingevuldeVragen.map((vraag, index) => ({
+      // Opnieuw opbouwen van vragen
+      const vragenMetKoppeling = vragen.map((vraag, index) => ({
         ...vraag,
         theme_id: thema.id,
-        volgorde_index: vraag.volgorde_index ?? index
+        volgorde_index: index
       }));
 
       console.log('Start toevoegen nieuwe vragen');
@@ -142,26 +131,11 @@ router.post('/', async (req, res) => {
 
     const themeId = insertedThemes[0].id;
 
-    // Als vragen[] leeg is, maak dan vragen aan uit thema.vraag_1 t/m vraag_5
-    let ingevuldeVragen = [];
-    // Gebruik vraag_1 t/m vraag_5 voor nieuwe vragen
-    for (let i = 1; i <= 5; i++) {
-      const tekst = thema[`vraag_${i}`];
-      if (typeof tekst === 'string' && tekst.trim() !== '') {
-        ingevuldeVragen.push({
-          tekst: tekst.trim(),
-          verplicht: thema[`vraag_${i}_verplicht`] ?? false,
-          type: thema[`vraag_${i}_type`] ?? 'initieel',
-          doel_vraag: thema[`vraag_${i}_doel`] ?? null,
-          taalcode: thema.taalcode ?? 'nl'
-        });
-      }
-    }
-
-    const vragenMetKoppeling = ingevuldeVragen.map((vraag, index) => ({
+    // Vragen toevoegen
+    const vragenMetKoppeling = vragen.map((vraag, index) => ({
       ...vraag,
       theme_id: themeId,
-      volgorde_index: vraag.volgorde_index ?? index
+      volgorde_index: index
     }));
 
     const { error: vragenError } = await supabase
