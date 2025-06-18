@@ -10,6 +10,8 @@ const createThemeWithQuestions = require('./create-theme-with-questions');
 const saveConversation = require('./save-conversation');
 const getConversationAnswers = require('./get-conversation-answers');
 const decideFollowup = require('./decide-followup'); // ✅ Nieuw toegevoegd
+const genereerSamenvatting = require('./genereer-samenvatting'); // ✅ Nieuw toegevoegd
+const getSamenvatting = require('./get-samenvatting'); // ✅ Nieuw toegevoegd
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
@@ -31,6 +33,8 @@ app.use('/api/create-theme-with-questions', createThemeWithQuestions);
 app.use('/api/save-conversation', saveConversation);
 app.use('/api/get-conversation-answers', getConversationAnswers);
 app.use('/api/decide-followup', decideFollowup); // ✅ Nieuwe route toegevoegd
+app.use('/api/genereer-samenvatting', genereerSamenvatting); // ✅ Nieuwe route toegevoegd
+app.use('/api/get-samenvatting', getSamenvatting); // ✅ Nieuwe route toegevoegd
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
