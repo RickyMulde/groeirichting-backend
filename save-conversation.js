@@ -16,6 +16,8 @@ router.post('/', async (req, res) => {
     gesprek_id,
     theme_question_id,
     antwoord,
+    is_vaste_vraag,
+    hoort_bij_question_id,
     status // optioneel
   } = req.body;
 
@@ -84,21 +86,24 @@ router.post('/', async (req, res) => {
         });
       }
 
+      // Bepaal theme_question_id en hoort_bij_question_id op basis van is_vaste_vraag
+      const antwoordData = {
+        werknemer_id,
+        theme_id,
+        antwoord,
+        gestart_op: now,
+        beeindigd_op: now,
+        taalcode: 'nl',
+        status: 'verzonden',
+        gesprek_id,
+        is_vaste_vraag,
+        theme_question_id: is_vaste_vraag ? theme_question_id : null,
+        hoort_bij_question_id: is_vaste_vraag ? null : hoort_bij_question_id
+      };
+
       const { error } = await supabase
         .from('antwoordpervraag')
-        .insert([{
-          werknemer_id,
-          theme_id,
-          theme_question_id: theme_question_id?.startsWith('gpt-') ? null : theme_question_id,
-          antwoord,
-          gestart_op: now,
-          beeindigd_op: now,
-          taalcode: 'nl',
-          status: 'verzonden',
-          gesprek_id,
-          is_vaste_vraag: !theme_question_id?.startsWith('gpt-'),
-          hoort_bij_question_id: theme_question_id?.startsWith('gpt-') ? theme_question_id.split('-')[1] : null
-        }]);
+        .insert([antwoordData]);
 
       if (error) {
         console.error('Fout bij opslaan antwoord:', error);

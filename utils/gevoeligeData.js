@@ -1084,7 +1084,6 @@ export const voornamenSet = new Set([
   'irma',
   'irmin',
   'irvin',
-  'is',
   'isa',
   'isaac',
   'isabeau',
