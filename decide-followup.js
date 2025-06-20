@@ -28,15 +28,6 @@ router.post('/', async (req, res) => {
 
   const alleAntwoorden = [...eerdereAntwoorden, laatsteAntwoord];
 
-  // 2. Aantal controle
-  if (alleAntwoorden.length >= 5) {
-    return res.json({
-      doorgaan: false,
-      vervolgvraag: null,
-      toelichting: 'Maximum aantal vragen (5) is bereikt.'
-    });
-  }
-
   // 3. GPT-call
   try {
     const completion = await openai.chat.completions.create({
