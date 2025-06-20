@@ -16,10 +16,18 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // ✅ 1. Haal alle antwoorden op
+    // ✅ 1. Haal alle antwoorden op (zowel vaste vragen als vervolgvragen)
     const { data: antwoorden, error: antwoordError } = await supabase
       .from('antwoordpervraag')
-      .select('vraag, antwoord')
+      .select(`
+        antwoord,
+        is_vaste_vraag,
+        theme_questions!inner(
+          tekst,
+          type,
+          doel_vraag
+        )
+      `)
       .eq('theme_id', theme_id)
       .eq('werknemer_id', werknemer_id)
 
@@ -28,21 +36,26 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Geen antwoorden gevonden' })
     }
 
-    // ✅ 2. Haal hoofdvraag en doel op
-    const { data: vragen } = await supabase
-      .from('theme_questions')
-      .select('type, tekst')
-      .eq('theme_id', theme_id)
+    // ✅ 2. Verwerk de data naar het juiste formaat
+    const verwerkteAntwoorden = antwoorden.map(a => ({
+      vraag: a.theme_questions.tekst,
+      antwoord: a.antwoord,
+      type: a.theme_questions.type,
+      doel_vraag: a.theme_questions.doel_vraag,
+      is_vaste_vraag: a.is_vaste_vraag
+    }))
 
-    const hoofdvraag = vragen.find(v => v.type === 'hoofd')?.tekst || ''
-    const doelvraag = vragen.find(v => v.type === 'doel')?.tekst || ''
-    const doelantwoord = antwoorden.find(a => a.vraag === doelvraag)?.antwoord || ''
+    // ✅ 3. Vind hoofdvraag en doelvraag (alleen van vaste vragen)
+    const vasteVragen = verwerkteAntwoorden.filter(a => a.is_vaste_vraag)
+    const hoofdvraag = vasteVragen.find(v => v.type === 'hoofd')?.vraag || ''
+    const doelvraag = vasteVragen.find(v => v.type === 'doel')?.vraag || ''
+    const doelantwoord = verwerkteAntwoorden.find(a => a.vraag === doelvraag)?.antwoord || ''
 
-    // ✅ 3. Bouw prompt
-    const inputJSON = antwoorden.map(a => `Vraag: ${a.vraag}\nAntwoord: ${a.antwoord}`).join('\n\n')
+    // ✅ 4. Bouw prompt met alle vragen (vaste + vervolg)
+    const inputJSON = verwerkteAntwoorden.map(a => `Vraag: ${a.vraag}\nAntwoord: ${a.antwoord}`).join('\n\n')
     const prompt = `Je bent een HR-assistent. Vat het volgende gesprek samen in maximaal 6 zinnen.\n\nHoofdvraag: ${hoofdvraag}\nDoel van het gesprek: ${doelantwoord}\n\n${inputJSON}\n\nGeef ook een score tussen 1 en 10 voor hoe positief de medewerker zich voelt over dit thema.\n\nAntwoord in JSON-formaat:\n{\n  \"samenvatting\": \"...\",\n  \"score\": 7\n}`
 
-    // ✅ 4. Stuur prompt naar GPT
+    // ✅ 5. Stuur prompt naar GPT
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [{ role: 'user', content: prompt }],
@@ -52,7 +65,7 @@ router.post('/', async (req, res) => {
     const gptResponse = completion.choices[0].message.content
     const parsed = JSON.parse(gptResponse)
 
-    // ✅ 5. Haal werkgever op via werknemer
+    // ✅ 6. Haal werkgever op via werknemer
     const { data: werknemer, error: werknemerError } = await supabase
       .from('users')
       .select('employer_id')
@@ -64,7 +77,7 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Werknemer niet gevonden' })
     }
 
-    // ✅ 6. Opslaan in gesprekresultaten
+    // ✅ 7. Opslaan in gesprekresultaten
     await supabase.from('gesprekresultaten').upsert({
       werkgever_id: werknemer.employer_id,
       werknemer_id,
