@@ -11,13 +11,21 @@ const openai = new OpenAI({
 });
 
 router.post('/', async (req, res) => {
-  const { thema, eerdereAntwoorden = [], laatsteAntwoord, doel_vraag } = req.body;
+  // We ontvangen nu de volledige gespreksgeschiedenis
+  const { thema, gespreksgeschiedenis = [], doel_vraag } = req.body;
 
-  if (!thema || !laatsteAntwoord) {
-    return res.status(400).json({ error: 'Thema en laatsteAntwoord zijn verplicht.' });
+  if (!thema || gespreksgeschiedenis.length === 0) {
+    return res.status(400).json({ error: 'Thema en gespreksgeschiedenis zijn verplicht.' });
   }
 
-  // 1. Tekstlengtecontrole
+  // Het laatste antwoord is het antwoord van het laatste item in de geschiedenis
+  const laatsteAntwoord = gespreksgeschiedenis[gespreksgeschiedenis.length - 1]?.antwoord;
+
+  if (!laatsteAntwoord) {
+    return res.status(400).json({ error: 'Kon laatste antwoord niet vinden in gespreksgeschiedenis.' });
+  }
+
+  // 1. Tekstlengtecontrole (optioneel, maar nuttig)
   if (laatsteAntwoord.trim().length < 40) {
     return res.json({
       doorgaan: true,
@@ -26,9 +34,12 @@ router.post('/', async (req, res) => {
     });
   }
 
-  const alleAntwoorden = [...eerdereAntwoorden, laatsteAntwoord];
+  // Genereer de contextstring voor GPT
+  const gespreksContext = gespreksgeschiedenis.map(item => 
+    `Vraag: ${item.vraag}\nAntwoord: ${item.antwoord}`
+  ).join('\n\n');
 
-  // 3. GPT-call
+  // 2. GPT-call met de volledige prompt
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -42,24 +53,37 @@ router.post('/', async (req, res) => {
         {
           role: 'system',
           content:
-            `Doel: bepaal of er voldoende inzicht is verkregen. Als dat niet zo is, stel 1 vervolgvraag. Gebruik GEEN religie, afkomst, seksuele geaardheid of andere gevoelige thema's. Gebruik neutrale, werkgerelateerde formuleringen.`
+            `Doel: bepaal of er voldoende inzicht is verkregen op basis van de gespreksgeschiedenis. Als dat niet zo is, stel 1 relevante vervolgvraag. Gebruik GEEN religie, afkomst, seksuele geaardheid of andere gevoelige thema's. Gebruik neutrale, werkgerelateerde formuleringen.`
         },
         {
+          // Hier is de volledige en correcte prompt voor de gebruiker-rol
           role: 'user',
           content:
             `Thema: ${thema}\n\n` +
-            (doel_vraag ? `Doel van de vraag: ${doel_vraag}\n\n` : '') +
-            `Alle antwoorden tot nu toe:\n` +
-            alleAntwoorden.map((a, i) => `Antwoord ${i + 1}: ${a}`).join('\n') +
-            `\n\nBeantwoord als JSON met:\n{\n  "doorgaan": true/false,\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de werknemer uit waarom je wel of niet doorgaat"\n}\n\n` +
-            (doel_vraag ? `Gebruik het doel van de vraag om te bepalen of er voldoende inzicht is verkregen. Als je een vervolgvraag stelt, zorg dat deze aansluit bij het doel.` : '')
+            (doel_vraag ? `Doel van de laatste vraag: ${doel_vraag}\n\n` : '') +
+            `Gespreksgeschiedenis tot nu toe:\n${gespreksContext}\n\n` +
+            `Beoordeel de volledige GESCHIEDENIS hierboven. Is er voldoende diepgang bereikt om het doel te behalen? Zo nee, stel een logische vervolgvraag die voortbouwt op het gesprek en helpt het doel te bereiken. Zo ja, stop.\n\n` +
+            `Beantwoord als JSON met:\n{\n  "doorgaan": true/false,\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de werknemer uit waarom je wel of niet doorgaat"\n}`
         }
       ]
     });
 
     const raw = completion.choices[0].message.content.trim();
-    const clean = raw.startsWith('```') ? raw.replace(/```(?:json)?/g, '').replace(/```/g, '').trim() : raw;
-    const parsed = JSON.parse(clean);
+    // Robuuster maken voor het geval de API geen JSON teruggeeft
+    let parsed;
+    try {
+        const clean = raw.startsWith('```') ? raw.replace(/```(?:json)?/g, '').replace(/```/g, '').trim() : raw;
+        parsed = JSON.parse(clean);
+    } catch (parseError) {
+        console.error('Fout bij parsen van GPT-respons:', parseError, 'Raw response:', raw);
+        // Fallback: toch doorgaan met een algemene vraag om het gesprek niet te blokkeren
+        parsed = {
+            doorgaan: true,
+            vervolgvraag: 'Kun je dat verder toelichten?',
+            toelichting: 'Er was een klein technisch probleem, we gaan verder.'
+        };
+    }
+    
     return res.json(parsed);
 
   } catch (err) {
