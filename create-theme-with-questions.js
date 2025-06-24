@@ -67,6 +67,12 @@ router.post('/', async (req, res) => {
   thema.vraag_5_type = thema.vraag_5_type ?? null;
   thema.gebruik_gpt_vragen = thema.gebruik_gpt_vragen ?? false;
 
+  // Nieuwe velden altijd initialiseren (null als niet meegegeven)
+  thema.thema_type = thema.thema_type ?? null;
+  thema.prompt_style = thema.prompt_style ?? null;
+  thema.ai_behavior = thema.ai_behavior ?? null;
+  thema.gpt_doelstelling = thema.gpt_doelstelling ?? null;
+  thema.gpt_beperkingen = thema.gpt_beperkingen ?? null;
 
   try {
     if (thema.id) {
