@@ -59,13 +59,26 @@ router.post('/', async (req, res) => {
             `Organisatiecontext: Deze gesprekken zijn bedoeld om medewerkers te ondersteunen, signalen op te halen en werkplezier te verhogen.`
         },
         {
+          role: 'system',
+          content:
+            `BELANGRIJKE RICHTLIJNEN VOOR NATUURLIJKE GESPREKKEN:\n\n` +
+            `1. GESPREKSSTIJL: Maak dit een echt gesprek, geen interview. Je mag altijd eerst reageren op wat de medewerker zegt voordat je een vervolgvraag stelt.\n\n` +
+            `2. REACTIES TOEGESTAAN: Je kunt bevestigen, nuanceren, empathiseren of kort reageren op het antwoord. Bijvoorbeeld:\n` +
+            `   - "Dat klinkt als een uitdagende situatie..."\n` +
+            `   - "Ik hoor dat je hier goed over hebt nagedacht..."\n` +
+            `   - "Dat is interessant, want..."\n\n` +
+            `3. VERVOLGVRAAG BESLISSING: Stel maximaal 1-2 vervolgvragen per hoofdvraag. Alleen bij 3-4 als het echt nodig is voor het doel.\n\n` +
+            `4. SNEL AFROUNDEN: Als je voldoende relevante informatie hebt voor het doel van de vraag, rond dan af en ga door naar de volgende vraag.\n\n` +
+            `5. KWALITEIT OVER KWANTITEIT: Liever 1-2 goede, gerichte vervolgvragen dan 4 oppervlakkige vragen.`
+        },
+        {
           role: 'user',
           content:
             `Thema: ${thema.titel || thema}` + (thema.beschrijving ? `\nBeschrijving: ${thema.beschrijving}` : '') + `\n\n` +
             (doel_vraag ? `Doel van de laatste vraag: ${doel_vraag}\n\n` : '') +
             `Gespreksgeschiedenis tot nu toe:\n${gespreksContext}\n\n` +
-            `Opdracht:\n- Analyseer het volledige gesprek tot nu toe.\n- Beoordeel of het doel van het gesprek is bereikt.\n- Als het doel nog niet is bereikt, stel dan maximaal één relevante vervolgvraag die past bij het doel en de context.\n- Als het doel wel is bereikt, geef dat aan en sluit het gesprek af.\n\n` +
-            `Geef je antwoord in het volgende JSON-formaat:\n{\n  "doorgaan": true/false,\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de medewerker uit waarom je wel of niet doorgaat"\n}`
+            `Opdracht:\n- Analyseer het volledige gesprek tot nu toe.\n- Beoordeel of het doel van de huidige vraag is bereikt.\n- Als het doel nog niet is bereikt, geef dan eerst een korte reactie/bevestiging/nuance op het laatste antwoord, gevolgd door maximaal één relevante vervolgvraag.\n- Als het doel wel is bereikt, geef dat aan en sluit het gesprek af.\n\n` +
+            `Geef je antwoord in het volgende JSON-formaat:\n{\n  "doorgaan": true/false,\n  "reactie": "korte reactie op het laatste antwoord (kan leeg zijn als niet nodig)",\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de medewerker uit waarom je wel of niet doorgaat"\n}`
         }
       ]
     });
@@ -81,6 +94,7 @@ router.post('/', async (req, res) => {
         // Fallback: toch doorgaan met een algemene vraag om het gesprek niet te blokkeren
         parsed = {
             doorgaan: true,
+            reactie: '',
             vervolgvraag: 'Kun je dat verder toelichten?',
             toelichting: 'Er was een klein technisch probleem, we gaan verder.'
         };
