@@ -1,0 +1,707 @@
+[
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "theme_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "werknemer_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "gestart_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "beeindigd_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "taalcode",
+    "data_type": "text"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "antwoord",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "score",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "samenvatting",
+    "data_type": "text"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "toelichting_werknemer",
+    "data_type": "text"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "ai_afsluiting",
+    "data_type": "text"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "ai_config_snapshot",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "deel_score_met_werkgever",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "deel_samenvatting_met_werkgever",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "deel_toelichting_met_werkgever",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "gesprek_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "theme_question_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "is_vaste_vraag",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "antwoordpervraag",
+    "column_name": "hoort_bij_question_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "company_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "contact_email",
+    "data_type": "text"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "contact_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "kvk_number",
+    "data_type": "text"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "btw_number",
+    "data_type": "text"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "postcode",
+    "data_type": "text"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "huisnummer",
+    "data_type": "text"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "aantal_medewerkers",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "factuur_email",
+    "data_type": "text"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "employers",
+    "column_name": "contact_phone",
+    "data_type": "text"
+  },
+  {
+    "table_name": "gesprek",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprek",
+    "column_name": "werknemer_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprek",
+    "column_name": "theme_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprek",
+    "column_name": "gestart_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "gesprek",
+    "column_name": "beeindigd_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "gesprek",
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "gesprek",
+    "column_name": "taalcode",
+    "data_type": "text"
+  },
+  {
+    "table_name": "gesprek",
+    "column_name": "aangemaakt_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "gesprek",
+    "column_name": "afrondingsreden",
+    "data_type": "text"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "werkgever_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "werknemer_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "theme_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "gesprek_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "samenvatting",
+    "data_type": "text"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "score",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "mag_werkgever_inzien",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "tegen_deelname_bezwaar",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "besproken_in_1op1",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "bron_data_hash",
+    "data_type": "text"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "samenvatting_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "gespreksronde",
+    "data_type": "smallint"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "toon_in_dashboard",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "feedback_van_werkgever",
+    "data_type": "text"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "gegenereerd_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "invitations",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "invitations",
+    "column_name": "email",
+    "data_type": "text"
+  },
+  {
+    "table_name": "invitations",
+    "column_name": "token",
+    "data_type": "text"
+  },
+  {
+    "table_name": "invitations",
+    "column_name": "employer_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "invitations",
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "invitations",
+    "column_name": "expires_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "invitations",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "invitations",
+    "column_name": "created_by",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "organisatie_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "theme_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "samenvatting",
+    "data_type": "text"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "signaalwoorden",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "verbeteradvies",
+    "data_type": "text"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "aantal_gesprekken",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "laatst_bijgewerkt_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "theme_questions",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "theme_questions",
+    "column_name": "theme_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "theme_questions",
+    "column_name": "tekst",
+    "data_type": "text"
+  },
+  {
+    "table_name": "theme_questions",
+    "column_name": "verplicht",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "theme_questions",
+    "column_name": "type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "theme_questions",
+    "column_name": "taalcode",
+    "data_type": "text"
+  },
+  {
+    "table_name": "theme_questions",
+    "column_name": "volgorde_index",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "theme_questions",
+    "column_name": "versie",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "theme_questions",
+    "column_name": "aangemaakt_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "theme_questions",
+    "column_name": "type_vraag",
+    "data_type": "text"
+  },
+  {
+    "table_name": "theme_questions",
+    "column_name": "doel_vraag",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "titel",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "beschrijving",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "klaar_voor_gebruik",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "voorgesteld_als_verplicht",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "standaard_zichtbaar",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "alleen_premium",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "alleen_concept",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "intro_prompt",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "gespreksdoel",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "doel_vraag",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "geeft_score",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "geeft_samenvatting",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "geeft_ai_advies",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "ai_configuratie",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "branche_labels",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "doelgroep_labels",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "zichtbaar_vanaf",
+    "data_type": "date"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "zichtbaar_tot",
+    "data_type": "date"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "zoeklabels",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "taalcode",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "ai_model",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "volgorde_index",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "versiebeheer",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "aangemaakt_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "verwachte_signalen",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_1",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_2",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_3",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_4",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_5",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_1_verplicht",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_1_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_2_verplicht",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_2_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_3_verplicht",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_3_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_4_verplicht",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_4_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_5_verplicht",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "vraag_5_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "gebruik_gpt_vragen",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "thema_type",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "prompt_style",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "ai_behavior",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "gpt_doelstelling",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "gpt_beperkingen",
+    "data_type": "text"
+  },
+  {
+    "table_name": "users",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "users",
+    "column_name": "email",
+    "data_type": "text"
+  },
+  {
+    "table_name": "users",
+    "column_name": "first_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "users",
+    "column_name": "middle_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "users",
+    "column_name": "last_name",
+    "data_type": "text"
+  },
+  {
+    "table_name": "users",
+    "column_name": "birthdate",
+    "data_type": "date"
+  },
+  {
+    "table_name": "users",
+    "column_name": "gender",
+    "data_type": "text"
+  },
+  {
+    "table_name": "users",
+    "column_name": "role",
+    "data_type": "text"
+  },
+  {
+    "table_name": "users",
+    "column_name": "employer_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "users",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  }
+]
