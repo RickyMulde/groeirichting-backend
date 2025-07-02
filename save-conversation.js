@@ -149,12 +149,25 @@ router.post('/', async (req, res) => {
         taalcode: 'nl'
       };
 
-      const { error: upsertError } = await supabase
-        .from('gesprekken_compleet')
-        .upsert(upsertData, { 
-          onConflict: 'gesprek_id',
-          ignoreDuplicates: false
-        });
+      let upsertError;
+      if (bestaandeData) {
+        // Update bestaande rij
+        const { error } = await supabase
+          .from('gesprekken_compleet')
+          .update({
+            gespreksgeschiedenis: nieuweGeschiedenis,
+            metadata,
+            status: 'actief'
+          })
+          .eq('gesprek_id', gesprek_id);
+        upsertError = error;
+      } else {
+        // Voeg nieuwe rij toe
+        const { error } = await supabase
+          .from('gesprekken_compleet')
+          .insert(upsertData);
+        upsertError = error;
+      }
 
       if (upsertError) {
         console.error('Fout bij opslaan in gesprekken_compleet:', upsertError);
