@@ -15,51 +15,39 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // Haal de gebruiker op vanuit Supabase Auth
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Geen authorization header gevonden' });
-    }
-
-    const token = authHeader.replace('Bearer ', '').trim();
-    const { data: userInfo, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !userInfo?.user) {
-      return res.status(401).json({ error: 'Gebruiker niet geverifieerd' });
-    }
-
-    const user_id = userInfo.user.id;
-
-    // Verifieer of dit gesprek bij deze werknemer hoort
-    const { data: gesprekData, error: gesprekError } = await supabase
-      .from('gesprek')
-      .select('id, werknemer_id')
-      .eq('id', gesprek_id)
+    // Haal gespreksgeschiedenis op uit nieuwe tabel
+    const { data, error } = await supabase
+      .from('gesprekken_compleet')
+      .select('gespreksgeschiedenis')
+      .eq('gesprek_id', gesprek_id)
       .single();
 
-    if (gesprekError || !gesprekData) {
-      return res.status(404).json({ error: 'Gesprek niet gevonden' });
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Gesprek niet gevonden' });
+      }
+      throw error;
     }
 
-    if (gesprekData.werknemer_id !== user_id) {
-      return res.status(403).json({ error: 'Je hebt geen toegang tot dit gesprek' });
+    if (!data || !data.gespreksgeschiedenis) {
+      return res.status(404).json({ error: 'Geen gespreksgeschiedenis gevonden' });
     }
 
-    // Haal de antwoorden op
-    const { data: antwoorden, error: antwoordError } = await supabase
-      .from('antwoordpervraag')
-      .select('theme_question_id, antwoord')
-      .eq('gesprek_id', gesprek_id)
-      .order('gestart_op');
+    // Converteer naar het verwachte formaat voor backward compatibility
+    const antwoorden = data.gespreksgeschiedenis.map(item => ({
+      vraag: item.vraag_tekst,
+      antwoord: item.antwoord,
+      type: item.type,
+      vraag_id: item.vraag_id,
+      hoort_bij_vraag_id: item.hoort_bij_vraag_id,
+      timestamp: item.timestamp,
+      volgorde: item.volgorde
+    }));
 
-    if (antwoordError) {
-      return res.status(500).json({ error: 'Fout bij ophalen antwoorden', detail: antwoordError.message });
-    }
-
-    return res.status(200).json({ antwoorden });
-
-  } catch (e) {
-    console.error('Fout in get-conversation-answers:', e);
-    return res.status(500).json({ error: 'Interne serverfout', detail: e.message });
+    return res.json({ antwoorden });
+  } catch (err) {
+    console.error('Fout bij ophalen gespreksgeschiedenis:', err);
+    return res.status(500).json({ error: 'Interne serverfout' });
   }
 });
 

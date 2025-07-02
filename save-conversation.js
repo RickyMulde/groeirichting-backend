@@ -18,7 +18,9 @@ router.post('/', async (req, res) => {
     antwoord,
     is_vaste_vraag,
     hoort_bij_question_id,
-    status // optioneel
+    vraag_tekst, // Nieuwe parameter voor vervolgvragen
+    status, // optioneel
+    gespreksgeschiedenis // Nieuwe parameter voor complete geschiedenis
   } = req.body;
 
   const now = new Date().toISOString();
@@ -74,10 +76,24 @@ router.post('/', async (req, res) => {
         return res.status(500).json({ error: 'Gesprek afronden mislukt', detail: error.message });
       }
 
+      // Update ook de gesprekken_compleet tabel
+      const { error: updateError } = await supabase
+        .from('gesprekken_compleet')
+        .update({
+          beeindigd_op: now,
+          status: 'afgerond',
+          metadata: supabase.sql`jsonb_set(metadata, '{gesprek_afgerond}', 'true')`
+        })
+        .eq('gesprek_id', gesprek_id);
+
+      if (updateError) {
+        console.error('Fout bij updaten gesprekken_compleet:', updateError);
+      }
+
       return res.status(200).json({ success: true, message: 'Gesprek afgerond' });
     }
 
-    // 3️⃣ Antwoord opslaan
+    // 3️⃣ Antwoord opslaan in nieuwe structuur
     if (gesprek_id && antwoord !== undefined) {
       const check = containsSensitiveInfo(antwoord);
       if (check.flagged) {
@@ -86,28 +102,63 @@ router.post('/', async (req, res) => {
         });
       }
 
-      // Bepaal theme_question_id en hoort_bij_question_id op basis van is_vaste_vraag
-      const antwoordData = {
-        werknemer_id,
-        theme_id,
-        antwoord,
-        gestart_op: now,
-        beeindigd_op: now,
-        taalcode: 'nl',
-        status: 'verzonden',
-        gesprek_id,
-        is_vaste_vraag,
-        theme_question_id: is_vaste_vraag ? theme_question_id : null,
-        hoort_bij_question_id: is_vaste_vraag ? null : hoort_bij_question_id
+      // Haal bestaande gespreksgeschiedenis op
+      const { data: bestaandeData, error: fetchError } = await supabase
+        .from('gesprekken_compleet')
+        .select('gespreksgeschiedenis, metadata')
+        .eq('gesprek_id', gesprek_id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = geen rijen gevonden
+        console.error('Fout bij ophalen bestaande data:', fetchError);
+        return res.status(500).json({ error: 'Fout bij ophalen bestaande data' });
+      }
+
+      // Bereid nieuwe gespreksgeschiedenis voor
+      let nieuweGeschiedenis = bestaandeData?.gespreksgeschiedenis || [];
+      let metadata = bestaandeData?.metadata || {};
+
+      // Voeg nieuw vraag-antwoord toe
+      const nieuwItem = {
+        type: is_vaste_vraag ? 'vaste_vraag' : 'vervolgvraag',
+        vraag_id: is_vaste_vraag ? theme_question_id : null,
+        hoort_bij_vraag_id: is_vaste_vraag ? null : hoort_bij_question_id,
+        vraag_tekst: vraag_tekst || (is_vaste_vraag ? 'Vaste vraag' : 'Vervolgvraag'),
+        antwoord: antwoord,
+        timestamp: now,
+        volgorde: nieuweGeschiedenis.length + 1
       };
 
-      const { error } = await supabase
-        .from('antwoordpervraag')
-        .insert([antwoordData]);
+      nieuweGeschiedenis.push(nieuwItem);
 
-      if (error) {
-        console.error('Fout bij opslaan antwoord:', error);
-        return res.status(500).json({ error: 'Opslaan mislukt', detail: error.message });
+      // Update metadata
+      metadata.aantal_vaste_vragen = nieuweGeschiedenis.filter(item => item.type === 'vaste_vraag').length;
+      metadata.aantal_vervolgvragen = nieuweGeschiedenis.filter(item => item.type === 'vervolgvraag').length;
+      metadata.laatste_vraag_type = nieuwItem.type;
+      metadata.laatste_update = now;
+
+      // Sla op in gesprekken_compleet tabel
+      const upsertData = {
+        werknemer_id,
+        theme_id,
+        gesprek_id,
+        gespreksgeschiedenis: nieuweGeschiedenis,
+        metadata,
+        gestart_op: bestaandeData?.gestart_op || now,
+        status: 'actief',
+        taalcode: 'nl'
+      };
+
+      const { error: upsertError } = await supabase
+        .from('gesprekken_compleet')
+        .upsert(upsertData, { 
+          onConflict: 'gesprek_id',
+          ignoreDuplicates: false
+        });
+
+      if (upsertError) {
+        console.error('Fout bij opslaan in gesprekken_compleet:', upsertError);
+        return res.status(500).json({ error: 'Opslaan mislukt', detail: upsertError.message });
       }
 
       return res.status(200).json({ success: true });

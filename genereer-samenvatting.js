@@ -37,53 +37,60 @@ router.post('/', async (req, res) => {
       })
     }
 
-    // ✅ 1. Haal alle antwoorden op (zowel vaste vragen als vervolgvragen)
-    let antwoordenQuery = supabase
-      .from('antwoordpervraag')
-      .select(`
-        antwoord,
-        is_vaste_vraag,
-        theme_questions!inner(
-          tekst,
-          type,
-          doel_vraag
-        )
-      `)
-      .eq('theme_id', theme_id)
+    // ✅ 1. Haal de complete gespreksgeschiedenis op uit de nieuwe tabel
+    const { data: gesprekData, error: gesprekError } = await supabase
+      .from('gesprekken_compleet')
+      .select('gespreksgeschiedenis, metadata')
       .eq('werknemer_id', werknemer_id)
+      .eq('theme_id', theme_id)
+      .eq('gesprek_id', gesprek_id)
+      .single()
 
-    // Als er een gesprek_id is opgegeven, filter daarop
-    if (gesprek_id) {
-      antwoordenQuery = antwoordenQuery.eq('gesprek_id', gesprek_id)
+    if (gesprekError) {
+      if (gesprekError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Gesprek niet gevonden' })
+      }
+      throw gesprekError
     }
 
-    const { data: antwoorden, error: antwoordError } = await antwoordenQuery
-
-    if (antwoordError) throw antwoordError
-    if (!antwoorden || antwoorden.length === 0) {
-      return res.status(404).json({ error: 'Geen antwoorden gevonden' })
+    if (!gesprekData || !gesprekData.gespreksgeschiedenis || gesprekData.gespreksgeschiedenis.length === 0) {
+      return res.status(404).json({ error: 'Geen gespreksgeschiedenis gevonden' })
     }
 
-    // ✅ 2. Verwerk de data naar het juiste formaat
-    const verwerkteAntwoorden = antwoorden.map(a => ({
-      vraag: a.theme_questions.tekst,
-      antwoord: a.antwoord,
-      type: a.theme_questions.type,
-      doel_vraag: a.theme_questions.doel_vraag,
-      is_vaste_vraag: a.is_vaste_vraag
-    }))
+    const gespreksgeschiedenis = gesprekData.gespreksgeschiedenis
 
-    // ✅ 3. Vind hoofdvraag en doelvraag (alleen van vaste vragen)
-    const vasteVragen = verwerkteAntwoorden.filter(a => a.is_vaste_vraag)
-    const hoofdvraag = vasteVragen.find(v => v.type === 'hoofd')?.vraag || ''
-    const doelvraag = vasteVragen.find(v => v.type === 'doel')?.vraag || ''
-    const doelantwoord = verwerkteAntwoorden.find(a => a.vraag === doelvraag)?.antwoord || ''
+    // ✅ 2. Vind hoofdvraag en doelvraag (alleen van vaste vragen)
+    const vasteVragen = gespreksgeschiedenis.filter(item => item.type === 'vaste_vraag')
+    
+    // Haal de vaste vragen op uit theme_questions om type en doel_vraag te krijgen
+    const vasteVraagIds = vasteVragen.map(item => item.vraag_id).filter(Boolean)
+    
+    let vasteVragenData = []
+    if (vasteVraagIds.length > 0) {
+      const { data: themeQuestions, error: themeError } = await supabase
+        .from('theme_questions')
+        .select('id, tekst, type, doel_vraag')
+        .in('id', vasteVraagIds)
+      
+      if (!themeError && themeQuestions) {
+        vasteVragenData = themeQuestions
+      }
+    }
 
-    // ✅ 4. Bouw prompt met alle vragen (vaste + vervolg)
-    const inputJSON = verwerkteAntwoorden.map(a => `Vraag: ${a.vraag}\nAntwoord: ${a.antwoord}`).join('\n\n')
+    const hoofdvraag = vasteVragenData.find(v => v.type === 'hoofd')?.tekst || ''
+    const doelvraag = vasteVragenData.find(v => v.type === 'doel')?.tekst || ''
+    const doelantwoord = gespreksgeschiedenis.find(item => 
+      vasteVragenData.find(v => v.id === item.vraag_id)?.type === 'doel'
+    )?.antwoord || ''
+
+    // ✅ 3. Bouw prompt met alle vragen (vaste + vervolg)
+    const inputJSON = gespreksgeschiedenis.map(item => 
+      `Vraag: ${item.vraag_tekst}\nAntwoord: ${item.antwoord}`
+    ).join('\n\n')
+    
     const prompt = `Je bent een HR-assistent. Vat het volgende gesprek samen in maximaal 6 zinnen.\n\nHoofdvraag: ${hoofdvraag}\nDoel van het gesprek: ${doelantwoord}\n\n${inputJSON}\n\nGeef ook een score tussen 1 en 10 voor hoe positief de medewerker zich voelt over dit thema.\n\nAntwoord in JSON-formaat:\n{\n  \"samenvatting\": \"...\",\n  \"score\": 7\n}`
 
-    // ✅ 5. Stuur prompt naar GPT
+    // ✅ 4. Stuur prompt naar GPT
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [{ role: 'user', content: prompt }],
@@ -93,7 +100,7 @@ router.post('/', async (req, res) => {
     const gptResponse = completion.choices[0].message.content
     const parsed = JSON.parse(gptResponse)
 
-    // ✅ 6. Haal werkgever op via werknemer
+    // ✅ 5. Haal werkgever op via werknemer
     const { data: werknemer, error: werknemerError } = await supabase
       .from('users')
       .select('employer_id')
@@ -105,7 +112,7 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Werknemer niet gevonden' })
     }
 
-    // ✅ 7. Bepaal gespreksronde
+    // ✅ 6. Bepaal gespreksronde
     let gespreksronde = 1
     if (gesprek_id) {
       // Tel hoeveel gesprekken er al zijn voor dit thema en deze werknemer
@@ -122,7 +129,7 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // ✅ 8. Opslaan in gesprekresultaten
+    // ✅ 7. Opslaan in gesprekresultaten
     const resultaatData = {
       werkgever_id: werknemer.employer_id,
       werknemer_id,
