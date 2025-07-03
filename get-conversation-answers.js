@@ -30,7 +30,9 @@ router.post('/', async (req, res) => {
     }
 
     if (!data || !data.gespreksgeschiedenis) {
-      return res.status(404).json({ error: 'Geen gespreksgeschiedenis gevonden' });
+      // Geen gespreksgeschiedenis gevonden, retourneer lege array
+      console.log(`Geen gespreksgeschiedenis gevonden voor gesprek_id: ${gesprek_id}`);
+      return res.json({ antwoorden: [] });
     }
 
     // Converteer naar het verwachte formaat voor backward compatibility
@@ -44,6 +46,7 @@ router.post('/', async (req, res) => {
       volgorde: item.volgorde
     }));
 
+    console.log(`Gespreksgeschiedenis opgehaald voor gesprek_id: ${gesprek_id}, ${antwoorden.length} antwoorden`);
     return res.json({ antwoorden });
   } catch (err) {
     console.error('Fout bij ophalen gespreksgeschiedenis:', err);

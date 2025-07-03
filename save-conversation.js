@@ -49,7 +49,32 @@ router.post('/', async (req, res) => {
         return res.status(500).json({ error: 'Gesprek aanmaken mislukt', detail: error.message });
       }
 
-      return res.status(200).json({ gesprek_id: data[0].id });
+      const nieuweGesprekId = data[0].id;
+
+      // Maak ook een rij aan in gesprekken_compleet tabel
+      const { error: compleetError } = await supabase
+        .from('gesprekken_compleet')
+        .insert([{
+          werknemer_id,
+          theme_id,
+          gesprek_id: nieuweGesprekId,
+          gespreksgeschiedenis: [],
+          metadata: {
+            aantal_vaste_vragen: 0,
+            aantal_vervolgvragen: 0,
+            laatste_update: now
+          },
+          gestart_op: now,
+          status: 'actief',
+          taalcode: 'nl'
+        }]);
+
+      if (compleetError) {
+        console.error('Fout bij aanmaken gesprekken_compleet rij:', compleetError);
+        // We gaan door, want het gesprek is wel aangemaakt
+      }
+
+      return res.status(200).json({ gesprek_id: nieuweGesprekId });
     }
 
     // 2️⃣ Gesprek afsluiten
