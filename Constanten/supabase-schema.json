@@ -1,105 +1,5 @@
 [
   {
-    "table_name": "antwoordpervraag",
-    "column_name": "id",
-    "data_type": "uuid"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "theme_id",
-    "data_type": "uuid"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "werknemer_id",
-    "data_type": "uuid"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "gestart_op",
-    "data_type": "timestamp with time zone"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "beeindigd_op",
-    "data_type": "timestamp with time zone"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "taalcode",
-    "data_type": "text"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "status",
-    "data_type": "text"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "antwoord",
-    "data_type": "jsonb"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "score",
-    "data_type": "integer"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "samenvatting",
-    "data_type": "text"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "toelichting_werknemer",
-    "data_type": "text"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "ai_afsluiting",
-    "data_type": "text"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "ai_config_snapshot",
-    "data_type": "jsonb"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "deel_score_met_werkgever",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "deel_samenvatting_met_werkgever",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "deel_toelichting_met_werkgever",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "gesprek_id",
-    "data_type": "uuid"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "theme_question_id",
-    "data_type": "uuid"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "is_vaste_vraag",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "antwoordpervraag",
-    "column_name": "hoort_bij_question_id",
-    "data_type": "uuid"
-  },
-  {
     "table_name": "employers",
     "column_name": "id",
     "data_type": "uuid"
@@ -205,6 +105,56 @@
     "data_type": "text"
   },
   {
+    "table_name": "gesprekken_compleet",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprekken_compleet",
+    "column_name": "werknemer_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprekken_compleet",
+    "column_name": "theme_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprekken_compleet",
+    "column_name": "gesprek_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "gesprekken_compleet",
+    "column_name": "gespreksgeschiedenis",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "gesprekken_compleet",
+    "column_name": "metadata",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "gesprekken_compleet",
+    "column_name": "gestart_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "gesprekken_compleet",
+    "column_name": "beeindigd_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "gesprekken_compleet",
+    "column_name": "status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "gesprekken_compleet",
+    "column_name": "taalcode",
+    "data_type": "text"
+  },
+  {
     "table_name": "gesprekresultaten",
     "column_name": "id",
     "data_type": "uuid"
@@ -222,11 +172,6 @@
   {
     "table_name": "gesprekresultaten",
     "column_name": "theme_id",
-    "data_type": "uuid"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "gesprek_id",
     "data_type": "uuid"
   },
   {
@@ -283,6 +228,11 @@
     "table_name": "gesprekresultaten",
     "column_name": "gegenereerd_op",
     "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "gesprek_id",
+    "data_type": "uuid"
   },
   {
     "table_name": "invitations",

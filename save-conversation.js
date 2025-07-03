@@ -49,32 +49,7 @@ router.post('/', async (req, res) => {
         return res.status(500).json({ error: 'Gesprek aanmaken mislukt', detail: error.message });
       }
 
-      const nieuweGesprekId = data[0].id;
-
-      // Maak ook een rij aan in gesprekken_compleet tabel
-      const { error: compleetError } = await supabase
-        .from('gesprekken_compleet')
-        .insert([{
-          werknemer_id,
-          theme_id,
-          gesprek_id: nieuweGesprekId,
-          gespreksgeschiedenis: [],
-          metadata: {
-            aantal_vaste_vragen: 0,
-            aantal_vervolgvragen: 0,
-            laatste_update: now
-          },
-          gestart_op: now,
-          status: 'actief',
-          taalcode: 'nl'
-        }]);
-
-      if (compleetError) {
-        console.error('Fout bij aanmaken gesprekken_compleet rij:', compleetError);
-        // We gaan door, want het gesprek is wel aangemaakt
-      }
-
-      return res.status(200).json({ gesprek_id: nieuweGesprekId });
+      return res.status(200).json({ gesprek_id: data[0].id });
     }
 
     // 2️⃣ Gesprek afsluiten
@@ -102,17 +77,41 @@ router.post('/', async (req, res) => {
       }
 
       // Update ook de gesprekken_compleet tabel
-      const { error: updateError } = await supabase
-        .from('gesprekken_compleet')
-        .update({
-          beeindigd_op: now,
-          status: 'afgerond',
-          metadata: supabase.sql`jsonb_set(metadata, '{gesprek_afgerond}', 'true')`
-        })
-        .eq('gesprek_id', gesprek_id);
+      try {
+        // Haal eerst de huidige metadata op
+        const { data: bestaandeData, error: fetchError } = await supabase
+          .from('gesprekken_compleet')
+          .select('metadata')
+          .eq('gesprek_id', gesprek_id)
+          .single();
 
-      if (updateError) {
-        console.error('Fout bij updaten gesprekken_compleet:', updateError);
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          console.error('Fout bij ophalen bestaande metadata:', fetchError);
+        } else {
+          // Update metadata met gesprek_afgerond = true
+          const huidigeMetadata = bestaandeData?.metadata || {};
+          const nieuweMetadata = {
+            ...huidigeMetadata,
+            gesprek_afgerond: true
+          };
+
+          const { error: updateError } = await supabase
+            .from('gesprekken_compleet')
+            .update({
+              beeindigd_op: now,
+              status: 'afgerond',
+              metadata: nieuweMetadata
+            })
+            .eq('gesprek_id', gesprek_id);
+
+          if (updateError) {
+            console.error('Fout bij updaten gesprekken_compleet:', updateError);
+          } else {
+            console.log(`Gesprekken_compleet tabel bijgewerkt voor gesprek_id: ${gesprek_id}`);
+          }
+        }
+      } catch (error) {
+        console.error('Onverwachte fout bij updaten gesprekken_compleet:', error);
       }
 
       return res.status(200).json({ success: true, message: 'Gesprek afgerond' });

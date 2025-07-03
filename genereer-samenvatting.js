@@ -133,6 +133,7 @@ router.post('/', async (req, res) => {
       werkgever_id: werknemer.employer_id,
       werknemer_id,
       theme_id,
+      gesprek_id: gesprek_id, // Voeg gesprek_id toe
       samenvatting: parsed.samenvatting,
       score: parsed.score,
       samenvatting_type: 'initieel',
@@ -140,36 +141,25 @@ router.post('/', async (req, res) => {
       gegenereerd_op: new Date().toISOString()
     }
 
-    // Als er een gesprek_id is, voeg die toe
-    if (gesprek_id) {
-      resultaatData.gesprek_id = gesprek_id
-    }
-
     // Probeer eerst een update, anders een insert
-    if (gesprek_id) {
-      // Update bestaande rij met gesprek_id
-      const { error: updateError } = await supabase
+    const { error: updateError } = await supabase
+      .from('gesprekresultaten')
+      .update(resultaatData)
+      .eq('gesprek_id', gesprek_id);
+    
+    if (updateError && updateError.code === 'PGRST116') {
+      // Geen bestaande rij gevonden, voeg nieuwe toe
+      const { error: insertError } = await supabase
         .from('gesprekresultaten')
-        .update(resultaatData)
-        .eq('gesprek_id', gesprek_id);
+        .insert(resultaatData);
       
-      if (updateError && updateError.code === 'PGRST116') {
-        // Geen bestaande rij gevonden, voeg nieuwe toe
-        await supabase.from('gesprekresultaten').insert(resultaatData);
+      if (insertError) {
+        console.error('Fout bij invoegen gesprekresultaat:', insertError);
+        throw insertError;
       }
-    } else {
-      // Voor oude structuur zonder gesprek_id
-      const { error: updateError } = await supabase
-        .from('gesprekresultaten')
-        .update(resultaatData)
-        .eq('werknemer_id', werknemer_id)
-        .eq('theme_id', theme_id)
-        .is('gesprek_id', null);
-      
-      if (updateError && updateError.code === 'PGRST116') {
-        // Geen bestaande rij gevonden, voeg nieuwe toe
-        await supabase.from('gesprekresultaten').insert(resultaatData);
-      }
+    } else if (updateError) {
+      console.error('Fout bij updaten gesprekresultaat:', updateError);
+      throw updateError;
     }
 
     return res.json(parsed)
