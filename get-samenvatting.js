@@ -15,6 +15,7 @@ router.get('/', async (req, res) => {
   }
 
   try {
+    // Probeer eerst de nieuwe structuur (gesprekresultaten met gesprek_id)
     let query = supabase
       .from('gesprekresultaten')
       .select('samenvatting, score, mag_werkgever_inzien')
@@ -29,11 +30,25 @@ router.get('/', async (req, res) => {
     const { data, error } = await query.maybeSingle()
 
     if (error) throw error
-    if (!data) {
+    if (data) {
+      return res.json(data)
+    }
+
+    // Als geen data gevonden, probeer de oude structuur (zonder gesprek_id)
+    const { data: oldData, error: oldError } = await supabase
+      .from('gesprekresultaten')
+      .select('samenvatting, score, mag_werkgever_inzien')
+      .eq('theme_id', theme_id)
+      .eq('werknemer_id', werknemer_id)
+      .is('gesprek_id', null)
+      .maybeSingle()
+
+    if (oldError) throw oldError
+    if (!oldData) {
       return res.status(404).json({ error: 'Geen samenvatting gevonden' })
     }
 
-    return res.json(data)
+    return res.json(oldData)
   } catch (err) {
     console.error('Fout bij ophalen samenvatting:', err)
     return res.status(500).json({ error: 'Interne serverfout' })

@@ -36,7 +36,6 @@ router.post('/', async (req, res) => {
         melding: 'Voor dit thema hoeft geen samenvatting te worden gegenereerd.'
       })
     }
-
     // ✅ 1. Haal de complete gespreksgeschiedenis op uit de nieuwe tabel
     const { data: gesprekData, error: gesprekError } = await supabase
       .from('gesprekken_compleet')
@@ -146,9 +145,32 @@ router.post('/', async (req, res) => {
       resultaatData.gesprek_id = gesprek_id
     }
 
-    await supabase.from('gesprekresultaten').upsert(resultaatData, { 
-      onConflict: gesprek_id ? 'gesprek_id' : 'werknemer_id,theme_id' 
-    })
+    // Probeer eerst een update, anders een insert
+    if (gesprek_id) {
+      // Update bestaande rij met gesprek_id
+      const { error: updateError } = await supabase
+        .from('gesprekresultaten')
+        .update(resultaatData)
+        .eq('gesprek_id', gesprek_id);
+      
+      if (updateError && updateError.code === 'PGRST116') {
+        // Geen bestaande rij gevonden, voeg nieuwe toe
+        await supabase.from('gesprekresultaten').insert(resultaatData);
+      }
+    } else {
+      // Voor oude structuur zonder gesprek_id
+      const { error: updateError } = await supabase
+        .from('gesprekresultaten')
+        .update(resultaatData)
+        .eq('werknemer_id', werknemer_id)
+        .eq('theme_id', theme_id)
+        .is('gesprek_id', null);
+      
+      if (updateError && updateError.code === 'PGRST116') {
+        // Geen bestaande rij gevonden, voeg nieuwe toe
+        await supabase.from('gesprekresultaten').insert(resultaatData);
+      }
+    }
 
     return res.json(parsed)
   } catch (err) {
