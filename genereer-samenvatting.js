@@ -142,24 +142,25 @@ router.post('/', async (req, res) => {
     }
 
     // Probeer eerst een update, anders een insert
-    const { error: updateError } = await supabase
+    const { data: updateData, error: updateError } = await supabase
       .from('gesprekresultaten')
       .update(resultaatData)
-      .eq('gesprek_id', gesprek_id);
+      .eq('gesprek_id', gesprek_id)
+      .select(); // zodat je weet of er iets is aangepast
     
-    if (updateError && updateError.code === 'PGRST116') {
-      // Geen bestaande rij gevonden, voeg nieuwe toe
+    if (updateError) {
+      console.error('Fout bij updaten gesprekresultaat:', updateError);
+      throw updateError;
+    }
+    if (!updateData || updateData.length === 0) {
+      // Geen bestaande rij, dus insert
       const { error: insertError } = await supabase
         .from('gesprekresultaten')
         .insert(resultaatData);
-      
       if (insertError) {
         console.error('Fout bij invoegen gesprekresultaat:', insertError);
         throw insertError;
       }
-    } else if (updateError) {
-      console.error('Fout bij updaten gesprekresultaat:', updateError);
-      throw updateError;
     }
 
     return res.json(parsed)
