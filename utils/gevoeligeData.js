@@ -1728,7 +1728,6 @@ export const voornamenSet = new Set([
   'nox',
   'noé',
   'noël',
-  'nu',
   'nuka',
   'nuno',
   'nur',
