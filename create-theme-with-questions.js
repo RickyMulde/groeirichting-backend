@@ -74,6 +74,7 @@ router.post('/', async (req, res) => {
   thema.gpt_doelstelling = thema.gpt_doelstelling ?? null;
   thema.gpt_beperkingen = thema.gpt_beperkingen ?? null;
 
+  // score_instructies wordt nu gewoon meegenomen in het thema object en opgeslagen in Supabase.
 
   try {
     if (thema.id) {

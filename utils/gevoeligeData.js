@@ -1457,7 +1457,6 @@ export const voornamenSet = new Set([
   'maik',
   'maikeljunior',
   'maken',
-  'makkelijk',
   'maksiem',
   'malak',
   'malcolm',
