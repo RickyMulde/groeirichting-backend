@@ -141,7 +141,7 @@ router.post('/', async (req, res) => {
       gegenereerd_op: new Date().toISOString()
     }
 
-    // Probeer eerst een update, anders een insert
+    // Probeer eerst een update op gesprek_id, anders een insert
     const { data: updateData, error: updateError } = await supabase
       .from('gesprekresultaten')
       .update(resultaatData)
