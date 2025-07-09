@@ -20,7 +20,10 @@ router.post('/', async (req, res) => {
     hoort_bij_question_id,
     vraag_tekst, // Nieuwe parameter voor vervolgvragen
     status, // optioneel
-    gespreksgeschiedenis // Nieuwe parameter voor complete geschiedenis
+    gespreksgeschiedenis, // Nieuwe parameter voor complete geschiedenis
+    toelichting_type, // Nieuwe parameter voor toelichtingen/reacties
+    toelichting_inhoud, // Nieuwe parameter voor toelichting inhoud
+    vraag_id // Nieuwe parameter voor vraag_id bij toelichtingen
   } = req.body;
 
   const now = new Date().toISOString();
@@ -117,7 +120,79 @@ router.post('/', async (req, res) => {
       return res.status(200).json({ success: true, message: 'Gesprek afgerond' });
     }
 
-    // 3️⃣ Antwoord opslaan in nieuwe structuur
+    // 3️⃣ Toelichting/Reactie opslaan
+    if (gesprek_id && toelichting_type && toelichting_inhoud) {
+      // Haal bestaande gespreksgeschiedenis op
+      const { data: bestaandeData, error: fetchError } = await supabase
+        .from('gesprekken_compleet')
+        .select('gespreksgeschiedenis, metadata')
+        .eq('gesprek_id', gesprek_id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Fout bij ophalen bestaande data:', fetchError);
+        return res.status(500).json({ error: 'Fout bij ophalen bestaande data' });
+      }
+
+      // Bereid nieuwe gespreksgeschiedenis voor
+      let nieuweGeschiedenis = bestaandeData?.gespreksgeschiedenis || [];
+      let metadata = bestaandeData?.metadata || {};
+
+      // Voeg toelichting/reactie toe
+      const nieuwItem = {
+        type: toelichting_type, // 'toelichting' of 'reactie'
+        vraag_id: vraag_id,
+        inhoud: toelichting_inhoud,
+        timestamp: now,
+        volgorde: nieuweGeschiedenis.length + 1
+      };
+
+      nieuweGeschiedenis.push(nieuwItem);
+
+      // Update metadata
+      metadata.laatste_update = now;
+
+      // Sla op in gesprekken_compleet tabel
+      const upsertData = {
+        werknemer_id,
+        theme_id,
+        gesprek_id,
+        gespreksgeschiedenis: nieuweGeschiedenis,
+        metadata,
+        gestart_op: bestaandeData?.gestart_op || now,
+        status: 'actief',
+        taalcode: 'nl'
+      };
+
+      let upsertError;
+      if (bestaandeData) {
+        // Update bestaande rij
+        const { error } = await supabase
+          .from('gesprekken_compleet')
+          .update({
+            gespreksgeschiedenis: nieuweGeschiedenis,
+            metadata,
+            status: 'actief'
+          })
+          .eq('gesprek_id', gesprek_id);
+        upsertError = error;
+      } else {
+        // Voeg nieuwe rij toe
+        const { error } = await supabase
+          .from('gesprekken_compleet')
+          .insert(upsertData);
+        upsertError = error;
+      }
+
+      if (upsertError) {
+        console.error('Fout bij opslaan toelichting:', upsertError);
+        return res.status(500).json({ error: 'Opslaan toelichting mislukt', detail: upsertError.message });
+      }
+
+      return res.status(200).json({ success: true });
+    }
+
+    // 4️⃣ Antwoord opslaan in nieuwe structuur
     if (gesprek_id && antwoord !== undefined) {
       const check = containsSensitiveInfo(antwoord);
       if (check.flagged) {

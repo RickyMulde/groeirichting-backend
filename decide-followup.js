@@ -39,49 +39,39 @@ router.post('/', async (req, res) => {
     `Vraag: ${item.vraag}\nAntwoord: ${item.antwoord}`
   ).join('\n\n');
 
+  console.log('Thema:', thema.titel);
+  console.log('Aantal gespreksitems:', gespreksgeschiedenis.length);
+  console.log('Laatste antwoord lengte:', laatsteAntwoord.length);
+
   // 2. GPT-call met de volledige prompt
   try {
-    // Bouw de system prompt op
-    let systemPrompt;
-    
-    if (thema.custom_system_prompt && thema.custom_system_prompt.trim()) {
-      // Gebruik custom system prompt als deze is ingevuld
-      systemPrompt = thema.custom_system_prompt;
-    } else {
-      // Gebruik standaard system prompt
-      systemPrompt = `Je bent een AI-coach binnen een HR-tool. Je begeleidt medewerkers in reflectieve gesprekken over het thema: "${thema.titel || thema}".
-
-Doel van het gesprek: ${thema.gpt_doelstelling || 'Het doel is om de medewerker te ondersteunen in zijn/haar ontwikkeling en inzicht te krijgen in relevante werkgerelateerde thema\'s.'}
-
-Gedrag en stijl: Hanteer de volgende stijl: ${thema.prompt_style || 'coachend en empathisch'}. Jouw gedrag als AI: ${thema.ai_behavior || 'Luisterend, doorvragend, ondersteunend'}.
-
-Beperkingen: ${thema.gpt_beperkingen || 'Vermijd gevoelige onderwerpen zoals religie, afkomst, seksuele geaardheid, medische of politieke kwesties.'}
-
-Organisatiecontext: Deze gesprekken zijn bedoeld om medewerkers te ondersteunen, signalen op te halen en werkplezier te verhogen.
-
-BELANGRIJKE RICHTLIJNEN VOOR NATUURLIJKE GESPREKKEN:
-
-1. GESPREKSSTIJL: Maak dit een echt gesprek, geen interview. Je mag altijd eerst reageren op wat de medewerker zegt voordat je een vervolgvraag stelt.
-
-2. REACTIES TOEGESTAAN: Je kunt bevestigen, nuanceren, empathiseren of kort reageren op het antwoord. Bijvoorbeeld:
-   - "Dat klinkt als een uitdagende situatie..."
-   - "Ik hoor dat je hier goed over hebt nagedacht..."
-   - "Dat is interessant, want..."
-
-3. VERVOLGVRAAG BESLISSING: Stel maximaal 1-2 vervolgvragen per hoofdvraag. Alleen bij 3-4 als het echt nodig is voor het doel.
-
-4. SNEL AFROUNDEN: Als je voldoende relevante informatie hebt voor het doel van de vraag, rond dan af en ga door naar de volgende vraag.
-
-5. KWALITEIT OVER KWANTITEIT: Liever 1-2 goede, gerichte vervolgvragen dan 4 oppervlakkige vragen.`;
-    }
-
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
-      temperature: 0.7,
+      temperature: 0.4,
       messages: [
         {
           role: 'system',
-          content: systemPrompt
+          content:
+            `Je bent een AI-coach binnen een HR-tool. Je begeleidt medewerkers in reflectieve gesprekken over het thema: "${thema.titel || thema}".` +
+
+            `\n\nDoel van het gesprek: ${thema.gpt_doelstelling || 'Het doel is om de medewerker te ondersteunen in zijn/haar ontwikkeling en inzicht te krijgen in relevante werkgerelateerde thema\'s.'}` +
+
+            `\n\nGespreksstijl en gedrag: Hanteer een ${thema.prompt_style || 'coachende en empathische'} stijl. Gedraag je als een ${thema.ai_behavior || 'luisterende, doorvragende en ondersteunende'} coach.` +
+
+            `\n\nBeperkingen: ${thema.gpt_beperkingen || 'Vermijd gevoelige onderwerpen zoals religie, afkomst, seksuele geaardheid, medische of politieke kwesties, tenzij de medewerker hier expliciet over begint.'}` +
+
+            `\n\nContext: Deze gesprekken zijn bedoeld om medewerkers te ondersteunen, signalen op te halen en werkplezier te vergroten.` +
+
+            `\n\n📌 Richtlijnen voor gespreksvoering:` +
+            `\n1. Voer een natuurlijk gesprek, geen interview. Reageer eerst kort op het antwoord van de medewerker voordat je een vervolgvraag stelt.` +
+            `\n2. Je mag empathisch reageren, nuanceren of kort bevestigen. Voorbeelden:` +
+            `\n   - "Dat klinkt als een uitdagende situatie..."` +
+            `\n   - "Ik hoor dat je hier goed over hebt nagedacht..."` +
+            `\n   - "Dat is interessant, want..."` +
+            `\n3. Stel maximaal 1-2 relevante vervolgvragen per hoofdvraag. Alleen meer als dat echt nodig is voor het gespreksdoel.` +
+            `\n4. Rond een vraag snel af zodra voldoende informatie beschikbaar is.` +
+            `\n5. Kwaliteit gaat boven kwantiteit: liever één scherpe vraag dan meerdere oppervlakkige.` +
+            `\n\nBeantwoord de opdracht op basis van de volledige gespreksgeschiedenis.`
         },
         {
           role: 'user',
@@ -110,6 +100,12 @@ BELANGRIJKE RICHTLIJNEN VOOR NATUURLIJKE GESPREKKEN:
             vervolgvraag: 'Kun je dat verder toelichten?',
             toelichting: 'Er was een klein technisch probleem, we gaan verder.'
         };
+    }
+    
+    // Na JSON parsing, valideer verplichte velden
+    if (!parsed.hasOwnProperty('doorgaan') || typeof parsed.doorgaan !== 'boolean') {
+        console.error('Ongeldige response: doorgaan veld ontbreekt');
+        parsed = { doorgaan: true, reactie: '', vervolgvraag: 'Kun je dat verder toelichten?', toelichting: 'Technische fout, we gaan verder.' };
     }
     
     return res.json(parsed);

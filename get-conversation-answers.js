@@ -43,7 +43,10 @@ router.post('/', async (req, res) => {
       vraag_id: item.vraag_id,
       hoort_bij_vraag_id: item.hoort_bij_vraag_id,
       timestamp: item.timestamp,
-      volgorde: item.volgorde
+      volgorde: item.volgorde,
+      // Nieuwe velden voor toelichtingen en reacties
+      toelichting_type: item.type === 'toelichting' || item.type === 'reactie' ? item.type : null,
+      toelichting_inhoud: item.type === 'toelichting' || item.type === 'reactie' ? item.inhoud : null
     }));
 
     console.log(`Gespreksgeschiedenis opgehaald voor gesprek_id: ${gesprek_id}, ${antwoorden.length} antwoorden`);

@@ -73,7 +73,7 @@ router.post('/', async (req, res) => {
   thema.ai_behavior = thema.ai_behavior ?? null;
   thema.gpt_doelstelling = thema.gpt_doelstelling ?? null;
   thema.gpt_beperkingen = thema.gpt_beperkingen ?? null;
-  thema.custom_system_prompt = thema.custom_system_prompt ?? null;
+
 
   try {
     if (thema.id) {
