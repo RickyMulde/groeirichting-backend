@@ -74,7 +74,14 @@ router.post('/', async (req, res) => {
   thema.gpt_doelstelling = thema.gpt_doelstelling ?? null;
   thema.gpt_beperkingen = thema.gpt_beperkingen ?? null;
 
-  // score_instructies wordt nu gewoon meegenomen in het thema object en opgeslagen in Supabase.
+  // Herstructureer score_instructies voor betere prompt volgorde
+  if (thema.score_instructies) {
+    const { score_instructie, ...scoreBepalen } = thema.score_instructies;
+    thema.score_instructies = {
+      score_instructie, // Eerst de algemene instructie
+      ...scoreBepalen   // Dan de specifieke criteria
+    };
+  }
 
   try {
     if (thema.id) {

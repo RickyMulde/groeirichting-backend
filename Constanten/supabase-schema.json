@@ -605,6 +605,11 @@
     "data_type": "text"
   },
   {
+    "table_name": "themes",
+    "column_name": "score_instructies",
+    "data_type": "jsonb"
+  },
+  {
     "table_name": "users",
     "column_name": "id",
     "data_type": "uuid"
