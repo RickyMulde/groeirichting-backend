@@ -12,6 +12,9 @@ const getConversationAnswers = require('./get-conversation-answers');
 const decideFollowup = require('./decide-followup'); // ✅ Nieuw toegevoegd
 const genereerSamenvatting = require('./genereer-samenvatting'); // ✅ Nieuw toegevoegd
 const getSamenvatting = require('./get-samenvatting'); // ✅ Nieuw toegevoegd
+const getOrganisationThemes = require('./get-organisation-themes'); // ✅ Nieuw toegevoegd
+const getOrganisationSummary = require('./get-organisation-summary'); // ✅ Nieuw toegevoegd
+const generateOrganisationSummary = require('./generate-organisation-summary'); // ✅ Nieuw toegevoegd
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
@@ -35,6 +38,9 @@ app.use('/api/get-conversation-answers', getConversationAnswers);
 app.use('/api/decide-followup', decideFollowup); // ✅ Nieuwe route toegevoegd
 app.use('/api/genereer-samenvatting', genereerSamenvatting); // ✅ Nieuwe route toegevoegd
 app.use('/api/get-samenvatting', getSamenvatting); // ✅ Nieuwe route toegevoegd
+app.use('/api/organisation-themes', getOrganisationThemes); // ✅ Nieuwe route toegevoegd
+app.use('/api/organisation-summary', getOrganisationSummary); // ✅ Nieuwe route toegevoegd
+app.use('/api/generate-organisation-summary', generateOrganisationSummary); // ✅ Nieuwe route toegevoegd
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
