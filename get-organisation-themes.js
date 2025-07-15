@@ -74,6 +74,10 @@ router.get('/:orgId', async (req, res) => {
       // Zoek bestaande insight
       const existingInsight = existingInsights?.find(insight => insight.theme_id === theme.id)
 
+      // Bepaal uiteindelijke status: als er al een samenvatting bestaat, gebruik die status
+      // anders gebruik de berekende status
+      const finalStatus = existingInsight?.samenvatting_status || samenvattingStatus
+
       return {
         theme_id: theme.id,
         titel: theme.titel,
@@ -83,7 +87,7 @@ router.get('/:orgId', async (req, res) => {
         totaal_medewerkers: totalEmployees,
         voltooide_medewerkers: completedEmployees,
         gemiddelde_score: averageScore,
-        samenvatting_status: existingInsight?.samenvatting_status || samenvattingStatus,
+        samenvatting_status: finalStatus,
         heeft_samenvatting: !!existingInsight?.samenvatting,
         heeft_adviezen: !!existingInsight?.gpt_adviezen,
         laatst_bijgewerkt: existingInsight?.laatst_bijgewerkt_op,
