@@ -39,6 +39,38 @@ const isGesprekVerwachtDezeMaand = (actieveMaanden) => {
 };
 
 /**
+ * Bepaalt of er een nieuw gesprek gestart kan worden voor een thema
+ * @param {Array} gesprekken - Array van bestaande gesprekken
+ * @param {boolean} isVerwachtDezeMaand - Of er een gesprek verwacht wordt deze maand
+ * @param {boolean} heeftOpenstaandGesprek - Of er een openstaand gesprek is
+ * @returns {boolean} - True als er een nieuw gesprek gestart kan worden
+ */
+const kanNieuwGesprekStarten = (gesprekken, isVerwachtDezeMaand, heeftOpenstaandGesprek) => {
+  // Als er geen gesprekken zijn, altijd toestaan
+  if (gesprekken.length === 0) {
+    return true;
+  }
+  
+  // Als er een openstaand gesprek is, geen nieuw starten
+  if (heeftOpenstaandGesprek) {
+    return false;
+  }
+  
+  // Als er een gesprek verwacht wordt deze maand, toestaan
+  if (isVerwachtDezeMaand) {
+    return true;
+  }
+  
+  // Als laatste gesprek afgerond is, toestaan (voor nieuwe periodes)
+  const laatsteGesprek = gesprekken[0]; // Gesorteerd op datum, nieuwste eerst
+  if (laatsteGesprek && laatsteGesprek.status === 'Afgerond') {
+    return true;
+  }
+  
+  return false;
+};
+
+/**
  * Haalt de maandnaam op in het Nederlands
  * @param {number} maand - Maand nummer (1-12)
  * @returns {string} - Maandnaam
@@ -175,6 +207,7 @@ const getThemaDataVoorWerknemer = async (werknemerId) => {
       const isVerwachtDezeMaand = isGesprekVerwachtDezeMaand(werkgeverConfig.actieve_maanden);
       const volgendeGesprekDatum = berekenVolgendeGesprekDatum(werkgeverConfig.actieve_maanden);
       const heeftOpenstaandGesprek = gesprekken.some(g => g.status === 'Nog niet afgerond');
+      const kanNieuwStarten = kanNieuwGesprekStarten(gesprekken, isVerwachtDezeMaand, heeftOpenstaandGesprek);
       
       return {
         ...thema,
@@ -182,7 +215,8 @@ const getThemaDataVoorWerknemer = async (werknemerId) => {
         configuratie: werkgeverConfig,
         is_gesprek_verwacht_deze_maand: isVerwachtDezeMaand,
         volgende_gesprek_datum: volgendeGesprekDatum,
-        heeft_openstaand_gesprek: heeftOpenstaandGesprek
+        heeft_openstaand_gesprek: heeftOpenstaandGesprek,
+        kan_nieuw_gesprek_starten: kanNieuwStarten
       };
     });
     
@@ -196,6 +230,7 @@ const getThemaDataVoorWerknemer = async (werknemerId) => {
 module.exports = {
   berekenVolgendeGesprekDatum,
   isGesprekVerwachtDezeMaand,
+  kanNieuwGesprekStarten,
   getMaandNaam,
   anonimiseerOudeGesprekken,
   getWerkgeverConfiguratie,
