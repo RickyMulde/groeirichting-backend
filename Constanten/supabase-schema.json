@@ -105,6 +105,16 @@
     "data_type": "text"
   },
   {
+    "table_name": "gesprek",
+    "column_name": "werkgever_thema_config_id",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "gesprek",
+    "column_name": "geanonimiseerd_op",
+    "data_type": "timestamp without time zone"
+  },
+  {
     "table_name": "gesprekken_compleet",
     "column_name": "id",
     "data_type": "uuid"
@@ -313,6 +323,36 @@
     "table_name": "organization_theme_insights",
     "column_name": "laatst_bijgewerkt_op",
     "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "gemiddelde_score",
+    "data_type": "numeric"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "totaal_medewerkers",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "voltooide_medewerkers",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "samenvatting_status",
+    "data_type": "text"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "gpt_adviezen",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "organization_theme_insights",
+    "column_name": "individuele_scores",
+    "data_type": "jsonb"
   },
   {
     "table_name": "theme_questions",
@@ -657,6 +697,46 @@
   {
     "table_name": "users",
     "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "werkgever_gesprek_instellingen",
+    "column_name": "id",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "werkgever_gesprek_instellingen",
+    "column_name": "werkgever_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "werkgever_gesprek_instellingen",
+    "column_name": "actieve_maanden",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "werkgever_gesprek_instellingen",
+    "column_name": "verplicht",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "werkgever_gesprek_instellingen",
+    "column_name": "actief",
+    "data_type": "boolean"
+  },
+  {
+    "table_name": "werkgever_gesprek_instellingen",
+    "column_name": "anonimiseer_na_dagen",
+    "data_type": "integer"
+  },
+  {
+    "table_name": "werkgever_gesprek_instellingen",
+    "column_name": "aangemaakt_op",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "werkgever_gesprek_instellingen",
+    "column_name": "bijgewerkt_op",
     "data_type": "timestamp without time zone"
   }
 ]
