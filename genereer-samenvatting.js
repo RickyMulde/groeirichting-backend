@@ -116,9 +116,26 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Werknemer niet gevonden' })
     }
 
-    // ✅ 6. Bepaal gespreksronde
+    // ✅ 6. Bepaal gespreksronde en periode
     let gespreksronde = 1
+    let periode = null
+    
     if (gesprek_id) {
+      // Haal gesprek op om startdatum te krijgen
+      const { data: gesprek, error: gesprekError } = await supabase
+        .from('gesprek')
+        .select('gestart_op')
+        .eq('id', gesprek_id)
+        .single()
+      
+      if (!gesprekError && gesprek && gesprek.gestart_op) {
+        // Bepaal periode op basis van startdatum (YYYY-MM formaat)
+        const startDatum = new Date(gesprek.gestart_op)
+        const jaar = startDatum.getFullYear()
+        const maand = String(startDatum.getMonth() + 1).padStart(2, '0')
+        periode = `${jaar}-${maand}`
+      }
+      
       // Tel hoeveel gesprekken er al zijn voor dit thema en deze werknemer
       const { data: bestaandeGesprekken, error: rondeError } = await supabase
         .from('gesprek')
@@ -143,6 +160,7 @@ router.post('/', async (req, res) => {
       score: parsed.score,
       samenvatting_type: 'initieel',
       gespreksronde,
+      periode: periode, // Voeg periode toe
       gegenereerd_op: new Date().toISOString()
     }
 

@@ -35,6 +35,56 @@ router.post('/', async (req, res) => {
   try {
     // 1️⃣ Gesprek aanmaken
     if (!gesprek_id && !theme_question_id && status === 'Nog niet afgerond') {
+      // Check periode restricties (behalve voor superadmin)
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('role, employer_id')
+        .eq('id', werknemer_id)
+        .single();
+      
+      if (!userError && user && user.role !== 'superadmin' && user.id !== '5bbfffe3-ad87-4ac8-bba4-112729868489') {
+        // Haal werkgever configuratie op
+        const { data: werkgeverConfig, error: configError } = await supabase
+          .from('werkgever_gesprek_instellingen')
+          .select('actieve_maanden')
+          .eq('werkgever_id', user.employer_id)
+          .single();
+        
+        if (!configError && werkgeverConfig) {
+          // Check of huidige maand actief is
+          const huidigeMaand = new Date().getMonth() + 1;
+          const isHuidigeMaandActief = werkgeverConfig.actieve_maanden.includes(huidigeMaand);
+          
+          if (!isHuidigeMaandActief) {
+            return res.status(403).json({ 
+              error: 'Gesprek kan alleen gestart worden in actieve maanden volgens werkgever instellingen' 
+            });
+          }
+          
+          // Check of er al een gesprek is voor deze periode
+          const huidigePeriode = `${new Date().getFullYear()}-${String(huidigeMaand).padStart(2, '0')}`;
+          const { data: bestaandeGesprekken, error: gesprekError } = await supabase
+            .from('gesprek')
+            .select('gestart_op')
+            .eq('werknemer_id', werknemer_id)
+            .eq('theme_id', theme_id)
+            .is('geanonimiseerd_op', null);
+          
+          if (!gesprekError && bestaandeGesprekken) {
+            const heeftGesprekDezePeriode = bestaandeGesprekken.some(g => {
+              const gesprekPeriode = `${new Date(g.gestart_op).getFullYear()}-${String(new Date(g.gestart_op).getMonth() + 1).padStart(2, '0')}`;
+              return gesprekPeriode === huidigePeriode;
+            });
+            
+            if (heeftGesprekDezePeriode) {
+              return res.status(403).json({ 
+                error: 'Er is al een gesprek gestart voor dit thema in de huidige periode' 
+              });
+            }
+          }
+        }
+      }
+      
       const { data, error } = await supabase
         .from('gesprek')
         .insert([{

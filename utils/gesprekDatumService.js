@@ -41,33 +41,56 @@ const isGesprekVerwachtDezeMaand = (actieveMaanden) => {
 /**
  * Bepaalt of er een nieuw gesprek gestart kan worden voor een thema
  * @param {Array} gesprekken - Array van bestaande gesprekken
- * @param {boolean} isVerwachtDezeMaand - Of er een gesprek verwacht wordt deze maand
+ * @param {Array} actieveMaanden - Array van actieve maanden van werkgever
  * @param {boolean} heeftOpenstaandGesprek - Of er een openstaand gesprek is
+ * @param {string} userId - ID van de gebruiker (voor superadmin check)
  * @returns {boolean} - True als er een nieuw gesprek gestart kan worden
  */
-const kanNieuwGesprekStarten = (gesprekken, isVerwachtDezeMaand, heeftOpenstaandGesprek) => {
-  // Als er geen gesprekken zijn, altijd toestaan
-  if (gesprekken.length === 0) {
-    return true;
-  }
-  
+const kanNieuwGesprekStarten = async (gesprekken, actieveMaanden, heeftOpenstaandGesprek, userId) => {
   // Als er een openstaand gesprek is, geen nieuw starten
   if (heeftOpenstaandGesprek) {
     return false;
   }
   
-  // Als er een gesprek verwacht wordt deze maand, toestaan
-  if (isVerwachtDezeMaand) {
+  // Check of gebruiker superadmin is of test account
+  if (userId) {
+    // Test account override
+    if (userId === '5bbfffe3-ad87-4ac8-bba4-112729868489') {
+      return true; // Test account kan altijd testen
+    }
+    
+    const { data: user } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .single();
+      
+    if (user?.role === 'superadmin') {
+      return true; // Superadmin kan altijd testen
+    }
+  }
+  
+  // Check of huidige maand actief is
+  const huidigeMaand = new Date().getMonth() + 1;
+  const isHuidigeMaandActief = actieveMaanden.includes(huidigeMaand);
+  
+  if (!isHuidigeMaandActief) {
+    return false; // Alleen in actieve maanden
+  }
+  
+  // Als er geen gesprekken zijn en het is een actieve maand, toestaan
+  if (gesprekken.length === 0) {
     return true;
   }
   
-  // Als laatste gesprek afgerond is, toestaan (voor nieuwe periodes)
-  const laatsteGesprek = gesprekken[0]; // Gesorteerd op datum, nieuwste eerst
-  if (laatsteGesprek && laatsteGesprek.status === 'Afgerond') {
-    return true;
-  }
+  // Check of er al een gesprek is voor deze periode
+  const huidigePeriode = `${new Date().getFullYear()}-${String(huidigeMaand).padStart(2, '0')}`;
+  const heeftGesprekDezePeriode = gesprekken.some(g => {
+    const gesprekPeriode = `${new Date(g.gestart_op).getFullYear()}-${String(new Date(g.gestart_op).getMonth() + 1).padStart(2, '0')}`;
+    return gesprekPeriode === huidigePeriode;
+  });
   
-  return false;
+  return !heeftGesprekDezePeriode; // Maximaal 1 gesprek per periode
 };
 
 /**
@@ -202,12 +225,12 @@ const getThemaDataVoorWerknemer = async (werknemerId) => {
     if (gesprekError) throw gesprekError;
     
     // Combineer data per thema
-    const gecombineerdeData = themaData.map(thema => {
+    const gecombineerdeData = await Promise.all(themaData.map(async thema => {
       const gesprekken = gesprekData?.filter(g => g.theme_id === thema.id) || [];
       const isVerwachtDezeMaand = isGesprekVerwachtDezeMaand(werkgeverConfig.actieve_maanden);
       const volgendeGesprekDatum = berekenVolgendeGesprekDatum(werkgeverConfig.actieve_maanden);
       const heeftOpenstaandGesprek = gesprekken.some(g => g.status === 'Nog niet afgerond');
-      const kanNieuwStarten = kanNieuwGesprekStarten(gesprekken, isVerwachtDezeMaand, heeftOpenstaandGesprek);
+      const kanNieuwStarten = await kanNieuwGesprekStarten(gesprekken, werkgeverConfig.actieve_maanden, heeftOpenstaandGesprek, werknemerId);
       
       return {
         ...thema,
@@ -218,7 +241,7 @@ const getThemaDataVoorWerknemer = async (werknemerId) => {
         heeft_openstaand_gesprek: heeftOpenstaandGesprek,
         kan_nieuw_gesprek_starten: kanNieuwStarten
       };
-    });
+    }));
     
     return gecombineerdeData;
   } catch (error) {

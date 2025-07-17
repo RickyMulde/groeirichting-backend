@@ -245,6 +245,11 @@
     "data_type": "uuid"
   },
   {
+    "table_name": "gesprekresultaten",
+    "column_name": "periode",
+    "data_type": "VARCHAR"
+  },
+  {
     "table_name": "invitations",
     "column_name": "id",
     "data_type": "uuid"
