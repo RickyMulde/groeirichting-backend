@@ -62,7 +62,7 @@ router.post('/', async (req, res) => {
 
             `\n\nContext: Deze gesprekken zijn bedoeld om medewerkers te ondersteunen, signalen op te halen en werkplezier te vergroten.` +
 
-            `\n\n📌 Richtlijnen voor gespreksvoering:` +
+            `\n\n📌 KRITIEKE RICHTLIJNEN VOOR GESPREKSVOERING:` +
             `\n1. Voer een natuurlijk gesprek, geen interview. Reageer eerst kort op het antwoord van de medewerker voordat je een vervolgvraag stelt.` +
             `\n2. Je mag empathisch reageren, nuanceren of kort bevestigen. Voorbeelden:` +
             `\n   - "Dat klinkt als een uitdagende situatie..."` +
@@ -79,7 +79,7 @@ router.post('/', async (req, res) => {
             `Thema: ${thema.titel || thema}` + (thema.beschrijving ? `\nBeschrijving: ${thema.beschrijving}` : '') + `\n\n` +
             (doel_vraag ? `Doel van de laatste vraag: ${doel_vraag}\n\n` : '') +
             `Gespreksgeschiedenis tot nu toe:\n${gespreksContext}\n\n` +
-            `Opdracht:\n- Analyseer het volledige gesprek tot nu toe.\n- Beoordeel of het doel van de huidige vraag is bereikt.\n- Als het doel nog niet is bereikt, geef dan eerst een korte reactie/bevestiging/nuance op het laatste antwoord, gevolgd door maximaal één relevante vervolgvraag.\n- Als het doel wel is bereikt, geef dat aan en sluit het gesprek af.\n\n` +
+            `Opdracht:\n- Analyseer het volledige gesprek tot nu toe.\n- Beoordeel of het doel van de huidige vraag is bereikt.\n- Als het doel nog niet is bereikt, geef dan eerst een korte reactie/bevestiging/nuance op het laatste antwoord, gevolgd door maximaal één relevante vervolgvraag.\n- Als het doel wel is bereikt, geef dat aan en sluit het gesprek af.\n- Zorg ervoor dat je vervolgvraag een OPEN vraag is die de medewerker uitnodigt tot uitgebreide reflectie.\n\n` +
             `Geef je antwoord in het volgende JSON-formaat:\n{\n  "doorgaan": true/false,\n  "reactie": "korte reactie op het laatste antwoord (kan leeg zijn als niet nodig)",\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de medewerker uit waarom je wel of niet doorgaat"\n}`
         }
       ]
