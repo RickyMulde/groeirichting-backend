@@ -303,10 +303,22 @@ router.get('/', async (req, res) => {
     const resultatenMetThemas = await Promise.all(themaData.map(async (thema) => {
       let resultaat = resultaten?.find(r => r.theme_id === thema.id)
       
-      // Als er geen resultaat is, probeer automatisch te genereren
+      // Controleer of we automatisch moeten genereren
+      let moetGenereren = false
+      let afgerondGesprek = null
+      
       if (!resultaat) {
+        // Geen resultaat gevonden - probeer te genereren
+        moetGenereren = true
+      } else if (resultaat.samenvatting && (!resultaat.vervolgacties || resultaat.vervolgacties.length === 0)) {
+        // Er is wel een samenvatting, maar geen vervolgacties - probeer te genereren
+        moetGenereren = true
+        console.log(`🔄 Vervolgacties ontbreken voor thema: ${thema.titel}, probeer te genereren...`)
+      }
+      
+      if (moetGenereren) {
         // Zoek eerst of er een afgerond gesprek is voor dit thema in deze periode
-        const { data: afgerondGesprek, error: gesprekError } = await supabase
+        const { data: gesprekData, error: gesprekError } = await supabase
           .from('gesprek')
           .select('id')
           .eq('theme_id', thema.id)
@@ -314,7 +326,8 @@ router.get('/', async (req, res) => {
           .eq('status', 'Afgerond')
           .single()
 
-        if (!gesprekError && afgerondGesprek) {
+        if (!gesprekError && gesprekData) {
+          afgerondGesprek = gesprekData
           console.log(`🔄 Automatisch genereren samenvatting en vervolgacties voor thema: ${thema.titel}`)
           
           try {
