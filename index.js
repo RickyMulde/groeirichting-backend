@@ -18,6 +18,7 @@ const generateOrganisationSummary = require('./generate-organisation-summary'); 
 const werkgeverGesprekInstellingen = require('./werkgever-gesprek-instellingen'); // ✅ Nieuw toegevoegd
 const getThemaDataWerknemer = require('./get-thema-data-werknemer'); // ✅ Nieuw toegevoegd
 const verwijderOudeGesprekken = require('./verwijder-oude-gesprekken'); // ✅ Nieuw toegevoegd
+const getGespreksresultatenBulk = require('./get-gespreksresultaten-bulk'); // ✅ Nieuw toegevoegd
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
@@ -40,7 +41,8 @@ app.use('/api/save-conversation', saveConversation);
 app.use('/api/get-conversation-answers', getConversationAnswers);
 app.use('/api/decide-followup', decideFollowup); // ✅ Nieuwe route toegevoegd
 app.use('/api/genereer-samenvatting', genereerSamenvatting); // ✅ Nieuwe route toegevoegd
-app.use('/api/get-samenvatting', getSamenvatting); // ✅ Nieuwe route toegevoegd
+app.use('/api/get-samenvatting', getSamenvatting);
+app.use('/api/get-gespreksresultaten-bulk', getGespreksresultatenBulk); // ✅ Nieuwe route toegevoegd
 app.use('/api/organisation-themes', getOrganisationThemes); // ✅ Nieuwe route toegevoegd
 app.use('/api/organisation-summary', getOrganisationSummary); // ✅ Nieuwe route toegevoegd
 app.use('/api/generate-organisation-summary', generateOrganisationSummary); // ✅ Nieuwe route toegevoegd
