@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
     // Haal alle gespreksresultaten op voor deze periode
     const { data: resultaten, error: resultatenError } = await supabase
       .from('gesprekresultaten')
-      .select('theme_id, samenvatting, score, gespreksronde, periode, gegenereerd_op')
+      .select('theme_id, samenvatting, score, gespreksronde, periode, gegenereerd_op, vervolgacties, vervolgacties_toelichting')
       .eq('werknemer_id', werknemer_id)
       .eq('periode', periode)
 
@@ -70,6 +70,8 @@ router.get('/', async (req, res) => {
         gespreksronde: resultaat?.gespreksronde || null,
         periode: periode,
         gegenereerd_op: resultaat?.gegenereerd_op || null,
+        vervolgacties: resultaat?.vervolgacties || null,
+        vervolgacties_toelichting: resultaat?.vervolgacties_toelichting || null,
         heeft_resultaat: !!resultaat
       }
     })

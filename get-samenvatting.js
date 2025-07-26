@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
     // Probeer eerst de nieuwe structuur (gesprekresultaten met gesprek_id)
     let query = supabase
       .from('gesprekresultaten')
-      .select('samenvatting, score, mag_werkgever_inzien')
+      .select('samenvatting, score, mag_werkgever_inzien, vervolgacties, vervolgacties_toelichting')
       .eq('theme_id', theme_id)
       .eq('werknemer_id', werknemer_id)
 
@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
     // Als geen data gevonden, probeer de oude structuur (zonder gesprek_id)
     const { data: oldData, error: oldError } = await supabase
       .from('gesprekresultaten')
-      .select('samenvatting, score, mag_werkgever_inzien')
+      .select('samenvatting, score, mag_werkgever_inzien, vervolgacties, vervolgacties_toelichting')
       .eq('theme_id', theme_id)
       .eq('werknemer_id', werknemer_id)
       .is('gesprek_id', null)

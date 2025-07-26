@@ -92,7 +92,39 @@ router.post('/', async (req, res) => {
       `Gebruik onderstaande beoordelingscriteria voor het bepalen van de score:\nScore instructie: ${thema.score_instructies.score_instructie}\n${Object.entries(thema.score_instructies).filter(([k]) => k.startsWith('score_bepalen_')).map(([k, v]) => `${k.replace('score_bepalen_', 'Score ')}: ${v}`).join('\n')}`
       : '';
 
-    const prompt = `Je bent een HR-assistent. Vat het volgende gesprek samen in maximaal 6 zinnen.\n\nHoofdvraag: ${hoofdvraag}\nDoel van het gesprek: ${doelantwoord}\n\n${inputJSON}\n\n${scoreInstructiesTekst}\n\nAntwoord in JSON-formaat:\n{\n  "samenvatting": "...",\n  "score": 7\n}`
+    const prompt = `Je bent een HR-assistent. Vat het volgende gesprek samen en stel concrete vervolgacties voor.
+
+Thema: ${thema.titel}
+${thema.beschrijving ? `Beschrijving: ${thema.beschrijving}` : ''}
+
+Hoofdvraag: ${hoofdvraag}
+Doel van het gesprek: ${doelantwoord}
+
+Gespreksgeschiedenis:
+${inputJSON}
+
+${scoreInstructiesTekst}
+
+Opdracht:
+1. Vat het gesprek samen in maximaal 6 zinnen
+2. Geef een score van 1-10 op basis van de score instructies
+3. Stel 3-5 concrete, uitvoerbare vervolgacties voor die:
+   - Passen bij het thema en de gespreksinhoud
+   - Focus op acties die de werknemer zelf kan ondernemen
+   - Specifiek en praktisch zijn
+   - Vermijd algemene adviezen
+
+Antwoord in JSON-formaat:
+{
+  "samenvatting": "Vat het gesprek samen in maximaal 6 zinnen",
+  "score": 7,
+  "vervolgacties": [
+    "Concrete actie 1",
+    "Concrete actie 2", 
+    "Concrete actie 3"
+  ],
+  "vervolgacties_toelichting": "Korte uitleg waarom deze acties passend zijn"
+}`
 
     // ✅ 4. Stuur prompt naar GPT
     const completion = await openai.chat.completions.create({
@@ -161,7 +193,10 @@ router.post('/', async (req, res) => {
       samenvatting_type: 'initieel',
       gespreksronde,
       periode: periode, // Voeg periode toe
-      gegenereerd_op: new Date().toISOString()
+      gegenereerd_op: new Date().toISOString(),
+      vervolgacties: parsed.vervolgacties || [],
+      vervolgacties_toelichting: parsed.vervolgacties_toelichting || '',
+      vervolgacties_generatie_datum: new Date().toISOString()
     }
 
     // Probeer eerst een update op gesprek_id, anders een insert
