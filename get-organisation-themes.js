@@ -59,7 +59,8 @@ router.get('/:orgId', async (req, res) => {
 
       const completedEmployees = results?.length || 0
       const scores = results?.map(r => r.score).filter(score => score !== null) || []
-      const averageScore = scores.length > 0 ? 
+      // Toon alleen gemiddelde score als er minimaal 4 medewerkers hebben voltooid
+      const averageScore = completedEmployees >= 4 && scores.length > 0 ? 
         Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null
 
       // Bepaal samenvatting status
