@@ -1303,7 +1303,7 @@ export const voornamenSet = new Set([
   'lange',
   'lars',
   'larz',
-  'lasse',
+  'lasse',  
   'lats',
   'lau',
   'laura',
