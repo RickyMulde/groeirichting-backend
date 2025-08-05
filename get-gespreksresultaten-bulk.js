@@ -87,7 +87,7 @@ const genereerSamenvattingEnVervolgacties = async (theme_id, werknemer_id, gespr
       `Gebruik onderstaande beoordelingscriteria voor het bepalen van de score:\nScore instructie: ${thema.score_instructies.score_instructie}\n${Object.entries(thema.score_instructies).filter(([k]) => k.startsWith('score_bepalen_')).map(([k, v]) => `${k.replace('score_bepalen_', 'Score ')}: ${v}`).join('\n')}`
       : '';
 
-    const prompt = `Je bent een HR-assistent. Vat het volgende gesprek samen en stel concrete vervolgacties voor.
+    const prompt = `Je bent een HR-assistent die een gesprek samenvat en vervolgacties voorstelt voor een WERKNEMER.
 
 Thema: ${thema.titel}
 ${thema.beschrijving ? `Beschrijving: ${thema.beschrijving}` : ''}
@@ -104,10 +104,18 @@ Opdracht:
 1. Vat het gesprek samen in maximaal 6 zinnen
 2. Geef een score van 1-10 op basis van de score instructies
 3. Stel 3-5 concrete, uitvoerbare vervolgacties voor die:
+   - Specifiek voor de WERKNEMER zijn (niet voor de werkgever)
+   - Acties zijn die de werknemer ZELF kan ondernemen
    - Passen bij het thema en de gespreksinhoud
-   - Focus op acties die de werknemer zelf kan ondernemen
    - Specifiek en praktisch zijn
    - Vermijd algemene adviezen
+   - NIET gericht op wat de werkgever moet doen
+
+Voorbeelden van goede vervolgacties voor werknemers:
+- "Plan een gesprek met je leidinggevende over..."
+- "Zoek een workshop over..."
+- "Maak een actieplan voor..."
+- "Stel jezelf een doel om..."
 
 Antwoord in JSON-formaat:
 {
@@ -118,7 +126,7 @@ Antwoord in JSON-formaat:
     "Concrete actie 2", 
     "Concrete actie 3"
   ],
-  "vervolgacties_toelichting": "Korte uitleg waarom deze acties passend zijn"
+  "vervolgacties_toelichting": "Korte uitleg waarom deze acties passend zijn voor de werknemer"
 }`
 
     // Stuur naar GPT
