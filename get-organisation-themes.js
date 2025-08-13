@@ -20,7 +20,7 @@ router.get('/:orgId', async (req, res) => {
     // 1. Haal alle actieve thema's op
     const { data: themeData, error: themeError } = await supabase
       .from('themes')
-      .select('id, titel, beschrijving_werknemer, geeft_score, geeft_samenvatting')
+      .select('id, titel, beschrijving_werknemer, beschrijving_werkgever, geeft_score, geeft_samenvatting')
       .eq('klaar_voor_gebruik', true)
       .eq('standaard_zichtbaar', true)
       .order('volgorde_index', { ascending: true })
@@ -83,6 +83,7 @@ router.get('/:orgId', async (req, res) => {
         theme_id: theme.id,
         titel: theme.titel,
         beschrijving_werknemer: theme.beschrijving_werknemer,
+        beschrijving_werkgever: theme.beschrijving_werkgever,
         geeft_score: theme.geeft_score,
         geeft_samenvatting: theme.geeft_samenvatting,
         totaal_medewerkers: totalEmployees,

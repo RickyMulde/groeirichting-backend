@@ -35,7 +35,7 @@ router.get('/:orgId/:themeId', async (req, res) => {
     // Haal thema informatie op
     const { data: themeData, error: themeError } = await supabase
       .from('themes')
-      .select('titel, beschrijving_werknemer')
+      .select('titel, beschrijving_werknemer, beschrijving_werkgever')
       .eq('id', themeId)
       .single()
 
@@ -46,6 +46,7 @@ router.get('/:orgId/:themeId', async (req, res) => {
       theme_id: themeId,
       titel: themeData.titel,
       beschrijving_werknemer: themeData.beschrijving_werknemer,
+      beschrijving_werkgever: themeData.beschrijving_werkgever,
       samenvatting: insight.samenvatting,
       verbeteradvies: insight.verbeteradvies,
       gpt_adviezen: insight.gpt_adviezen,
