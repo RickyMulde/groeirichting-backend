@@ -12,7 +12,7 @@ const openai = new OpenAI({
 
 router.post('/', async (req, res) => {
   // We ontvangen nu de volledige gespreksgeschiedenis
-  const { thema, gespreksgeschiedenis = [], doel_vraag } = req.body;
+  const { thema, gespreksgeschiedenis = [], doel_vraag, laatste_samenvatting, gpt_doelstelling, prompt_style, ai_behavior, gpt_beperkingen } = req.body;
 
   if (!thema || gespreksgeschiedenis.length === 0) {
     return res.status(400).json({ error: 'Thema en gespreksgeschiedenis zijn verplicht.' });
@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
     `Vraag: ${item.vraag}\nAntwoord: ${item.antwoord}`
   ).join('\n\n');
 
-  console.log('Thema:', thema.titel);
+  console.log('Thema:', thema);
   console.log('Aantal gespreksitems:', gespreksgeschiedenis.length);
   console.log('Laatste antwoord lengte:', laatsteAntwoord.length);
 
@@ -52,15 +52,16 @@ router.post('/', async (req, res) => {
         {
           role: 'system',
           content:
-            `Je bent een AI-coach binnen een HR-tool. Je begeleidt medewerkers in reflectieve gesprekken over het thema: "${thema.titel || thema}".` +
+            `Je bent een AI-coach binnen een HR-tool. Je begeleidt medewerkers in reflectieve gesprekken over het thema: "${thema}".` +
 
-            `\n\nDoel van het gesprek: ${thema.gpt_doelstelling || 'Het doel is om de medewerker te ondersteunen in zijn/haar ontwikkeling en inzicht te krijgen in relevante werkgerelateerde thema\'s.'}` +
+            `\n\nDoel van het gesprek: ${gpt_doelstelling || 'Het doel is om de medewerker te ondersteunen in zijn/haar ontwikkeling en inzicht te krijgen in relevante werkgerelateerde thema\'s.'}` +
 
-            `\n\nGespreksstijl en gedrag: Hanteer een ${thema.prompt_style || 'coachende en empathische'} stijl. Gedraag je als een ${thema.ai_behavior || 'luisterende, doorvragende en ondersteunende'} coach.` +
+            `\n\nGespreksstijl en gedrag: Hanteer een ${prompt_style || 'coachende en empathische'} stijl. Gedraag je als een ${ai_behavior || 'luisterende, doorvragende en ondersteunende'} coach.` +
 
-            `\n\nBeperkingen: ${thema.gpt_beperkingen || 'Vermijd gevoelige onderwerpen zoals religie, afkomst, seksuele geaardheid, medische of politieke kwesties, tenzij de medewerker hier expliciet over begint.'}` +
+            `\n\nBeperkingen: ${gpt_beperkingen || 'Vermijd gevoelige onderwerpen zoals religie, afkomst, seksuele geaardheid, medische of politieke kwesties, tenzij de medewerker hier expliciet over begint.'}` +
 
             `\n\nContext: Deze gesprekken zijn bedoeld om medewerkers te ondersteunen, signalen op te halen en werkplezier te vergroten.` +
+            `${laatste_samenvatting ? '\n\nBelangrijk: Dit is een vervolg gesprek. Je hebt toegang tot een samenvatting van eerdere gesprekken. Gebruik deze informatie om gerichte vragen te stellen die aansluiten op wat er eerder is besproken. Vergelijk de huidige antwoorden met eerdere inzichten waar mogelijk.' : ''}` +
 
             `\n\n📌 KRITIEKE RICHTLIJNEN VOOR GESPREKSVOERING:` +
             `\n1. Voer een natuurlijk gesprek, geen interview. Reageer eerst kort op het antwoord van de medewerker voordat je een vervolgvraag stelt.` +
@@ -76,10 +77,11 @@ router.post('/', async (req, res) => {
         {
           role: 'user',
           content:
-            `Thema: ${thema.titel || thema}` + (thema.beschrijving ? `\nBeschrijving: ${thema.beschrijving}` : '') + `\n\n` +
+            `Thema: ${thema}` + `\n\n` +
             (doel_vraag ? `Doel van de laatste vraag: ${doel_vraag}\n\n` : '') +
+            (laatste_samenvatting ? `Eerdere gesprekken samenvatting (gesprek ${laatste_samenvatting.gespreksronde}):\n${laatste_samenvatting.samenvatting}\n\n` : '') +
             `Gespreksgeschiedenis tot nu toe:\n${gespreksContext}\n\n` +
-            `Opdracht:\n- Analyseer het volledige gesprek tot nu toe.\n- Beoordeel of het doel van de huidige vraag is bereikt.\n- Als het doel nog niet is bereikt, geef dan eerst een korte reactie/bevestiging/nuance op het laatste antwoord, gevolgd door maximaal één relevante vervolgvraag.\n- Als het doel wel is bereikt, geef dat aan en sluit het gesprek af.\n- Zorg ervoor dat je vervolgvraag een OPEN vraag is die de medewerker uitnodigt tot uitgebreide reflectie.\n\n` +
+            `Opdracht:\n- Analyseer het volledige gesprek tot nu toe.\n- ${laatste_samenvatting ? 'Houd rekening met wat er eerder is besproken in de samenvatting hierboven.\n- ' : ''}Beoordeel of het doel van de huidige vraag is bereikt.\n- Als het doel nog niet is bereikt, geef dan eerst een korte reactie/bevestiging/nuance op het laatste antwoord, gevolgd door maximaal één relevante vervolgvraag.\n- Als het doel wel is bereikt, geef dat aan en sluit het gesprek af.\n- Zorg ervoor dat je vervolgvraag een OPEN vraag is die de medewerker uitnodigt tot uitgebreide reflectie.\n- ${laatste_samenvatting ? 'Stel gerichte vragen die aansluiten op wat er eerder is besproken.\n- ' : ''}Vergelijk de huidige antwoorden met eerdere inzichten waar mogelijk.\n\n` +
             `Geef je antwoord in het volgende JSON-formaat:\n{\n  "doorgaan": true/false,\n  "reactie": "korte reactie op het laatste antwoord (kan leeg zijn als niet nodig)",\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de medewerker uit waarom je wel of niet doorgaat"\n}`
         }
       ]
