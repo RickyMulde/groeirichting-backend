@@ -90,7 +90,7 @@ const genereerSamenvattingEnVervolgacties = async (theme_id, werknemer_id, gespr
     const prompt = `Je bent een HR-assistent die een gesprek samenvat en vervolgacties voorstelt voor een WERKNEMER.
 
 Thema: ${thema.titel}
-${thema.beschrijving ? `Beschrijving: ${thema.beschrijving}` : ''}
+${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}
 
 Hoofdvraag: ${hoofdvraag}
 Doel van het gesprek: ${doelantwoord}
@@ -291,7 +291,7 @@ router.get('/', async (req, res) => {
     // Haal alle actieve thema's op
     const { data: themaData, error: themaError } = await supabase
       .from('themes')
-      .select('id, titel, beschrijving')
+      .select('id, titel, beschrijving_werknemer')
       .eq('klaar_voor_gebruik', true)
       .eq('standaard_zichtbaar', true)
       .order('volgorde_index')
@@ -367,7 +367,7 @@ router.get('/', async (req, res) => {
         id: `${thema.id}-${periode}`,
         themes: {
           titel: thema.titel,
-          beschrijving: thema.beschrijving
+          beschrijving_werknemer: thema.beschrijving_werknemer
         },
         samenvatting: resultaat?.samenvatting || null,
         score: resultaat?.score || null,

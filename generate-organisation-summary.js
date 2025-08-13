@@ -78,7 +78,7 @@ router.post('/', async (req, res) => {
     const prompt = `Je bent een HR-expert die organisatie-brede inzichten analyseert.
 
 Thema: ${theme.titel}
-Beschrijving: ${theme.beschrijving}
+Beschrijving: ${theme.beschrijving_werknemer}
 
 Hieronder vind je alle gesprekken van medewerkers over dit thema:
 

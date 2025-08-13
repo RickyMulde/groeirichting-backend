@@ -207,7 +207,7 @@ const getThemaDataVoorWerknemer = async (werknemerId) => {
     // Haal alle actieve thema's op
     const { data: themaData, error: themaError } = await supabase
       .from('themes')
-      .select('id, titel, beschrijving')
+      .select('id, titel, beschrijving_werknemer')
       .eq('klaar_voor_gebruik', true)
       .eq('standaard_zichtbaar', true)
       .order('volgorde_index');

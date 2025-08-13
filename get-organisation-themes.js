@@ -18,14 +18,14 @@ router.get('/:orgId', async (req, res) => {
 
   try {
     // 1. Haal alle actieve thema's op
-    const { data: themes, error: themesError } = await supabase
+    const { data: themeData, error: themeError } = await supabase
       .from('themes')
-      .select('id, titel, beschrijving, geeft_score, geeft_samenvatting')
+      .select('id, titel, beschrijving_werknemer, geeft_score, geeft_samenvatting')
       .eq('klaar_voor_gebruik', true)
       .eq('standaard_zichtbaar', true)
       .order('volgorde_index', { ascending: true })
 
-    if (themesError) throw themesError
+    if (themeError) throw themeError
 
     // 2. Haal alle werknemers van deze organisatie op
     const { data: employees, error: employeesError } = await supabase
@@ -47,7 +47,7 @@ router.get('/:orgId', async (req, res) => {
     if (insightsError) throw insightsError
 
     // 4. Voor elk thema, bereken voortgang en scores
-    const themesWithProgress = await Promise.all(themes.map(async (theme) => {
+    const themesWithProgress = await Promise.all(themeData.map(async (theme) => {
       // Haal alle gesprekresultaten op voor dit thema en deze organisatie
       const { data: results, error: resultsError } = await supabase
         .from('gesprekresultaten')
@@ -82,7 +82,7 @@ router.get('/:orgId', async (req, res) => {
       return {
         theme_id: theme.id,
         titel: theme.titel,
-        beschrijving: theme.beschrijving,
+        beschrijving_werknemer: theme.beschrijving_werknemer,
         geeft_score: theme.geeft_score,
         geeft_samenvatting: theme.geeft_samenvatting,
         totaal_medewerkers: totalEmployees,

@@ -95,7 +95,7 @@ router.post('/', async (req, res) => {
     const prompt = `Je bent een HR-assistent die een gesprek samenvat en vervolgacties voorstelt voor een WERKNEMER.
 
 Thema: ${thema.titel}
-${thema.beschrijving ? `Beschrijving: ${thema.beschrijving}` : ''}
+${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}
 
 Hoofdvraag: ${hoofdvraag}
 Doel van het gesprek: ${doelantwoord}
