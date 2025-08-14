@@ -90,6 +90,18 @@ Analyseer deze gesprekken en geef:
 2. Concrete verbeteradviezen voor de organisatie (3-5 adviezen)
 3. Signaalwoorden die opvallen in de gesprekken
 
+⚠️ BELANGRIJK - Veralgemeniseren in samenvatting:
+- Maak de samenvatting concreet maar enigszins veralgemeend/anoniem
+- Vermijd specifieke verwijzingen naar individuele medewerkers of functies
+- Gebruik algemene termen in plaats van specifieke voorbeelden
+
+Voorbeelden van veralgemeniseren:
+❌ In plaats van: "Planner geeft aan dat er te weinig mensen zijn"
+✅ Zeg: "Er zijn signalen dat personeelstekort invloed heeft op de planning."
+
+❌ In plaats van: "Manager klaagt over gebrek aan communicatie"
+✅ Zeg: "Communicatie tussen verschillende lagen in de organisatie kan verbeterd worden."
+
 Antwoord in JSON-formaat:
 {
   "samenvatting": "...",
