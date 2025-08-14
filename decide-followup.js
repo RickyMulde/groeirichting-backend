@@ -74,6 +74,7 @@ router.post('/', async (req, res) => {
             `\n5. Kwaliteit gaat boven kwantiteit: liever één scherpe vraag dan meerdere oppervlakkige.` +
             `\n6. Stel geen vraag die waarschijnlijk hetzelfde antwoord oplevert als eerder. Kies in dat geval een vraag over achterliggende oorzaken, gevolgen of haalbaarheid. Let daarbij op: als de werknemer vooral anderen de schuld geeft, vraag dan wat hij/zij zelf kan doen. Als de werknemer vooral eigen tekortkomingen benoemt, vraag dan hoe de werkgever kan helpen.` +
             `\n7. Als de werknemer vaak iemand anders de schuld geeft (werkgever, collega's, omstandigheden), vraag dan wat hij/zij zelf kan doen om de situatie te verbeteren. Als de werknemer vooral eigen tekortkomingen benoemt, vraag dan hoe de werkgever of organisatie kan helpen of ondersteunen.` +
+            `\n8. Als de respondent een oplossing heeft gegeven voor een probleem, vraag dan niet door naar super gedetailleerde invulling van die oplossing.` +
             `\n\nBepaal je reactie en eventuele vervolgvraag op basis van de volledige gespreksgeschiedenis, zodat deze aansluit op eerder gegeven antwoorden en het gespreksdoel.`
         },
         {
