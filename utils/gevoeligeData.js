@@ -893,8 +893,6 @@ export const voornamenSet = new Set([
   'gaetan',
   'gaspar',
   'gaston',
-  'gebaseerd',
-  'geeft',
   'geert',
   'geerten',
   'geliefde',
