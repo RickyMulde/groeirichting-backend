@@ -26,11 +26,11 @@ router.post('/', async (req, res) => {
   }
 
   // 1. Tekstlengtecontrole (optioneel, maar nuttig)
-  if (laatsteAntwoord.trim().length < 40) {
+  if (laatsteAntwoord.trim().length < 1) {
     return res.json({
       doorgaan: true,
       vervolgvraag: 'Zou je iets uitgebreider kunnen toelichten wat je precies bedoelt?',
-      toelichting: 'Antwoord was korter dan 40 tekens.'
+      toelichting: 'Antwoord was leeg.'
     });
   }
 
@@ -84,7 +84,7 @@ router.post('/', async (req, res) => {
             (doel_vraag ? `Doel van de laatste vraag: ${doel_vraag}\n\n` : '') +
             (laatste_samenvatting ? `Eerdere gesprekken samenvatting (gesprek ${laatste_samenvatting.gespreksronde}):\n${laatste_samenvatting.samenvatting}\n\n` : '') +
             `Gespreksgeschiedenis tot nu toe:\n${gespreksContext}\n\n` +
-            `Opdracht:\n- Analyseer het volledige gesprek tot nu toe.\n- ${laatste_samenvatting ? 'Houd rekening met wat er eerder is besproken in de samenvatting hierboven.\n- ' : ''}Beoordeel of het doel van de huidige vraag is bereikt.\n- Als het doel nog niet is bereikt, geef dan eerst een korte reactie/bevestiging/nuance op het laatste antwoord, gevolgd door maximaal één relevante vervolgvraag.\n- Als het doel wel is bereikt, geef dat aan en sluit het gesprek af.\n- Zorg ervoor dat je vervolgvraag een OPEN vraag is die de medewerker uitnodigt tot uitgebreide reflectie.\n- ${laatste_samenvatting ? 'Stel gerichte vragen die aansluiten op wat er eerder is besproken.\n- ' : ''}Vergelijk de huidige antwoorden met eerdere inzichten waar mogelijk.\n\n` +
+            `Opdracht:\n- Analyseer het volledige gesprek tot nu toe.\n- ${laatste_samenvatting ? 'Houd rekening met wat er eerder is besproken in de samenvatting hierboven.\n- ' : ''}Beoordeel of het doel van de huidige vraag is bereikt.\n- Als het doel nog niet is bereikt, geef dan eerst een korte reactie/bevestiging/nuance op het laatste antwoord, gevolgd door maximaal één relevante vervolgvraag.\n- Als het doel wel is bereikt, geef dat aan en sluit het gesprek af.\n- Zorg ervoor dat je vervolgvraag een OPEN vraag is die de medewerker uitnodigt tot uitgebreide reflectie. Stel dus geen gesloten vragen'\n- ${laatste_samenvatting ? 'Stel gerichte vragen die aansluiten op wat er eerder is besproken.\n- ' : ''}Vergelijk de huidige antwoorden met eerdere inzichten waar mogelijk.\n\n` +
             `Geef je antwoord in het volgende JSON-formaat:\n{\n  "doorgaan": true/false,\n  "reactie": "korte reactie op het laatste antwoord (kan leeg zijn als niet nodig)",\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de medewerker uit waarom je wel of niet doorgaat"\n}`
         }
       ]
