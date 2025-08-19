@@ -13,7 +13,6 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 router.post('/', async (req, res) => {
   const {
     company_name,
-    kvk_number,
     contact_phone,
     email,
     password,
@@ -22,7 +21,7 @@ router.post('/', async (req, res) => {
     last_name
   } = req.body;
 
-  if (!email || !password || !company_name || !kvk_number || !first_name || !last_name) {
+  if (!email || !password || !company_name || !first_name || !last_name) {
     return res.status(400).json({ error: 'Verplichte velden ontbreken.' });
   }
 
@@ -30,8 +29,8 @@ router.post('/', async (req, res) => {
   const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
     email,
     password,
-    email_confirm: true,
-    redirect_to: 'https://groeirichting-frontend.onrender.com/werkgever-portaal'
+    email_confirm: false, // E-mailverificatie vereist
+    redirect_to: 'https://groeirichting-frontend.onrender.com/verify-email'
   });
 
   if (authError || !authUser?.user?.id) {
@@ -45,7 +44,6 @@ router.post('/', async (req, res) => {
     .from('employers')
     .insert({
       company_name,
-      kvk_number,
       contact_email: email,
       contact_phone
     })

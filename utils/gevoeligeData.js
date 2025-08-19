@@ -1125,7 +1125,6 @@ export const voornamenSet = new Set([
   'janno',
   'janoah',
   'jantje',
-  'jaren',
   'jarno',
   'jarold',
   'jasim',
