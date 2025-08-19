@@ -37,7 +37,7 @@ router.post('/', async (req, res) => {
   const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
     email: invitation.email,
     password,
-    email_confirm: false // E-mailverificatie vereist
+    email_confirm: true // Geen verificatie nodig - komt via uitnodiging
   })
 
   if (authError || !authUser?.user?.id) {
