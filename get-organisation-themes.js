@@ -97,9 +97,18 @@ router.get('/:orgId', async (req, res) => {
       }
     }))
 
+    // Bereken totale voortgang van de organisatie
+    const totaalMogelijkeGesprekken = themeData.length * totalEmployees
+    const totaalVoltooideGesprekken = themesWithProgress.reduce((sum, theme) => sum + theme.voltooide_medewerkers, 0)
+    const totaleVoortgangPercentage = totaalMogelijkeGesprekken > 0 ? 
+      Math.round((totaalVoltooideGesprekken / totaalMogelijkeGesprekken) * 100) : 0
+
     res.json({
       organisatie_id: orgId,
       totaal_medewerkers: totalEmployees,
+      totale_voortgang_percentage: totaleVoortgangPercentage,
+      voltooide_gesprekken: totaalVoltooideGesprekken,
+      totaal_mogelijke_gesprekken: totaalMogelijkeGesprekken,
       thema_s: themesWithProgress
     })
 
