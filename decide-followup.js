@@ -12,7 +12,7 @@ const openai = new OpenAI({
 
 router.post('/', async (req, res) => {
   // We ontvangen nu de volledige gespreksgeschiedenis
-  const { thema, gespreksgeschiedenis = [], doel_vraag, laatste_samenvatting, gpt_doelstelling, prompt_style, ai_behavior, gpt_beperkingen, organisatie_omschrijving } = req.body;
+  const { thema, gespreksgeschiedenis = [], doel_vraag, laatste_samenvatting, gpt_doelstelling, prompt_style, ai_behavior, gpt_beperkingen, organisatie_omschrijving, functie_omschrijving, gender } = req.body;
 
   if (!thema || gespreksgeschiedenis.length === 0) {
     return res.status(400).json({ error: 'Thema en gespreksgeschiedenis zijn verplicht.' });
@@ -60,7 +60,7 @@ router.post('/', async (req, res) => {
 
             `\n\nBeperkingen: ${gpt_beperkingen || 'Vermijd gevoelige onderwerpen zoals religie, afkomst, seksuele geaardheid, medische of politieke kwesties, tenzij de medewerker hier expliciet over begint.'}` +
 
-            `\n\nContext: Deze gesprekken zijn bedoeld om medewerkers te ondersteunen, signalen op te halen en werkplezier te vergroten.${organisatie_omschrijving ? `\n\nOrganisatie context: ${organisatie_omschrijving}` : ''}` +
+            `\n\nContext: Deze gesprekken zijn bedoeld om medewerkers te ondersteunen, signalen op te halen en werkplezier te vergroten.${organisatie_omschrijving ? `\n\nOrganisatie context: ${organisatie_omschrijving}` : ''}${functie_omschrijving ? `\n\nFunctie context: ${functie_omschrijving}` : ''}${gender ? `\n\nGeslacht: ${gender}` : ''}` +
             `${laatste_samenvatting ? '\n\nBelangrijk: Dit is een vervolg gesprek. Je hebt toegang tot een samenvatting van eerdere gesprekken. Gebruik deze informatie om gerichte vragen te stellen die aansluiten op wat er eerder is besproken. Vergelijk de huidige antwoorden met eerdere inzichten waar mogelijk.' : ''}` +
 
             `\n\n📌 KRITIEKE RICHTLIJNEN VOOR GESPREKSVOERING:` +

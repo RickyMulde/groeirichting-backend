@@ -53,13 +53,33 @@ app.use('/api/verwijder-oude-gesprekken', verwijderOudeGesprekken); // ✅ Nieuw
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.post('/api/send-invite', async (req, res) => {
-  const { to, name, employerId, token } = req.body;
+  const { to, name, employerId, token, functieOmschrijving } = req.body;
 
-  console.log('Verzoek ontvangen voor:', { to, name, employerId, token });
+  console.log('Verzoek ontvangen voor:', { to, name, employerId, token, functieOmschrijving });
 
   if (!to || !name || !employerId || !token) {
     console.warn('Verzoek geweigerd: ontbrekende velden');
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Update de invitation met de functie_omschrijving
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const { error: updateError } = await supabase
+      .from('invitations')
+      .update({ functie_omschrijving: functieOmschrijving || null })
+      .eq('token', token);
+
+    if (updateError) {
+      console.error('Fout bij updaten functie_omschrijving:', updateError);
+    }
+  } catch (error) {
+    console.error('Fout bij database update:', error);
   }
 
   const frontendUrl = process.env.FRONTEND_URL || 'https://groeirichting.nl';

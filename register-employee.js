@@ -25,7 +25,7 @@ router.post('/', async (req, res) => {
   // 1. Token controleren en gegevens ophalen
   const { data: invitation, error: invitationError } = await supabase
     .from('invitations')
-    .select('email, employer_id, status')
+    .select('email, employer_id, status, functie_omschrijving')
     .eq('token', token)
     .single()
 
@@ -54,7 +54,8 @@ router.post('/', async (req, res) => {
     birthdate,
     gender,
     role: 'employee',
-    employer_id: invitation.employer_id
+    employer_id: invitation.employer_id,
+    functie_omschrijving: invitation.functie_omschrijving || null
   })
 
   if (insertError) {

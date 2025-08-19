@@ -87,6 +87,17 @@ router.post('/', async (req, res) => {
       console.warn('Kon werkgever configuratie niet ophalen:', configError)
     }
 
+    // 2c. Haal werknemer context op voor functie-omschrijving en gender
+    const { data: werknemerContext, error: contextError } = await supabase
+      .from('users')
+      .select('functie_omschrijving, gender')
+      .eq('id', werknemer_id)
+      .single()
+
+    if (contextError && contextError.code !== 'PGRST116') {
+      console.warn('Kon werknemer context niet ophalen:', contextError)
+    }
+
     const hoofdvraag = vasteVragenData.find(v => v.type === 'hoofd')?.tekst || ''
     const doelvraag = vasteVragenData.find(v => v.type === 'doel')?.tekst || ''
     const doelantwoord = gespreksgeschiedenis.find(item => 
@@ -106,7 +117,7 @@ router.post('/', async (req, res) => {
     const prompt = `Je bent een HR-assistent die een gesprek samenvat en vervolgacties voorstelt voor een WERKNEMER.
 
 Thema: ${thema.titel}
-${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}
+${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}${werknemerContext?.functie_omschrijving ? `\n\nFunctie context: ${werknemerContext.functie_omschrijving}` : ''}${werknemerContext?.gender ? `\n\nGeslacht: ${werknemerContext.gender}` : ''}
 
 Hoofdvraag: ${hoofdvraag}
 Doel van het gesprek: ${doelantwoord}
