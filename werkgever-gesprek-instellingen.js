@@ -15,7 +15,8 @@ router.post('/', async (req, res) => {
     actieve_maanden,
     verplicht,
     actief,
-    anonimiseer_na_dagen
+    anonimiseer_na_dagen,
+    organisatie_omschrijving
   } = req.body;
 
   if (!werkgever_id) {
@@ -56,6 +57,7 @@ router.post('/', async (req, res) => {
           verplicht: verplicht ?? true,
           actief: actief ?? true,
           anonimiseer_na_dagen: anonimiseer_na_dagen ?? 60,
+          organisatie_omschrijving: organisatie_omschrijving ?? null,
           bijgewerkt_op: new Date().toISOString()
         })
         .eq('werkgever_id', werkgever_id)
@@ -73,7 +75,8 @@ router.post('/', async (req, res) => {
           actieve_maanden,
           verplicht: verplicht ?? true,
           actief: actief ?? true,
-          anonimiseer_na_dagen: anonimiseer_na_dagen ?? 60
+          anonimiseer_na_dagen: anonimiseer_na_dagen ?? 60,
+          organisatie_omschrijving: organisatie_omschrijving ?? null
         })
         .select()
         .single();
@@ -113,7 +116,8 @@ router.get('/:werkgever_id', async (req, res) => {
           actieve_maanden: [3, 6, 9],
           verplicht: true,
           actief: true,
-          anonimiseer_na_dagen: 60
+          anonimiseer_na_dagen: 60,
+          organisatie_omschrijving: null
         });
       }
       throw error;
@@ -134,7 +138,8 @@ router.put('/:id', async (req, res) => {
     actieve_maanden,
     verplicht,
     actief,
-    anonimiseer_na_dagen
+    anonimiseer_na_dagen,
+    organisatie_omschrijving
   } = req.body;
 
   if (!id) {
@@ -154,6 +159,7 @@ router.put('/:id', async (req, res) => {
     if (verplicht !== undefined) updateData.verplicht = verplicht;
     if (actief !== undefined) updateData.actief = actief;
     if (anonimiseer_na_dagen !== undefined) updateData.anonimiseer_na_dagen = anonimiseer_na_dagen;
+    if (organisatie_omschrijving !== undefined) updateData.organisatie_omschrijving = organisatie_omschrijving;
 
     updateData.bijgewerkt_op = new Date().toISOString();
 

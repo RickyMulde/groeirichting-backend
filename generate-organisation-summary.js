@@ -67,6 +67,17 @@ router.post('/', async (req, res) => {
 
     if (themeError) throw themeError
 
+    // 3b. Haal werkgever configuratie op voor organisatie-omschrijving
+    const { data: werkgeverConfig, error: configError } = await supabase
+      .from('werkgever_gesprek_instellingen')
+      .select('organisatie_omschrijving')
+      .eq('werkgever_id', organisatie_id)
+      .single()
+
+    if (configError && configError.code !== 'PGRST116') {
+      console.warn('Kon werkgever configuratie niet ophalen:', configError)
+    }
+
     // 4. Bouw prompt met alle gesprekken
     const allConversations = conversations.map(conv => {
       const conversationText = conv.gespreksgeschiedenis
@@ -78,7 +89,7 @@ router.post('/', async (req, res) => {
     const prompt = `Je bent een HR-expert die organisatie-brede inzichten analyseert.
 
 Thema: ${theme.titel}
-Beschrijving: ${theme.beschrijving_werknemer}
+Beschrijving: ${theme.beschrijving_werknemer}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}
 
 Hieronder vind je alle gesprekken van medewerkers over dit thema:
 

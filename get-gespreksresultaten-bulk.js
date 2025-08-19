@@ -78,6 +78,17 @@ const genereerSamenvattingEnVervolgacties = async (theme_id, werknemer_id, gespr
       vasteVragenData.find(v => v.id === item.vraag_id)?.type === 'doel'
     )?.antwoord || ''
 
+    // Haal werkgever configuratie op voor organisatie-omschrijving
+    const { data: werkgeverConfig, error: configError } = await supabase
+      .from('werkgever_gesprek_instellingen')
+      .select('organisatie_omschrijving')
+      .eq('werkgever_id', (await supabase.from('users').select('employer_id').eq('id', werknemer_id).single()).data?.employer_id)
+      .single()
+
+    if (configError && configError.code !== 'PGRST116') {
+      console.warn('Kon werkgever configuratie niet ophalen:', configError)
+    }
+
     // Bouw prompt
     const inputJSON = gespreksgeschiedenis.map(item => 
       `Vraag: ${item.vraag_tekst}\nAntwoord: ${item.antwoord}`
@@ -90,7 +101,7 @@ const genereerSamenvattingEnVervolgacties = async (theme_id, werknemer_id, gespr
     const prompt = `Je bent een HR-assistent die een gesprek samenvat en vervolgacties voorstelt voor een WERKNEMER.
 
 Thema: ${thema.titel}
-${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}
+${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}
 
 Hoofdvraag: ${hoofdvraag}
 Doel van het gesprek: ${doelantwoord}
