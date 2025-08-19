@@ -116,6 +116,7 @@ router.post('/', async (req, res) => {
       const vragenMetKoppeling = vragen.map((vraag, index) => ({
         ...vraag,
         theme_id: thema.id,
+        theme_titel: thema.titel, // Voeg thema titel toe
         volgorde_index: index
       }));
 
@@ -150,6 +151,7 @@ router.post('/', async (req, res) => {
     const vragenMetKoppeling = vragen.map((vraag, index) => ({
       ...vraag,
       theme_id: themeId,
+      theme_titel: thema.titel, // Voeg thema titel toe
       volgorde_index: index
     }));
 
