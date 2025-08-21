@@ -103,48 +103,60 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: userError.message });
   }
 
-  // 4. Stuur verificatiemail via Supabase Auth
+  // 4. Stuur gecombineerde verificatie + welkomstmail via Resend
   try {
-    console.log('Versturen verificatiemail naar:', email);
+    console.log('Versturen gecombineerde verificatie + welkomstmail naar:', email);
     
-    // Gebruik de juiste methode voor verificatie
-    const { error: emailError } = await supabase.auth.admin.generateLink({
-      type: 'signup',
-      email: email,
-      options: {
-        redirectTo: 'https://groeirichting-frontend.onrender.com/verify-email'
-      }
-    });
-    
-    if (emailError) {
-      console.error('Fout bij genereren verificatielink:', emailError);
-    } else {
-      console.log('Verificatielink succesvol gegenereerd voor:', email);
-    }
-  } catch (emailError) {
-    console.error('Fout bij verzenden verificatiemail:', emailError);
-  }
-
-  // 5. Stuur bevestigingsmail via Resend
-  try {
     await resend.emails.send({
       from: 'GroeiRichting <noreply@groeirichting.nl>',
       to: email,
       subject: 'Welkom bij GroeiRichting - Verificeer je e-mailadres',
       html: `
-        <p>Beste ${first_name},</p>
-        <p>Bedankt voor je registratie bij GroeiRichting. Je account is succesvol aangemaakt.</p>
-        <p><strong>Belangrijk:</strong> Je moet eerst je e-mailadres verifiëren voordat je kunt inloggen.</p>
-        <p>Controleer je inbox voor een verificatiemail van Supabase.</p>
-        <p>Na verificatie kun je inloggen via <a href="https://groeirichting-frontend.onrender.com/login">de login pagina</a>.</p>
-        <p>Met vriendelijke groet,<br>Het GroeiRichting team</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1a73e8;">Welkom bij GroeiRichting! 🎉</h2>
+          
+          <p>Beste ${first_name},</p>
+          
+          <p>Bedankt voor je registratie bij GroeiRichting. Je account is succesvol aangemaakt!</p>
+          
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #d32f2f; margin-top: 0;">📧 E-mailverificatie vereist</h3>
+            <p><strong>Je moet eerst je e-mailadres verifiëren voordat je kunt inloggen.</strong></p>
+            <p>Controleer je inbox voor een aparte verificatiemail van Supabase (mogelijk in je spam folder).</p>
+          </div>
+          
+          <div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #2e7d32; margin-top: 0;">✅ Na verificatie</h3>
+            <p>Zodra je e-mail is geverifieerd, kun je:</p>
+            <ul>
+              <li>Inloggen via de <a href="https://groeirichting-frontend.onrender.com/login" style="color: #1a73e8;">login pagina</a></li>
+              <li>Toegang krijgen tot je werkgever portaal</li>
+              <li>Beginnen met het beheren van je team</li>
+            </ul>
+          </div>
+          
+          <p>Heb je vragen? Neem gerust contact met ons op.</p>
+          
+          <p>Met vriendelijke groet,<br>
+          <strong>Het GroeiRichting team</strong></p>
+          
+          <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
+          <p style="font-size: 12px; color: #666;">
+            Deze e-mail is verzonden naar ${email}. Als je dit niet hebt aangevraagd, kun je deze e-mail negeren.
+          </p>
+        </div>
       `
     });
-    console.log('Bevestigingsmail succesvol verzonden naar:', email);
+    
+    console.log('Gecombineerde verificatie + welkomstmail succesvol verzonden naar:', email);
+    
   } catch (mailError) {
-    console.error('Fout bij verzenden bevestigingsmail:', mailError);
+    console.error('Fout bij verzenden gecombineerde mail:', mailError);
     // Geen harde fout, want registratie is verder geslaagd
   }
+
+  // 5. Gecombineerde mail is al verzonden in stap 4
+  console.log('Registratie voltooid. Gecombineerde verificatie + welkomstmail verzonden.');
 
   return res.status(200).json({ success: true });
 });
