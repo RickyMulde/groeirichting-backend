@@ -19,6 +19,7 @@ const werkgeverGesprekInstellingen = require('./werkgever-gesprek-instellingen')
 const getThemaDataWerknemer = require('./get-thema-data-werknemer'); // ✅ Nieuw toegevoegd
 const verwijderOudeGesprekken = require('./verwijder-oude-gesprekken'); // ✅ Nieuw toegevoegd
 const getGespreksresultatenBulk = require('./get-gespreksresultaten-bulk'); // ✅ Nieuw toegevoegd
+const autoGenerateSummaries = require('./auto-generate-summaries'); // ✅ Nieuw toegevoegd
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
@@ -49,6 +50,7 @@ app.use('/api/generate-organisation-summary', generateOrganisationSummary); // �
 app.use('/api/werkgever-gesprek-instellingen', werkgeverGesprekInstellingen); // ✅ Nieuwe route toegevoegd
 app.use('/api/get-thema-data-werknemer', getThemaDataWerknemer); // ✅ Nieuwe route toegevoegd
 app.use('/api/verwijder-oude-gesprekken', verwijderOudeGesprekken); // ✅ Nieuwe route toegevoegd
+app.use('/api/auto-generate-summaries', autoGenerateSummaries); // ✅ Nieuwe route toegevoegd
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

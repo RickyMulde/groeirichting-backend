@@ -843,7 +843,6 @@ export const voornamenSet = new Set([
   'fien',
   'fiene',
   'figo',
-  'fijn',
   'filemon',
   'finch',
   'finley',

@@ -103,9 +103,31 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: userError.message });
   }
 
-  // 4. Stuur gecombineerde verificatie + welkomstmail via Resend
+  // 4. Stuur Supabase verificatielink (voor account activatie)
   try {
-    console.log('Versturen gecombineerde verificatie + welkomstmail naar:', email);
+    console.log('Versturen Supabase verificatielink naar:', email);
+    
+    // Stuur verificatielink via Supabase Auth
+    const { error: emailError } = await supabase.auth.admin.generateLink({
+      type: 'signup',
+      email: email,
+      options: {
+        redirectTo: 'https://groeirichting-frontend.onrender.com/verify-email'
+      }
+    });
+    
+    if (emailError) {
+      console.error('Fout bij genereren verificatielink:', emailError);
+    } else {
+      console.log('Supabase verificatielink succesvol verzonden naar:', email);
+    }
+  } catch (emailError) {
+    console.error('Fout bij verzenden Supabase verificatielink:', emailError);
+  }
+
+  // 5. Stuur mooie welkomstmail via Resend (voor uitleg en styling)
+  try {
+    console.log('Versturen welkomstmail naar:', email);
     
     await resend.emails.send({
       from: 'GroeiRichting <noreply@groeirichting.nl>',
@@ -122,7 +144,8 @@ router.post('/', async (req, res) => {
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="color: #d32f2f; margin-top: 0;">📧 E-mailverificatie vereist</h3>
             <p><strong>Je moet eerst je e-mailadres verifiëren voordat je kunt inloggen.</strong></p>
-            <p>Controleer je inbox voor een aparte verificatiemail van Supabase (mogelijk in je spam folder).</p>
+            <p>Controleer je inbox voor een verificatielink van Supabase (mogelijk in je spam folder).</p>
+            <p><em>Tip: Zoek naar e-mails van "noreply@supabase.co"</em></p>
           </div>
           
           <div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -148,15 +171,15 @@ router.post('/', async (req, res) => {
       `
     });
     
-    console.log('Gecombineerde verificatie + welkomstmail succesvol verzonden naar:', email);
+    console.log('Welkomstmail succesvol verzonden naar:', email);
     
   } catch (mailError) {
-    console.error('Fout bij verzenden gecombineerde mail:', mailError);
+    console.error('Fout bij verzenden welkomstmail:', mailError);
     // Geen harde fout, want registratie is verder geslaagd
   }
 
-  // 5. Gecombineerde mail is al verzonden in stap 4
-  console.log('Registratie voltooid. Gecombineerde verificatie + welkomstmail verzonden.');
+  // 6. Registratie voltooid
+  console.log('Registratie voltooid. Supabase verificatielink en welkomstmail verzonden.');
 
   return res.status(200).json({ success: true });
 });
