@@ -30,11 +30,16 @@ router.post('/', async (req, res) => {
     email,
     password,
     email_confirm: false, // E-mailverificatie vereist
-    redirect_to: 'https://groeirichting-frontend.onrender.com/verify-email'
+    email_confirm_redirect_to: 'https://groeirichting-frontend.onrender.com/verify-email'
   });
 
   if (authError || !authUser?.user?.id) {
-    return res.status(400).json({ error: authError?.message || 'Aanmaken gebruiker mislukt.' });
+    console.error('Supabase Auth fout:', authError);
+    console.error('Auth response:', authUser);
+    return res.status(400).json({ 
+      error: authError?.message || 'Aanmaken gebruiker mislukt.',
+      details: authError || 'Geen gebruiker ID ontvangen'
+    });
   }
 
   const userId = authUser.user.id;
@@ -70,16 +75,35 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: userError.message });
   }
 
-  // 4. Stuur bevestigingsmail via Resend
+  // 4. Stuur verificatiemail via Supabase Auth
+  try {
+    const { error: emailError } = await supabase.auth.admin.generateLink({
+      type: 'signup',
+      email: email,
+      options: {
+        redirectTo: 'https://groeirichting-frontend.onrender.com/verify-email'
+      }
+    });
+    
+    if (emailError) {
+      console.error('Fout bij genereren verificatielink:', emailError);
+    }
+  } catch (emailError) {
+    console.error('Fout bij verzenden verificatiemail:', emailError);
+  }
+
+  // 5. Stuur bevestigingsmail via Resend
   try {
     await resend.emails.send({
       from: 'GroeiRichting <noreply@groeirichting.nl>',
       to: email,
-      subject: 'Welkom bij GroeiRichting',
+      subject: 'Welkom bij GroeiRichting - Verificeer je e-mailadres',
       html: `
         <p>Beste ${first_name},</p>
         <p>Bedankt voor je registratie bij GroeiRichting. Je account is succesvol aangemaakt.</p>
-        <p>Je kunt nu inloggen via <a href="https://groeirichting-frontend.onrender.com/werkgever-portaal">je portaal</a>.</p>
+        <p><strong>Belangrijk:</strong> Je moet eerst je e-mailadres verifiëren voordat je kunt inloggen.</p>
+        <p>Controleer je inbox voor een verificatiemail van Supabase.</p>
+        <p>Na verificatie kun je inloggen via <a href="https://groeirichting-frontend.onrender.com/login">de login pagina</a>.</p>
         <p>Met vriendelijke groet,<br>Het GroeiRichting team</p>
       `
     });
