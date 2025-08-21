@@ -9,6 +9,20 @@ const supabase = createClient(
 )
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
+// Helper functie om de volgende maand te berekenen
+function getNextMonth(periode) {
+  const [year, month] = periode.split('-').map(Number)
+  let nextMonth = month + 1
+  let nextYear = year
+  
+  if (nextMonth > 12) {
+    nextMonth = 1
+    nextYear = year + 1
+  }
+  
+  return `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`
+}
+
 // POST endpoint om top 3 vervolgacties te genereren
 router.post('/', async (req, res) => {
   const { werknemer_id, periode } = req.body
@@ -37,9 +51,9 @@ router.post('/', async (req, res) => {
         )
       `)
       .eq('werknemer_id', werknemer_id)
-      .eq('status', 'voltooid')
+      .eq('status', 'Afgerond')
       .gte('gestart_op', `${periode}-01`)
-      .lt('gestart_op', `${periode}-32`) // Volgende maand
+      .lt('gestart_op', getNextMonth(periode)) // Volgende maand
 
     if (gesprekError) throw gesprekError
     if (!gesprekken || gesprekken.length === 0) {
@@ -52,15 +66,24 @@ router.post('/', async (req, res) => {
 
     // 2️⃣ Haal alle gespreksgeschiedenis op
     const gesprekIds = gesprekken.map(g => g.id)
+    console.log('🔍 Zoek naar gespreksgeschiedenis voor IDs:', gesprekIds)
+    
     const { data: gespreksgeschiedenis, error: geschiedenisError } = await supabase
       .from('gesprekken_compleet')
-      .select('gespreksgeschiedenis, metadata')
+      .select('gespreksgeschiedenis, metadata, gesprek_id')
       .in('gesprek_id', gesprekIds)
 
-    if (geschiedenisError) throw geschiedenisError
+    if (geschiedenisError) {
+      console.error('❌ Fout bij ophalen gespreksgeschiedenis:', geschiedenisError)
+      throw geschiedenisError
+    }
+    
+    console.log('📚 Gespreksgeschiedenis gevonden:', gespreksgeschiedenis?.length || 0)
+    
     if (!gespreksgeschiedenis || gespreksgeschiedenis.length === 0) {
       return res.status(404).json({ 
-        error: 'Geen gespreksgeschiedenis gevonden' 
+        error: 'Geen gespreksgeschiedenis gevonden',
+        details: `Gezocht naar ${gesprekIds.length} gesprek IDs in gesprekken_compleet tabel`
       })
     }
 
