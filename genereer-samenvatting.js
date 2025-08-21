@@ -129,6 +129,9 @@ ${scoreInstructiesTekst}
 
 Opdracht:
 1. Vat het gesprek samen in maximaal 6 zinnen
+   - Schrijf de samenvatting in de TWEEDE PERSOON (jij, je, jouw) in plaats van de derde persoon (de werknemer, hij/zij)
+   - Bijvoorbeeld: "Jij bent pas begonnen..." in plaats van "De werknemer is pas begonnen..."
+   - Maak het persoonlijk en direct gericht aan de werknemer
 2. Geef een score van 1-10 op basis van de score instructies
 3. Stel 3-5 concrete, uitvoerbare vervolgacties voor die:
    - Specifiek voor de WERKNEMER zijn (niet voor de werkgever)
@@ -146,7 +149,7 @@ Voorbeelden van goede vervolgacties voor werknemers:
 
 Antwoord in JSON-formaat:
 {
-  "samenvatting": "Vat het gesprek samen in maximaal 6 zinnen",
+  "samenvatting": "Vat het gesprek samen in maximaal 6 zinnen in de tweede persoon (jij, je, jouw)",
   "score": 7,
   "vervolgacties": [
     "Concrete actie 1",

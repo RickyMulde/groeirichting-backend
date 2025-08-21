@@ -167,6 +167,87 @@ router.post('/', async (req, res) => {
         console.error('Onverwachte fout bij updaten gesprekken_compleet:', error);
       }
 
+      // Check of alle thema's zijn afgerond voor deze werknemer
+      try {
+        const { data: alleGesprekken, error: gesprekError } = await supabase
+          .from('gesprek')
+          .select('id, theme_id, status')
+          .eq('werknemer_id', (await supabase.from('gesprek').select('werknemer_id').eq('id', gesprek_id).single()).data?.werknemer_id)
+          .eq('status', 'Afgerond');
+
+        if (!gesprekError && alleGesprekken) {
+          // Haal alle beschikbare thema's op voor deze werkgever
+          const { data: werknemer, error: werknemerError } = await supabase
+            .from('gesprek')
+            .select('werknemer_id')
+            .eq('id', gesprek_id)
+            .single();
+
+          if (!werknemerError && werknemer) {
+            const { data: werkgever, error: werkgeverError } = await supabase
+              .from('users')
+              .select('employer_id')
+              .eq('id', werknemer.werknemer_id)
+              .single();
+
+            if (!werkgeverError && werkgever) {
+              const { data: alleThemas, error: themaError } = await supabase
+                .from('themes')
+                .select('id')
+                .eq('werkgever_id', werkgever.employer_id);
+
+              if (!themaError && alleThemas) {
+                // Bepaal periode van het afgeronde gesprek
+                const { data: gesprekData, error: gesprekDataError } = await supabase
+                  .from('gesprek')
+                  .select('gestart_op')
+                  .eq('id', gesprek_id)
+                  .single();
+
+                if (!gesprekDataError && gesprekData) {
+                  const startDatum = new Date(gesprekData.gestart_op);
+                  const periode = `${startDatum.getFullYear()}-${String(startDatum.getMonth() + 1).padStart(2, '0')}`;
+
+                  // Check of alle thema's zijn afgerond
+                  const uniekeThemas = [...new Set(alleGesprekken.map(g => g.theme_id))];
+                  const alleThemasAfgerond = uniekeThemas.length === alleThemas.length;
+
+                  if (alleThemasAfgerond) {
+                    console.log(`🎯 Alle thema's afgerond voor werknemer ${werknemer.werknemer_id}, periode ${periode}. Genereer top 3 acties...`);
+                    
+                    // Genereer top 3 acties via interne API call
+                    try {
+                      const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/generate-top-actions`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+                        },
+                        body: JSON.stringify({
+                          werknemer_id: werknemer.werknemer_id,
+                          periode: periode
+                        })
+                      });
+
+                      if (response.ok) {
+                        const result = await response.json();
+                        console.log('✅ Top 3 acties succesvol gegenereerd:', result);
+                      } else {
+                        console.warn('⚠️ Top 3 acties genereren mislukt:', response.status);
+                      }
+                    } catch (topActieError) {
+                      console.warn('⚠️ Fout bij genereren top 3 acties:', topActieError);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (checkError) {
+        console.warn('⚠️ Fout bij controleren of alle thema\'s zijn afgerond:', checkError);
+      }
+
       return res.status(200).json({ success: true, message: 'Gesprek afgerond' });
     }
 
