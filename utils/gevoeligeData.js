@@ -10253,4 +10253,4 @@ export const medischeSet = new Set(['kanker', 'depressie', 'burn-out', 'ms', 'di
 export const seksueleSet = new Set(['homo', 'homoseksueel', 'gay', 'lesbisch', 'lesbo', 'biseksueel', 'transgender', 'non-binair']);
 export const religieuzeSet = new Set(['moslim', 'christen', 'joods', 'hindoe', 'boeddhist', 'atheïst', 'protestants', 'islam', 'katholiek']);
 export const politiekeSet = new Set(['PVV', 'VVD', 'D66', 'CDA', 'Forum', 'GroenLinks', 'PvdA', 'SP', 'Volt', 'FvD','Partij voor de Dieren']);
-
+export const functieSet = new Set(['mijn leidinggevende']);
