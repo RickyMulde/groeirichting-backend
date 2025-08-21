@@ -25,7 +25,35 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Verplichte velden ontbreken.' });
   }
 
-  // 1. Maak Supabase Auth gebruiker aan
+  // 1. Controleer eerst of gebruiker al bestaat in Auth
+  console.log('Controleren of gebruiker al bestaat in Auth...');
+  const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
+  
+  if (listError) {
+    console.error('Fout bij ophalen bestaande gebruikers:', listError);
+    return res.status(500).json({ error: 'Fout bij controleren bestaande gebruikers.' });
+  }
+  
+  const existingUser = existingUsers.users.find(user => user.email === email);
+  
+  if (existingUser) {
+    console.log('Gebruiker bestaat al in Auth, proberen te verwijderen...');
+    
+    // Verwijder bestaande gebruiker uit Auth
+    const { error: deleteError } = await supabase.auth.admin.deleteUser(existingUser.id);
+    
+    if (deleteError) {
+      console.error('Fout bij verwijderen bestaande gebruiker:', deleteError);
+      return res.status(400).json({ 
+        error: 'Gebruiker bestaat al. Probeer het over een paar minuten opnieuw, of neem contact op met support.' 
+      });
+    }
+    
+    console.log('Bestaande gebruiker succesvol verwijderd uit Auth');
+  }
+
+  // 2. Maak nieuwe Supabase Auth gebruiker aan
+  console.log('Nieuwe gebruiker aanmaken in Auth...');
   const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
     email,
     password,
@@ -77,6 +105,9 @@ router.post('/', async (req, res) => {
 
   // 4. Stuur verificatiemail via Supabase Auth
   try {
+    console.log('Versturen verificatiemail naar:', email);
+    
+    // Gebruik de juiste methode voor verificatie
     const { error: emailError } = await supabase.auth.admin.generateLink({
       type: 'signup',
       email: email,
@@ -87,6 +118,8 @@ router.post('/', async (req, res) => {
     
     if (emailError) {
       console.error('Fout bij genereren verificatielink:', emailError);
+    } else {
+      console.log('Verificatielink succesvol gegenereerd voor:', email);
     }
   } catch (emailError) {
     console.error('Fout bij verzenden verificatiemail:', emailError);
@@ -107,8 +140,9 @@ router.post('/', async (req, res) => {
         <p>Met vriendelijke groet,<br>Het GroeiRichting team</p>
       `
     });
+    console.log('Bevestigingsmail succesvol verzonden naar:', email);
   } catch (mailError) {
-    console.error('Fout bij verzenden mail:', mailError);
+    console.error('Fout bij verzenden bevestigingsmail:', mailError);
     // Geen harde fout, want registratie is verder geslaagd
   }
 
