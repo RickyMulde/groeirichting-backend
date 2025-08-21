@@ -330,13 +330,19 @@ router.get('/', async (req, res) => {
     if (resultatenError) throw resultatenError
 
     // Haal ook de daadwerkelijke gesprekken op voor deze periode om te controleren of er data is
+    // Bepaal de volgende maand voor de lt filter
+    const [jaar, maand] = periode.split('-').map(Number)
+    const volgendeMaand = maand === 12 ? 1 : maand + 1
+    const volgendJaar = maand === 12 ? jaar + 1 : jaar
+    const volgendePeriode = `${volgendJaar}-${String(volgendeMaand).padStart(2, '0')}-01`
+    
     const { data: gesprekken, error: gesprekkenError } = await supabase
       .from('gesprek')
       .select('theme_id, gestart_op, status')
       .eq('werknemer_id', werknemer_id)
       .is('geanonimiseerd_op', null)
       .gte('gestart_op', `${periode}-01`)
-      .lt('gestart_op', `${periode}-32`) // Volgende maand (32 om alle dagen te dekken)
+      .lt('gestart_op', volgendePeriode)
 
     if (gesprekkenError) throw gesprekkenError
 
