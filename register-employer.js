@@ -45,7 +45,8 @@ router.post('/', async (req, res) => {
     .insert({
       company_name,
       contact_email: email,
-      contact_phone
+      contact_phone,
+      kvk_number: null // Expliciet null instellen voor KVK nummer
     })
     .select()
     .single();

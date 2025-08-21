@@ -22,7 +22,8 @@
   {
     "table_name": "employers",
     "column_name": "kvk_number",
-    "data_type": "text"
+    "data_type": "text",
+    "is_nullable": "YES"
   },
   {
     "table_name": "employers",
