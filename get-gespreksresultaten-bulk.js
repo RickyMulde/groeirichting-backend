@@ -329,8 +329,32 @@ router.get('/', async (req, res) => {
 
     if (resultatenError) throw resultatenError
 
+    // Haal ook de daadwerkelijke gesprekken op voor deze periode om te controleren of er data is
+    const { data: gesprekken, error: gesprekkenError } = await supabase
+      .from('gesprek')
+      .select('theme_id, gestart_op, status')
+      .eq('werknemer_id', werknemer_id)
+      .is('geanonimiseerd_op', null)
+      .gte('gestart_op', `${periode}-01`)
+      .lt('gestart_op', `${periode}-32`) // Volgende maand (32 om alle dagen te dekken)
+
+    if (gesprekkenError) throw gesprekkenError
+
+    // Bepaal welke thema's daadwerkelijk gesprekken hebben in deze periode
+    const themasMetGesprekken = new Set()
+    if (gesprekken && gesprekken.length > 0) {
+      gesprekken.forEach(gesprek => {
+        themasMetGesprekken.add(gesprek.theme_id)
+      })
+    }
+
     // Combineer thema's met resultaten en genereer automatisch als nodig
     const resultatenMetThemas = await Promise.all(themaData.map(async (thema) => {
+      // Alleen thema's tonen die daadwerkelijk gesprekken hebben in deze periode
+      if (!themasMetGesprekken.has(thema.id)) {
+        return null // Skip thema's zonder gesprekken
+      }
+
       let resultaat = resultaten?.find(r => r.theme_id === thema.id)
       
       // Controleer of we automatisch moeten genereren
@@ -402,12 +426,15 @@ router.get('/', async (req, res) => {
       }
     }))
 
+    // Filter null waarden uit (thema's zonder gesprekken)
+    const gefilterdeResultaten = resultatenMetThemas.filter(resultaat => resultaat !== null)
+
     res.json({
       periode: periode,
       actieve_maanden: actieveMaanden,
-      resultaten: resultatenMetThemas,
+      resultaten: gefilterdeResultaten,
       totaal_themas: themaData.length,
-      themas_met_resultaat: resultaten?.length || 0
+      themas_met_resultaat: gefilterdeResultaten.length
     })
 
   } catch (err) {
