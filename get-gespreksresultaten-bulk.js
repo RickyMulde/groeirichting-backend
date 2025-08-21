@@ -361,52 +361,54 @@ router.get('/', async (req, res) => {
       let moetGenereren = false
       let afgerondGesprek = null
       
-      if (!resultaat) {
-        // Geen resultaat gevonden - probeer te genereren
-        moetGenereren = true
-      } else if (resultaat.samenvatting && (!resultaat.vervolgacties || resultaat.vervolgacties.length === 0)) {
-        // Er is wel een samenvatting, maar geen vervolgacties - probeer te genereren
-        moetGenereren = true
-        console.log(`🔄 Vervolgacties ontbreken voor thema: ${thema.titel}, probeer te genereren...`)
-      }
+      // Tijdelijk uitgeschakeld om 500 fouten te voorkomen
+      // if (!resultaat) {
+      //   // Geen resultaat gevonden - probeer te genereren
+      //   moetGenereren = true
+      // } else if (resultaat.samenvatting && (!resultaat.vervolgacties || resultaat.vervolgacties.length === 0)) {
+      //   // Er is wel een samenvatting, maar geen vervolgacties - probeer te genereren
+      //   moetGenereren = true
+      //   console.log(`🔄 Vervolgacties ontbreken voor thema: ${thema.titel}, probeer te genereren...`)
+      // }
       
       if (moetGenereren) {
-        // Zoek eerst of er een afgerond gesprek is voor dit thema in deze periode
-        const { data: gesprekData, error: gesprekError } = await supabase
-          .from('gesprek')
-          .select('id')
-          .eq('theme_id', thema.id)
-          .eq('werknemer_id', werknemer_id)
-          .eq('status', 'Afgerond')
-          .single()
+        // Tijdelijk uitgeschakeld om 500 fouten te voorkomen
+        // // Zoek eerst of er een afgerond gesprek is voor dit thema in deze periode
+        // const { data: gesprekData, error: gesprekError } = await supabase
+        //   .from('gesprek')
+        //   .select('id')
+        //   .eq('theme_id', thema.id)
+        //   .eq('werknemer_id', werknemer_id)
+        //   .eq('status', 'Afgerond')
+        //   .single()
 
-        if (!gesprekError && gesprekData) {
-          afgerondGesprek = gesprekData
-          console.log(`🔄 Automatisch genereren samenvatting en vervolgacties voor thema: ${thema.titel}`)
+        // if (!gesprekError && gesprekData) {
+        //   afgerondGesprek = gesprekData
+        //   console.log(`🔄 Automatisch genereren samenvatting en vervolgacties voor thema: ${thema.titel}`)
           
-          try {
-            const gegenereerdeData = await genereerSamenvattingEnVervolgacties(
-              thema.id, 
-              werknemer_id, 
-              afgerondGesprek.id
-            )
+        //   try {
+        //     const gegenereerdeData = await genereerSamenvattingEnVervolgacties(
+        //       thema.id, 
+        //       werknemer_id, 
+        //       afgerondGesprek.id
+        //     )
             
-            resultaat = {
-              theme_id: thema.id,
-              samenvatting: gegenereerdeData.samenvatting,
-              score: gegenereerdeData.score,
-              gespreksronde: 1,
-              periode: periode,
-              gegenereerd_op: new Date().toISOString(),
-              vervolgacties: gegenereerdeData.vervolgacties,
-              vervolgacties_toelichting: gegenereerdeData.vervolgacties_toelichting
-            }
+        //     resultaat = {
+        //       theme_id: thema.id,
+        //       samenvatting: gegenereerdeData.samenvatting,
+        //       score: gegenereerdeData.score,
+        //       gespreksronde: 1,
+        //       periode: periode,
+        //       gegenereerd_op: new Date().toISOString(),
+        //       vervolgacties: gegenereerdeData.vervolgacties,
+        //       vervolgacties_toelichting: gegenereerdeData.vervolgacties_toelichting
+        //     }
             
-            console.log(`✅ Automatisch gegenereerd voor thema: ${thema.titel}`)
-          } catch (error) {
-            console.error(`❌ Fout bij automatisch genereren voor thema ${thema.titel}:`, error)
-          }
-        }
+        //     console.log(`✅ Automatisch gegenereerd voor thema: ${thema.titel}`)
+        //   } catch (error) {
+        //     console.error(`❌ Fout bij automatisch genereren voor thema ${thema.titel}:`, error)
+        //   }
+        // }
       }
 
       return {
@@ -439,7 +441,20 @@ router.get('/', async (req, res) => {
 
   } catch (err) {
     console.error('Fout bij ophalen gespreksresultaten bulk:', err)
-    return res.status(500).json({ error: 'Interne serverfout' })
+    
+    // Geef meer specifieke foutmeldingen
+    if (err.message) {
+      return res.status(500).json({ 
+        error: 'Interne serverfout', 
+        details: err.message,
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      })
+    }
+    
+    return res.status(500).json({ 
+      error: 'Interne serverfout',
+      details: 'Onbekende fout opgetreden'
+    })
   }
 })
 
