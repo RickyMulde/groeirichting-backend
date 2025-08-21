@@ -11,6 +11,7 @@ const supabase = createClient(
 // Haalt alle thema's op met voortgang, scores en samenvattingen voor een organisatie
 router.get('/:orgId', async (req, res) => {
   const { orgId } = req.params
+  const { periode } = req.query // Haal periode parameter op
 
   if (!orgId) {
     return res.status(400).json({ error: 'Organisatie ID is verplicht' })
@@ -49,11 +50,26 @@ router.get('/:orgId', async (req, res) => {
     // 4. Voor elk thema, bereken voortgang en scores
     const themesWithProgress = await Promise.all(themeData.map(async (theme) => {
       // Haal alle gesprekresultaten op voor dit thema en deze organisatie
-      const { data: results, error: resultsError } = await supabase
+      let resultsQuery = supabase
         .from('gesprekresultaten')
         .select('score, werknemer_id')
         .eq('werkgever_id', orgId)
         .eq('theme_id', theme.id)
+
+      // Als er een periode is opgegeven, filter op die periode
+      if (periode) {
+        // Bepaal de volgende maand voor de lt filter
+        const [jaar, maand] = periode.split('-').map(Number)
+        const volgendeMaand = maand === 12 ? 1 : maand + 1
+        const volgendJaar = maand === 12 ? jaar + 1 : jaar
+        const volgendePeriode = `${volgendJaar}-${String(volgendeMaand).padStart(2, '0')}-01`
+        
+        resultsQuery = resultsQuery
+          .gte('periode', periode)
+          .lt('periode', volgendePeriode)
+      }
+
+      const { data: results, error: resultsError } = await resultsQuery
 
       if (resultsError) throw resultsError
 
