@@ -11,13 +11,14 @@ const supabase = createClient(
 // Haalt alle thema's op met voortgang, scores en samenvattingen voor een organisatie
 router.get('/:orgId', async (req, res) => {
   const { orgId } = req.params
-  const { periode } = req.query // Haal periode parameter op
 
   if (!orgId) {
     return res.status(400).json({ error: 'Organisatie ID is verplicht' })
   }
 
   try {
+    console.log('🔍 Start ophalen organisatie thema\'s voor:', { orgId })
+
     // 1. Haal alle actieve thema's op
     const { data: themeData, error: themeError } = await supabase
       .from('themes')
@@ -27,67 +28,39 @@ router.get('/:orgId', async (req, res) => {
       .order('volgorde_index', { ascending: true })
 
     if (themeError) throw themeError
+    console.log('✅ Thema\'s opgehaald:', themeData?.length || 0)
 
     // 2. Haal alle werknemers van deze organisatie op
     const { data: employees, error: employeesError } = await supabase
       .from('users')
-      .select('id')
+      .select('id, voornaam, achternaam')
       .eq('employer_id', orgId)
       .eq('role', 'employee')
 
     if (employeesError) throw employeesError
-
-    const totalEmployees = employees?.length || 0
+    console.log('✅ Werknemers opgehaald:', employees?.length || 0)
 
     // 3. Haal bestaande organisatie insights op
-    let insightsQuery = supabase
+    const { data: existingInsights, error: insightsError } = await supabase
       .from('organization_theme_insights')
       .select('*')
       .eq('organisatie_id', orgId)
 
-    // Als er een periode is opgegeven, filter op die periode
-    if (periode) {
-      // Bepaal de volgende maand voor de lt filter
-      const [jaar, maand] = periode.split('-').map(Number)
-      const volgendeMaand = maand === 12 ? 1 : maand + 1
-      const volgendJaar = maand === 12 ? jaar + 1 : jaar
-      const volgendePeriode = `${volgendJaar}-${String(volgendeMaand).padStart(2, '0')}-01`
-      
-      insightsQuery = insightsQuery
-        .gte('laatst_bijgewerkt_op', periode)
-        .lt('laatst_bijgewerkt_op', volgendePeriode)
-    }
-
-    const { data: existingInsights, error: insightsError } = await insightsQuery
-
     if (insightsError) throw insightsError
+    console.log('✅ Insights opgehaald:', existingInsights?.length || 0)
 
     // 4. Voor elk thema, bereken voortgang en scores
     const themesWithProgress = await Promise.all(themeData.map(async (theme) => {
       // Haal alle gesprekresultaten op voor dit thema en deze organisatie
-      let resultsQuery = supabase
+      const { data: results, error: resultsError } = await supabase
         .from('gesprekresultaten')
         .select('score, werknemer_id')
         .eq('werkgever_id', orgId)
         .eq('theme_id', theme.id)
 
-      // Als er een periode is opgegeven, filter op die periode
-      if (periode) {
-        // Bepaal de volgende maand voor de lt filter
-        const [jaar, maand] = periode.split('-').map(Number)
-        const volgendeMaand = maand === 12 ? 1 : maand + 1
-        const volgendJaar = maand === 12 ? jaar + 1 : jaar
-        const volgendePeriode = `${volgendJaar}-${String(volgendeMaand).padStart(2, '0')}-01`
-        
-        resultsQuery = resultsQuery
-          .gte('periode', periode)
-          .lt('periode', volgendePeriode)
-      }
-
-      const { data: results, error: resultsError } = await resultsQuery
-
       if (resultsError) throw resultsError
 
+      const totalEmployees = employees?.length || 0
       const completedEmployees = results?.length || 0
       const scores = results?.map(r => r.score).filter(score => score !== null) || []
       // Toon alleen gemiddelde score als er minimaal 4 medewerkers hebben voltooid
@@ -129,6 +102,7 @@ router.get('/:orgId', async (req, res) => {
     }))
 
     // Bereken totale voortgang van de organisatie
+    const totalEmployees = employees?.length || 0
     const totaalMogelijkeGesprekken = themeData.length * totalEmployees
     const totaalVoltooideGesprekken = themesWithProgress.reduce((sum, theme) => sum + theme.voltooide_medewerkers, 0)
     const totaleVoortgangPercentage = totaalMogelijkeGesprekken > 0 ? 
