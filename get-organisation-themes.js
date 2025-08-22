@@ -55,7 +55,17 @@ router.get('/:orgId', async (req, res) => {
       const existingInsight = existingInsights?.find(insight => insight.theme_id === theme.id)
 
       const totalEmployees = employees?.length || 0
-      const completedEmployees = existingInsight?.voltooide_medewerkers || 0
+      
+      // Haal werkelijke voortgang op uit gesprekresultaten
+      const { data: results, error: resultsError } = await supabase
+        .from('gesprekresultaten')
+        .select('werknemer_id')
+        .eq('werkgever_id', orgId)
+        .eq('theme_id', theme.id)
+
+      if (resultsError) throw resultsError
+      
+      const completedEmployees = results?.length || 0
       const averageScore = existingInsight?.gemiddelde_score || null
 
       // Bepaal samenvatting status
@@ -80,6 +90,7 @@ router.get('/:orgId', async (req, res) => {
         geeft_samenvatting: theme.geeft_samenvatting,
         totaal_medewerkers: totalEmployees,
         voltooide_medewerkers: completedEmployees,
+        totaal_mogelijke_gesprekken: totalEmployees, // Voeg dit toe voor frontend
         gemiddelde_score: averageScore,
         samenvatting_status: finalStatus,
         heeft_samenvatting: !!existingInsight?.samenvatting,
