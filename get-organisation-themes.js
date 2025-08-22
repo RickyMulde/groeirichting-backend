@@ -40,10 +40,25 @@ router.get('/:orgId', async (req, res) => {
     const totalEmployees = employees?.length || 0
 
     // 3. Haal bestaande organisatie insights op
-    const { data: existingInsights, error: insightsError } = await supabase
+    let insightsQuery = supabase
       .from('organization_theme_insights')
       .select('*')
       .eq('organisatie_id', orgId)
+
+    // Als er een periode is opgegeven, filter op die periode
+    if (periode) {
+      // Bepaal de volgende maand voor de lt filter
+      const [jaar, maand] = periode.split('-').map(Number)
+      const volgendeMaand = maand === 12 ? 1 : maand + 1
+      const volgendJaar = maand === 12 ? jaar + 1 : jaar
+      const volgendePeriode = `${volgendJaar}-${String(volgendeMaand).padStart(2, '0')}-01`
+      
+      insightsQuery = insightsQuery
+        .gte('laatst_bijgewerkt_op', periode)
+        .lt('laatst_bijgewerkt_op', volgendePeriode)
+    }
+
+    const { data: existingInsights, error: insightsError } = await insightsQuery
 
     if (insightsError) throw insightsError
 
