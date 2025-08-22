@@ -51,21 +51,12 @@ router.get('/:orgId', async (req, res) => {
 
     // 4. Voor elk thema, bereken voortgang en scores
     const themesWithProgress = await Promise.all(themeData.map(async (theme) => {
-      // Haal alle gesprekresultaten op voor dit thema en deze organisatie
-      const { data: results, error: resultsError } = await supabase
-        .from('gesprekresultaten')
-        .select('score, werknemer_id')
-        .eq('werkgever_id', orgId)
-        .eq('theme_id', theme.id)
-
-      if (resultsError) throw resultsError
+      // Zoek bestaande insight voor dit thema
+      const existingInsight = existingInsights?.find(insight => insight.theme_id === theme.id)
 
       const totalEmployees = employees?.length || 0
-      const completedEmployees = results?.length || 0
-      const scores = results?.map(r => r.score).filter(score => score !== null) || []
-      // Toon alleen gemiddelde score als er minimaal 4 medewerkers hebben voltooid
-      const averageScore = completedEmployees >= 4 && scores.length > 0 ? 
-        Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null
+      const completedEmployees = existingInsight?.voltooide_medewerkers || 0
+      const averageScore = existingInsight?.gemiddelde_score || null
 
       // Bepaal samenvatting status
       let samenvattingStatus = 'niet_beschikbaar'
@@ -75,9 +66,6 @@ router.get('/:orgId', async (req, res) => {
       if (completedEmployees === totalEmployees && totalEmployees > 0) {
         samenvattingStatus = 'volledig'
       }
-
-      // Zoek bestaande insight
-      const existingInsight = existingInsights?.find(insight => insight.theme_id === theme.id)
 
       // Bepaal uiteindelijke status: als er al een samenvatting bestaat, gebruik die status
       // anders gebruik de berekende status
@@ -97,7 +85,7 @@ router.get('/:orgId', async (req, res) => {
         heeft_samenvatting: !!existingInsight?.samenvatting,
         heeft_adviezen: !!existingInsight?.gpt_adviezen,
         laatst_bijgewerkt: existingInsight?.laatst_bijgewerkt_op,
-        individuele_scores: completedEmployees >= 4 ? scores.sort((a, b) => b - a) : null
+        individuele_scores: existingInsight?.individuele_scores || null
       }
     }))
 
