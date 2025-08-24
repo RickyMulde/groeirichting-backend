@@ -11,13 +11,14 @@ const supabase = createClient(
 // Haalt alle thema's op met voortgang, scores en samenvattingen voor een organisatie
 router.get('/:orgId', async (req, res) => {
   const { orgId } = req.params
+  const { maand } = req.query // Nieuwe query parameter voor maand filtering
 
   if (!orgId) {
     return res.status(400).json({ error: 'Organisatie ID is verplicht' })
   }
 
   try {
-    console.log('🔍 Start ophalen organisatie thema\'s voor:', { orgId })
+    console.log('🔍 Start ophalen organisatie thema\'s voor:', { orgId, maand })
 
     // 1. Haal alle actieve thema's op
     const { data: themeData, error: themeError } = await supabase
@@ -50,7 +51,7 @@ router.get('/:orgId', async (req, res) => {
     console.log('✅ Insights opgehaald:', existingInsights?.length || 0)
 
     // 4. Voor elk thema, bereken voortgang en scores
-    const themesWithProgress = themeData.map((theme) => {
+    const themesWithProgress = await Promise.all(themeData.map(async (theme) => {
       // Zoek bestaande insight voor dit thema
       const existingInsight = existingInsights?.find(insight => insight.theme_id === theme.id)
 
@@ -58,12 +59,54 @@ router.get('/:orgId', async (req, res) => {
       const completedEmployees = existingInsight?.voltooide_medewerkers || 0
       const averageScore = existingInsight?.gemiddelde_score || null
 
+      // Haal individuele scores op uit gesprekresultaten
+      let individualScores = []
+      let scoreStandardDeviation = null
+      let filteredCompletedEmployees = 0
+      
+      if (completedEmployees > 0) {
+        // Basis query voor scores
+        let scoreQuery = supabase
+          .from('gesprekresultaten')
+          .select('score, periode, gegenereerd_op')
+          .eq('werkgever_id', orgId)
+          .eq('theme_id', theme.id)
+          .not('score', 'is', null)
+
+        // Filter op basis van geselecteerde maand
+        if (maand) {
+          const monthInt = parseInt(maand)
+          const year = new Date().getFullYear()
+          const monthStart = new Date(year, monthInt - 1, 1)
+          const monthEnd = new Date(year, monthInt, 0, 23, 59, 59)
+          
+          // Filter op gegenereerd_op binnen de geselecteerde maand
+          scoreQuery = scoreQuery
+            .gte('gegenereerd_op', monthStart.toISOString())
+            .lte('gegenereerd_op', monthEnd.toISOString())
+        }
+
+        const { data: scoreData, error: scoreError } = await scoreQuery
+
+        if (!scoreError && scoreData && scoreData.length > 0) {
+          individualScores = scoreData.map(item => item.score).sort((a, b) => b - a) // Sorteer van hoog naar laag
+          filteredCompletedEmployees = scoreData.length
+          
+          // Bereken standaarddeviatie voor alert indicator
+          if (individualScores.length > 1) {
+            const mean = individualScores.reduce((sum, score) => sum + score, 0) / individualScores.length
+            const variance = individualScores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / individualScores.length
+            scoreStandardDeviation = Math.sqrt(variance)
+          }
+        }
+      }
+
       // Bepaal samenvatting status
       let samenvattingStatus = 'niet_beschikbaar'
-      if (completedEmployees >= 4) {
+      if (filteredCompletedEmployees >= 4) {
         samenvattingStatus = 'beschikbaar'
       }
-      if (completedEmployees === totalEmployees && totalEmployees > 0) {
+      if (filteredCompletedEmployees === totalEmployees && totalEmployees > 0) {
         samenvattingStatus = 'volledig'
       }
 
@@ -79,16 +122,19 @@ router.get('/:orgId', async (req, res) => {
         geeft_score: theme.geeft_score,
         geeft_samenvatting: theme.geeft_samenvatting,
         totaal_medewerkers: totalEmployees,
-        voltooide_medewerkers: completedEmployees,
+        voltooide_medewerkers: maand ? filteredCompletedEmployees : completedEmployees, // Gebruik gefilterde telling bij maand selectie
         totaal_mogelijke_gesprekken: themeData.length * totalEmployees, // Consistent met totale berekening
         gemiddelde_score: averageScore,
         samenvatting_status: finalStatus,
         heeft_samenvatting: !!existingInsight?.samenvatting,
         heeft_adviezen: !!existingInsight?.gpt_adviezen,
         laatst_bijgewerkt: existingInsight?.laatst_bijgewerkt_op,
-        individuele_scores: existingInsight?.individuele_scores || null
+        individuele_scores: individualScores,
+        score_standaarddeviatie: scoreStandardDeviation,
+        heeft_grote_score_verschillen: scoreStandardDeviation && scoreStandardDeviation > 2.0,
+        gefilterde_maand: maand ? parseInt(maand) : null
       }
-    })
+    }))
 
     // Bereken totale voortgang van de organisatie
     const totalEmployees = employees?.length || 0
