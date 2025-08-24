@@ -143,36 +143,38 @@ ${completeContext}
 
 OPDRACHT:
 Analyseer alle gesprekken en bepaal de TOP 3 vervolgacties die:
-1. De HOOGSTE IMPACT hebben op de groei en ontwikkeling van de werknemer
-2. De MEESTE URGENTIE hebben (wat moet eerst aangepakt worden?)
-3. HAALBAAR zijn voor de werknemer om zelf uit te voeren
+1. De HOOGSTE IMPACT hebben op jouw groei en ontwikkeling
+2. De MEESTE URGENTIE hebben (wat moet je eerst aanpakken?)
+3. HAALBAAR zijn voor jou om zelf uit te voeren
 4. VERBANDEN leggen tussen verschillende thema's waar mogelijk
 5. SPECIFIEK en PRAKTISCH zijn (geen algemene adviezen)
 
 PRIORITEER op basis van:
-- URGENTIE: Wat moet eerst gebeuren?
-- IMPACT: Welke actie heeft het meeste effect?
-- HAALBAARHEID: Wat kan de werknemer realistisch doen?
+- URGENTIE: Wat moet je eerst doen?
+- IMPACT: Welke actie heeft het meeste effect op jou?
+- HAALBAARHEID: Wat kun je realistisch doen?
 - VERBANDEN: Welke actie lost meerdere problemen op?
+
+BELANGRIJK: Gebruik ALTIJD de tweede persoon (jij/jou/je) in alle teksten, alsof je direct tegen de werknemer praat.
 
 Antwoord in JSON-formaat:
 {
   "actie_1": {
     "tekst": "Concrete, specifieke actie",
     "prioriteit": "hoog/medium/laag",
-    "toelichting": "Waarom deze actie de hoogste prioriteit heeft"
+    "toelichting": "Waarom deze actie voor jou de hoogste prioriteit heeft"
   },
   "actie_2": {
     "tekst": "Concrete, specifieke actie", 
     "prioriteit": "hoog/medium/laag",
-    "toelichting": "Waarom deze actie de tweede prioriteit heeft"
+    "toelichting": "Waarom deze actie voor jou de tweede prioriteit heeft"
   },
   "actie_3": {
     "tekst": "Concrete, specifieke actie",
     "prioriteit": "hoog/medium/laag", 
-    "toelichting": "Waarom deze actie de derde prioriteit heeft"
+    "toelichting": "Waarom deze actie voor jou de derde prioriteit heeft"
   },
-  "algemene_toelichting": "Korte samenvatting van waarom deze 3 acties de beste keuzes zijn"
+  "algemene_toelichting": "Korte samenvatting van waarom deze 3 acties de beste keuzes zijn voor jou. Gebruik 'jij', 'jou' en 'je' in plaats van 'de werknemer'."
 }`
 
     // 6️⃣ Stuur naar GPT
