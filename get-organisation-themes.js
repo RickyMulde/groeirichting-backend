@@ -33,7 +33,7 @@ router.get('/:orgId', async (req, res) => {
     // 2. Haal alle werknemers van deze organisatie op
     const { data: employees, error: employeesError } = await supabase
       .from('users')
-      .select('id, voornaam, achternaam')
+      .select('id')
       .eq('employer_id', orgId)
       .eq('role', 'employee')
 
