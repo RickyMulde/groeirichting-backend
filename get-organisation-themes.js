@@ -50,7 +50,7 @@ router.get('/:orgId', async (req, res) => {
     console.log('✅ Insights opgehaald:', existingInsights?.length || 0)
 
     // 4. Voor elk thema, bereken voortgang en scores
-    const themesWithProgress = await Promise.all(themeData.map(async (theme) => {
+    const themesWithProgress = themeData.map((theme) => {
       // Zoek bestaande insight voor dit thema
       const existingInsight = existingInsights?.find(insight => insight.theme_id === theme.id)
 
@@ -80,7 +80,7 @@ router.get('/:orgId', async (req, res) => {
         geeft_samenvatting: theme.geeft_samenvatting,
         totaal_medewerkers: totalEmployees,
         voltooide_medewerkers: completedEmployees,
-        totaal_mogelijke_gesprekken: totalEmployees, // Voeg dit toe voor frontend
+        totaal_mogelijke_gesprekken: themeData.length * totalEmployees, // Consistent met totale berekening
         gemiddelde_score: averageScore,
         samenvatting_status: finalStatus,
         heeft_samenvatting: !!existingInsight?.samenvatting,
@@ -88,7 +88,7 @@ router.get('/:orgId', async (req, res) => {
         laatst_bijgewerkt: existingInsight?.laatst_bijgewerkt_op,
         individuele_scores: existingInsight?.individuele_scores || null
       }
-    }))
+    })
 
     // Bereken totale voortgang van de organisatie
     const totalEmployees = employees?.length || 0
