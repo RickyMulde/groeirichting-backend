@@ -7,18 +7,83 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// GET /api/organisation-themes/:orgId
-// Haalt alle thema's op met voortgang, scores en samenvattingen voor een organisatie
-router.get('/:orgId', async (req, res) => {
+// GET /api/organisation-themes/:orgId/available-periods
+// Haalt beschikbare jaar/maand combinaties op voor een organisatie
+router.get('/:orgId/available-periods', async (req, res) => {
   const { orgId } = req.params
-  const { maand } = req.query // Nieuwe query parameter voor maand filtering
 
   if (!orgId) {
     return res.status(400).json({ error: 'Organisatie ID is verplicht' })
   }
 
   try {
-    console.log('🔍 Start ophalen organisatie thema\'s voor:', { orgId, maand })
+    console.log('🔍 Start ophalen beschikbare periodes voor:', { orgId })
+
+    // Haal alle insights op voor deze organisatie
+    const { data: insights, error: insightsError } = await supabase
+      .from('organization_theme_insights')
+      .select('laatst_bijgewerkt_op, voltooide_medewerkers')
+      .eq('organisatie_id', orgId)
+      .gt('voltooide_medewerkers', 0)
+
+    if (insightsError) throw insightsError
+
+    // Extraheer unieke jaar/maand combinaties
+    const periods = new Set()
+    
+    insights.forEach(insight => {
+      if (insight.laatst_bijgewerkt_op) {
+        const date = new Date(insight.laatst_bijgewerkt_op)
+        const year = date.getFullYear()
+        const month = date.getMonth() + 1 // getMonth() is 0-based
+        
+        // Voeg toe als "YYYY-MM" string voor unieke identificatie
+        periods.add(`${year}-${month.toString().padStart(2, '0')}`)
+      }
+    })
+
+    // Converteer naar array en sorteer op datum (nieuwste eerst)
+    const availablePeriods = Array.from(periods)
+      .sort((a, b) => b.localeCompare(a)) // Sorteer aflopend (nieuwste eerst)
+      .map(period => {
+        const [year, month] = period.split('-')
+        const monthInt = parseInt(month)
+        
+        // Nederlandse maandnamen
+        const monthNames = [
+          'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni',
+          'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'
+        ]
+        
+        return {
+          jaar: parseInt(year),
+          maand: monthInt,
+          label: `${monthNames[monthInt - 1]} ${year}`,
+          periode: period
+        }
+      })
+
+    console.log('✅ Beschikbare periodes opgehaald:', availablePeriods.length)
+    res.json({ beschikbare_periodes: availablePeriods })
+
+  } catch (err) {
+    console.error('Fout bij ophalen beschikbare periodes:', err)
+    res.status(500).json({ error: 'Fout bij ophalen beschikbare periodes' })
+  }
+})
+
+// GET /api/organisation-themes/:orgId
+// Haalt alle thema's op met voortgang, scores en samenvattingen voor een organisatie
+router.get('/:orgId', async (req, res) => {
+  const { orgId } = req.params
+  const { maand, jaar } = req.query // Nieuwe query parameters voor maand en jaar filtering
+
+  if (!orgId) {
+    return res.status(400).json({ error: 'Organisatie ID is verplicht' })
+  }
+
+  try {
+    console.log('🔍 Start ophalen organisatie thema\'s voor:', { orgId, maand, jaar })
 
     // 1. Haal alle actieve thema's op
     const { data: themeData, error: themeError } = await supabase
@@ -73,14 +138,24 @@ router.get('/:orgId', async (req, res) => {
           .eq('theme_id', theme.id)
           .not('score', 'is', null)
 
-        // Filter op basis van geselecteerde maand
-        if (maand) {
+        // Filter op basis van geselecteerde maand en jaar
+        if (maand && jaar) {
+          const monthInt = parseInt(maand)
+          const yearInt = parseInt(jaar)
+          const monthStart = new Date(yearInt, monthInt - 1, 1)
+          const monthEnd = new Date(yearInt, monthInt, 0, 23, 59, 59)
+          
+          // Filter op gegenereerd_op binnen de geselecteerde periode
+          scoreQuery = scoreQuery
+            .gte('gegenereerd_op', monthStart.toISOString())
+            .lte('gegenereerd_op', monthEnd.toISOString())
+        } else if (maand) {
+          // Fallback: alleen maand (voor backward compatibility)
           const monthInt = parseInt(maand)
           const year = new Date().getFullYear()
           const monthStart = new Date(year, monthInt - 1, 1)
           const monthEnd = new Date(year, monthInt, 0, 23, 59, 59)
           
-          // Filter op gegenereerd_op binnen de geselecteerde maand
           scoreQuery = scoreQuery
             .gte('gegenereerd_op', monthStart.toISOString())
             .lte('gegenereerd_op', monthEnd.toISOString())
@@ -132,7 +207,9 @@ router.get('/:orgId', async (req, res) => {
         individuele_scores: individualScores,
         score_standaarddeviatie: scoreStandardDeviation,
         heeft_grote_score_verschillen: scoreStandardDeviation && scoreStandardDeviation > 2.0,
-        gefilterde_maand: maand ? parseInt(maand) : null
+        gefilterde_maand: maand ? parseInt(maand) : null,
+        gefilterde_jaar: jaar ? parseInt(jaar) : null,
+        geselecteerde_periode: maand && jaar ? `${jaar}-${maand.toString().padStart(2, '0')}` : null
       }
     }))
 
