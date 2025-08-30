@@ -38,9 +38,10 @@ if (process.env.CONFIRM_PRODUCTION === 'YES') {
   
   // Optioneel: wacht 3 seconden om bewustzijn te creëren
   console.log('⏳ Wacht 3 seconden voordat de server start...');
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  console.log('✅ Server start nu in productieomgeving');
-  console.log('');
+  setTimeout(() => {
+    console.log('✅ Server start nu in productieomgeving');
+    console.log('');
+  }, 3000);
 } else {
   console.log('🧪 Testomgeving gedetecteerd - Veilig om te ontwikkelen');
 }
