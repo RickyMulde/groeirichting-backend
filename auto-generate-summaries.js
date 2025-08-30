@@ -59,7 +59,7 @@ async function autoGenerateSummaries() {
         console.log(`\n🏢 Verwerk werkgever: ${employer.contact_email}`)
         
         // Haal organisatie thema's op voor deze werkgever
-        const response = await fetch(`${process.env.API_BASE_URL || 'http://localhost:3000'}/api/organisation-themes/${employer.id}`)
+        const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/organisation-themes/${employer.id}`)
         
         if (!response.ok) {
           console.error(`❌ Fout bij ophalen thema's voor werkgever ${employer.id}: ${response.status}`)
@@ -101,7 +101,7 @@ async function autoGenerateSummaries() {
             console.log(`🚀 Genereer samenvatting voor thema ${theme.titel} (reden: ${isLastDay ? 'laatste dag van maand' : '100% voortgang'})`)
             
             // Genereer samenvatting via bestaande endpoint
-            const generateResponse = await fetch(`${process.env.API_BASE_URL || 'http://localhost:3000'}/api/generate-organisation-summary`, {
+            const generateResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/generate-organisation-summary`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

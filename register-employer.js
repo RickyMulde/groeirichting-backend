@@ -58,7 +58,7 @@ router.post('/', async (req, res) => {
     email,
     password,
     email_confirm: false, // E-mailverificatie vereist
-    email_confirm_redirect_to: 'https://groeirichting-frontend.onrender.com/verify-email'
+    email_confirm_redirect_to: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/verify-email`
   });
 
   if (authError || !authUser?.user?.id) {
@@ -112,7 +112,7 @@ router.post('/', async (req, res) => {
       type: 'signup',
       email: email,
       options: {
-        redirectTo: 'https://groeirichting-frontend.onrender.com/verify-email'
+        redirectTo: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/verify-email`
       }
     });
     
@@ -152,7 +152,7 @@ router.post('/', async (req, res) => {
             <h3 style="color: #2e7d32; margin-top: 0;">✅ Na verificatie</h3>
             <p>Zodra je e-mail is geverifieerd, kun je:</p>
             <ul>
-              <li>Inloggen via de <a href="https://groeirichting-frontend.onrender.com/login" style="color: #1a73e8;">login pagina</a></li>
+              <li>Inloggen via de <a href="${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/login" style="color: #1a73e8;">login pagina</a></li>
               <li>Toegang krijgen tot je werkgever portaal</li>
               <li>Beginnen met het beheren van je team</li>
             </ul>

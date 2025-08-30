@@ -4,6 +4,9 @@ const dotenv = require('dotenv');
 const { Resend } = require('resend');
 const cors = require('cors');
 
+// 🚨 BELANGRIJK: Laad omgevingsvariabelen VOORDAT je ze gebruikt!
+dotenv.config({ path: '.env.test' });
+
 const registerEmployee = require('./register-employee');
 const registerEmployer = require('./register-employer');
 const createThemeWithQuestions = require('./create-theme-with-questions');
@@ -24,10 +27,27 @@ const generateTopActions = require('./generate-top-actions'); // ✅ Nieuw toege
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
-dotenv.config();
+// 🛡️ PRODUCTIE BEVEILIGING - Controleer of je bewust in productie werkt
+if (process.env.CONFIRM_PRODUCTION === 'YES') {
+  console.log('⚠️  ⚠️  ⚠️  PRODUCTIE OMGEVING GEDETECTEERD ⚠️  ⚠️  ⚠️');
+  console.log('🚨 Je draait nu in de PRODUCTIE omgeving!');
+  console.log('🔒 Zorg ervoor dat dit bewust is en dat alle configuratie correct is.');
+  console.log('📊 Database:', process.env.SUPABASE_URL || 'Niet ingesteld');
+  console.log('🌐 Frontend URL:', process.env.FRONTEND_URL || 'Niet ingesteld');
+  console.log('');
+  
+  // Optioneel: wacht 3 seconden om bewustzijn te creëren
+  console.log('⏳ Wacht 3 seconden voordat de server start...');
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  console.log('✅ Server start nu in productieomgeving');
+  console.log('');
+} else {
+  console.log('🧪 Testomgeving gedetecteerd - Veilig om te ontwikkelen');
+}
+
 const app = express();
 
-const allowedOrigins = ['https://groeirichting-frontend.onrender.com'];
+const allowedOrigins = [process.env.FRONTEND_URL || 'https://groeirichting.nl'];
 
 app.use(cors({
   origin: allowedOrigins,
@@ -53,6 +73,18 @@ app.use('/api/get-thema-data-werknemer', getThemaDataWerknemer); // ✅ Nieuwe r
 app.use('/api/verwijder-oude-gesprekken', verwijderOudeGesprekken); // ✅ Nieuwe route toegevoegd
 app.use('/api/auto-generate-summaries', autoGenerateSummaries); // ✅ Nieuwe route toegevoegd
 app.use('/api/generate-top-actions', generateTopActions); // ✅ Nieuwe route toegevoegd
+
+// 🏥 Healthcheck endpoint voor Render
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    app_env: process.env.APP_ENV || 'test',
+    uptime: process.uptime(),
+    version: '1.0.0'
+  });
+});
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

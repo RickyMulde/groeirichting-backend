@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: groeirichting-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run start:test
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_ENV
+        value: test
+      - key: PORT
+        value: 3000
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        value: https://groeirichting-frontend.onrender.com
+      - key: OPENAI_API_KEY
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true

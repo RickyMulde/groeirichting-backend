@@ -3,12 +3,19 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "env:test": "node switch-env.js test",
+    "env:production": "node switch-env.js production",
+    "start:test": "npm run env:test && node index.js",
+    "start:production": "npm run env:production && node index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
     "compromise": "^14.14.4",

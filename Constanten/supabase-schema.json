@@ -22,8 +22,7 @@
   {
     "table_name": "employers",
     "column_name": "kvk_number",
-    "data_type": "text",
-    "is_nullable": "YES"
+    "data_type": "text"
   },
   {
     "table_name": "employers",
@@ -248,7 +247,22 @@
   {
     "table_name": "gesprekresultaten",
     "column_name": "periode",
-    "data_type": "VARCHAR"
+    "data_type": "character varying"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "vervolgacties",
+    "data_type": "jsonb"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "vervolgacties_toelichting",
+    "data_type": "text"
+  },
+  {
+    "table_name": "gesprekresultaten",
+    "column_name": "vervolgacties_generatie_datum",
+    "data_type": "timestamp with time zone"
   },
   {
     "table_name": "invitations",
@@ -289,6 +303,11 @@
     "table_name": "invitations",
     "column_name": "created_by",
     "data_type": "uuid"
+  },
+  {
+    "table_name": "invitations",
+    "column_name": "functie_omschrijving",
+    "data_type": "character varying"
   },
   {
     "table_name": "organization_theme_insights",
@@ -416,6 +435,11 @@
     "data_type": "text"
   },
   {
+    "table_name": "theme_questions",
+    "column_name": "theme_titel",
+    "data_type": "text"
+  },
+  {
     "table_name": "themes",
     "column_name": "id",
     "data_type": "uuid"
@@ -423,11 +447,6 @@
   {
     "table_name": "themes",
     "column_name": "titel",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "beschrijving",
     "data_type": "text"
   },
   {
@@ -656,6 +675,86 @@
     "data_type": "jsonb"
   },
   {
+    "table_name": "themes",
+    "column_name": "beschrijving_werkgever",
+    "data_type": "text"
+  },
+  {
+    "table_name": "themes",
+    "column_name": "beschrijving_werknemer",
+    "data_type": "text"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "werknemer_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "werkgever_id",
+    "data_type": "uuid"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "periode",
+    "data_type": "text"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "actie_1",
+    "data_type": "text"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "actie_2",
+    "data_type": "text"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "actie_3",
+    "data_type": "text"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "prioriteit_1",
+    "data_type": "text"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "prioriteit_2",
+    "data_type": "text"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "prioriteit_3",
+    "data_type": "text"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "toelichting_per_actie",
+    "data_type": "ARRAY"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "algemene_toelichting",
+    "data_type": "text"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "gegenereerd_op",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "table_name": "top_vervolgacties",
+    "column_name": "gesprek_ids",
+    "data_type": "ARRAY"
+  },
+  {
     "table_name": "users",
     "column_name": "id",
     "data_type": "uuid"
@@ -706,6 +805,11 @@
     "data_type": "timestamp without time zone"
   },
   {
+    "table_name": "users",
+    "column_name": "functie_omschrijving",
+    "data_type": "character varying"
+  },
+  {
     "table_name": "werkgever_gesprek_instellingen",
     "column_name": "id",
     "data_type": "integer"
@@ -744,5 +848,10 @@
     "table_name": "werkgever_gesprek_instellingen",
     "column_name": "bijgewerkt_op",
     "data_type": "timestamp without time zone"
+  },
+  {
+    "table_name": "werkgever_gesprek_instellingen",
+    "column_name": "organisatie_omschrijving",
+    "data_type": "text"
   }
 ]

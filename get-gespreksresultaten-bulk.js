@@ -303,7 +303,7 @@ router.get('/', async (req, res) => {
     }
 
     // Haal werkgever configuratie op voor actieve maanden
-    const werkgeverResponse = await fetch(`https://groeirichting-backend.onrender.com/api/werkgever-gesprek-instellingen/${werknemer.employer_id}`)
+    const werkgeverResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/werkgever-gesprek-instellingen/${werknemer.employer_id}`)
     let actieveMaanden = [3, 6, 9] // Default fallback
     if (werkgeverResponse.ok) {
       const configData = await werkgeverResponse.json()
