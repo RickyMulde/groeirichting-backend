@@ -141,9 +141,7 @@ ${registerUrl}`;
 
   try { 
     const emailResponse = await resend.emails.send({
-      from: process.env.APP_ENV === 'test' 
-        ? 'GroeiRichting <noreply@test.groeirichting.nl>'  // Testomgeving
-        : 'GroeiRichting <noreply@groeirichting.nl>',       // Productieomgeving
+      from: 'GroeiRichting <noreply@groeirichting.nl>',  // Gebruik bestaande domain voor nu
       to,
       subject: 'Je bent uitgenodigd voor GroeiRichting',
       html: htmlBody,
