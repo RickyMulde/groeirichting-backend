@@ -48,7 +48,11 @@ if (process.env.CONFIRM_PRODUCTION === 'YES') {
 
 const app = express();
 
-const allowedOrigins = [process.env.FRONTEND_URL || 'https://groeirichting.nl'];
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com',
+  'https://groeirichting-frontend.onrender.com',
+  'https://groeirichting.nl'
+];
 
 app.use(cors({
   origin: allowedOrigins,
@@ -119,7 +123,7 @@ app.post('/api/send-invite', async (req, res) => {
     console.error('Fout bij database update:', error);
   }
 
-  const frontendUrl = process.env.FRONTEND_URL || 'https://groeirichting.nl';
+  const frontendUrl = process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com';
   const registerUrl = `${frontendUrl}/registreer-werknemer?token=${token}`;
 
   const htmlBody = [
@@ -137,7 +141,9 @@ ${registerUrl}`;
 
   try { 
     const emailResponse = await resend.emails.send({
-      from: 'GroeiRichting <noreply@groeirichting.nl>',
+      from: process.env.APP_ENV === 'test' 
+        ? 'GroeiRichting <noreply@test.groeirichting.nl>'  // Testomgeving
+        : 'GroeiRichting <noreply@groeirichting.nl>',       // Productieomgeving
       to,
       subject: 'Je bent uitgenodigd voor GroeiRichting',
       html: htmlBody,
