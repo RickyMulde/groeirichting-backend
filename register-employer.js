@@ -108,7 +108,7 @@ router.post('/', async (req, res) => {
     console.log('Versturen Supabase verificatielink naar:', email);
     
     // Stuur verificatielink via Supabase Auth
-    const { error: emailError } = await supabase.auth.admin.generateLink({
+    const { data: linkData, error: emailError } = await supabase.auth.admin.generateLink({
       type: 'signup',
       email: email,
       options: {
@@ -118,8 +118,11 @@ router.post('/', async (req, res) => {
     
     if (emailError) {
       console.error('Fout bij genereren verificatielink:', emailError);
+      console.log('Link data:', linkData);
+
     } else {
       console.log('Supabase verificatielink succesvol verzonden naar:', email);
+      console.log('Link data:', linkData);
     }
   } catch (emailError) {
     console.error('Fout bij verzenden Supabase verificatielink:', emailError);
