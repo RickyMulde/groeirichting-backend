@@ -18,59 +18,28 @@ router.post('/', async (req, res) => {
     password,
     first_name,
     middle_name,
-    last_name
+    last_name,
+    user_id // Nieuw: Supabase user ID van frontend
   } = req.body;
 
-  if (!email || !password || !company_name || !first_name || !last_name) {
+  if (!email || !company_name || !first_name || !last_name || !user_id) {
     return res.status(400).json({ error: 'Verplichte velden ontbreken.' });
   }
 
-  // 1. Controleer eerst of gebruiker al bestaat in Auth
-  console.log('Controleren of gebruiker al bestaat in Auth...');
-  const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
+  // 1. Controleer of gebruiker bestaat in Supabase Auth
+  console.log('Controleren of gebruiker bestaat in Auth...');
+  const { data: existingUser, error: userError } = await supabase.auth.admin.getUserById(user_id);
   
-  if (listError) {
-    console.error('Fout bij ophalen bestaande gebruikers:', listError);
-    return res.status(500).json({ error: 'Fout bij controleren bestaande gebruikers.' });
-  }
-  
-  const existingUser = existingUsers.users.find(user => user.email === email);
-  
-  if (existingUser) {
-    console.log('Gebruiker bestaat al in Auth, proberen te verwijderen...');
-    
-    // Verwijder bestaande gebruiker uit Auth
-    const { error: deleteError } = await supabase.auth.admin.deleteUser(existingUser.id);
-    
-    if (deleteError) {
-      console.error('Fout bij verwijderen bestaande gebruiker:', deleteError);
-      return res.status(400).json({ 
-        error: 'Gebruiker bestaat al. Probeer het over een paar minuten opnieuw, of neem contact op met support.' 
-      });
-    }
-    
-    console.log('Bestaande gebruiker succesvol verwijderd uit Auth');
+  if (userError || !existingUser?.user) {
+    console.error('Fout bij ophalen gebruiker:', userError);
+    return res.status(400).json({ error: 'Gebruiker niet gevonden in Auth.' });
   }
 
-  // 2. Maak nieuwe Supabase Auth gebruiker aan
-  console.log('Nieuwe gebruiker aanmaken in Auth...');
-  const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: false, // E-mailverificatie vereist
-    email_confirm_redirect_to: `${process.env.FRONTEND_URL}/verify-email`
-  });
-
-  if (authError || !authUser?.user?.id) {
-    console.error('Supabase Auth fout:', authError);
-    console.error('Auth response:', authUser);
-    return res.status(400).json({ 
-      error: authError?.message || 'Aanmaken gebruiker mislukt.',
-      details: authError || 'Geen gebruiker ID ontvangen'
-    });
+  if (existingUser.user.email !== email) {
+    return res.status(400).json({ error: 'E-mailadres komt niet overeen met gebruiker.' });
   }
 
-  const userId = authUser.user.id;
+  console.log('Gebruiker gevonden in Auth:', existingUser.user.email);
 
   // 2. Voeg bedrijf toe
   const { data: employer, error: employerError } = await supabase
@@ -89,8 +58,8 @@ router.post('/', async (req, res) => {
   }
 
   // 3. Voeg gebruiker toe aan users-tabel
-  const { error: userError } = await supabase.from('users').insert({
-    id: userId,
+  const { error: userInsertError } = await supabase.from('users').insert({
+    id: user_id, // Gebruik het bestaande Supabase user ID
     email,
     role: 'employer',
     employer_id: employer.id,
@@ -99,31 +68,11 @@ router.post('/', async (req, res) => {
     last_name
   });
 
-  if (userError) {
-    return res.status(500).json({ error: userError.message });
+  if (userInsertError) {
+    return res.status(500).json({ error: userInsertError.message });
   }
 
-  // 4. Stuur Supabase verificatie-e-mail (voor account activatie)
-  try {
-    console.log('Versturen Supabase verificatie-e-mail naar:', email);
-    
-    // Stuur verificatie-e-mail via Supabase Auth met juiste redirect
-    const { data: inviteData, error: emailError } = await supabase.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${process.env.FRONTEND_URL}/verify-email?email=${encodeURIComponent(email)}`
-    });
-    
-    if (emailError) {
-      console.error('Fout bij versturen verificatie-e-mail:', emailError);
-      console.log('Invite data:', inviteData);
-    } else {
-      console.log('Supabase verificatie-e-mail succesvol verzonden naar:', email);
-      console.log('Invite data:', inviteData);
-    }
-  } catch (emailError) {
-    console.error('Fout bij versturen Supabase verificatie-e-mail:', emailError);
-  }
-
-  // 5. Stuur welkomstmail via Resend
+  // 4. Stuur welkomstmail via Resend
   try {
     console.log('Versturen welkomstmail naar:', email);
     
@@ -167,14 +116,13 @@ router.post('/', async (req, res) => {
     console.error('Fout bij verzenden welkomstmail:', mailError);
   }
 
-  // 6. Registratie voltooid
-  console.log('Registratie voltooid. Supabase verificatie-e-mail en welkomstmail verzonden.');
+  // 5. Registratie voltooid
+  console.log('Registratie voltooid. Welkomstmail verzonden.');
 
   return res.status(200).json({ 
     success: true, 
     message: 'Account succesvol aangemaakt! Controleer je e-mailadres voor de verificatie-e-mail.',
-    email: email,
-    redirectUrl: `${process.env.FRONTEND_URL}/verify-email?email=${encodeURIComponent(email)}`
+    email: email
   });
 });
 
