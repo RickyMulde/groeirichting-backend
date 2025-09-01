@@ -112,7 +112,7 @@ router.post('/', async (req, res) => {
       type: 'signup',
       email: email,
       options: {
-        redirectTo: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/verify-email`
+        redirectTo: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/verify-email?email=${encodeURIComponent(email)}`
       }
     });
     
@@ -181,7 +181,12 @@ router.post('/', async (req, res) => {
   // 6. Registratie voltooid
   console.log('Registratie voltooid. Supabase verificatielink en welkomstmail verzonden.');
 
-  return res.status(200).json({ success: true });
+  return res.status(200).json({ 
+    success: true, 
+    message: 'Account succesvol aangemaakt! Controleer je e-mailadres voor de verificatielink.',
+    email: email,
+    redirectUrl: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/verify-email?email=${encodeURIComponent(email)}`
+  });
 });
 
 module.exports = router;  

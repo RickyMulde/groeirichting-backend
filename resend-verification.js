@@ -40,7 +40,7 @@ router.post('/', async (req, res) => {
       type: 'signup',
       email: email,
       options: {
-        redirectTo: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/verify-email`
+        redirectTo: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/verify-email?email=${encodeURIComponent(email)}`
       }
     });
     
