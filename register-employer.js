@@ -107,25 +107,21 @@ router.post('/', async (req, res) => {
   try {
     console.log('Versturen Supabase verificatielink naar:', email);
     
-    // Stuur verificatielink via Supabase Auth
-    const { data: linkData, error: emailError } = await supabase.auth.admin.generateLink({
+    // Stuur verificatie-e-mail via Supabase Auth (zelfde als frontend resend knop)
+    const { data: resendData, error: emailError } = await supabase.auth.resend({
       type: 'signup',
-      email: email,
-      options: {
-        redirectTo: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/verify-email?email=${encodeURIComponent(email)}`
-      }
+      email: email
     });
     
     if (emailError) {
-      console.error('Fout bij genereren verificatielink:', emailError);
-      console.log('Link data:', linkData);
-
+      console.error('Fout bij versturen verificatie-e-mail:', emailError);
+      console.log('Resend data:', resendData);
     } else {
-      console.log('Supabase verificatielink succesvol verzonden naar:', email);
-      console.log('Link data:', linkData);
+      console.log('Supabase verificatie-e-mail succesvol verzonden naar:', email);
+      console.log('Resend data:', resendData);
     }
   } catch (emailError) {
-    console.error('Fout bij verzenden Supabase verificatielink:', emailError);
+    console.error('Fout bij versturen Supabase verificatie-e-mail:', emailError);
   }
 
   // 5. Stuur mooie welkomstmail via Resend (voor uitleg en styling)
@@ -182,11 +178,11 @@ router.post('/', async (req, res) => {
   }
 
   // 6. Registratie voltooid
-  console.log('Registratie voltooid. Supabase verificatielink en welkomstmail verzonden.');
+  console.log('Registratie voltooid. Supabase verificatie-e-mail en welkomstmail verzonden.');
 
   return res.status(200).json({ 
     success: true, 
-    message: 'Account succesvol aangemaakt! Controleer je e-mailadres voor de verificatielink.',
+    message: 'Account succesvol aangemaakt! Controleer je e-mailadres voor de verificatie-e-mail.',
     email: email,
     redirectUrl: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/verify-email?email=${encodeURIComponent(email)}`
   });
