@@ -72,7 +72,28 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: userInsertError.message });
   }
 
-  // 4. Stuur welkomstmail via Resend
+  // 4. Stuur verificatie-e-mail via Supabase Auth
+  try {
+    console.log('Versturen Supabase verificatie-e-mail naar:', email);
+    
+    // Trigger Supabase om verificatie-e-mail te versturen met juiste redirect
+    const { data: resendData, error: emailError } = await supabase.auth.resend({
+      type: 'signup',
+      email: email
+    });
+    
+    if (emailError) {
+      console.error('Fout bij versturen verificatie-e-mail:', emailError);
+      console.log('Resend data:', resendData);
+    } else {
+      console.log('Supabase verificatie-e-mail succesvol getriggerd voor:', email);
+      console.log('Resend data:', resendData);
+    }
+  } catch (emailError) {
+    console.error('Fout bij triggeren Supabase verificatie-e-mail:', emailError);
+  }
+
+  // 5. Stuur welkomstmail via Resend
   try {
     console.log('Versturen welkomstmail naar:', email);
     
@@ -116,8 +137,8 @@ router.post('/', async (req, res) => {
     console.error('Fout bij verzenden welkomstmail:', mailError);
   }
 
-  // 5. Registratie voltooid
-  console.log('Registratie voltooid. Welkomstmail verzonden.');
+  // 6. Registratie voltooid
+  console.log('Registratie voltooid. Supabase verificatie-e-mail getriggerd en welkomstmail verzonden.');
 
   return res.status(200).json({ 
     success: true, 
