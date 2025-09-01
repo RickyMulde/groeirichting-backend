@@ -110,7 +110,10 @@ router.post('/', async (req, res) => {
     // Trigger Supabase om verificatie-e-mail te versturen met juiste redirect
     const { data: resendData, error: emailError } = await supabase.auth.resend({
       type: 'signup',
-      email: email
+      email: email,
+      options: {
+        redirectTo: `${process.env.FRONTEND_URL}/werkgever-portaal`
+      }
     });
     
     if (emailError) {
