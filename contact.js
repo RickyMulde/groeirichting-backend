@@ -13,7 +13,7 @@ router.post('/', async (req, res) => {
 
   try {
     console.log('Contactformulier ontvangen van:', { naam, email, telefoon });
-    console.log('CONTACT_EMAIL waarde:', process.env.CONTACT_EMAIL);
+    console.log('CONTACTFORMULIER waarde:', process.env.CONTACTFORMULIER);
     console.log('Alle environment variabelen:', Object.keys(process.env).filter(key => key.includes('CONTACT')));
 
     const htmlBody = [
@@ -44,13 +44,13 @@ router.post('/', async (req, res) => {
     // Stuur naar jezelf (vervang met je eigen email)
     const emailResponse = await resend.emails.send({
       from: 'GroeiRichting Contact <noreply@groeirichting.nl>',
-      to: process.env.CONTACT_EMAIL || 'rick@groeirichting.nl', // Vervang met je eigen email
+      to: process.env.CONTACTFORMULIER || 'rick@groeirichting.nl', // Vervang met je eigen email
       subject: `Contactformulier: ${naam}`,
       html: htmlBody,
       text: textBody
     });
 
-    console.log('Contact e-mail verzonden naar:', process.env.CONTACT_EMAIL || 'rick@groeirichting.nl', '| ID:', emailResponse.id);
+    console.log('Contact e-mail verzonden naar:', process.env.CONTACTFORMULIER || 'rick@groeirichting.nl', '| ID:', emailResponse.id);
     
     return res.status(200).json({ 
       success: true, 
