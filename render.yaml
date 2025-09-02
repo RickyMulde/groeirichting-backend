@@ -20,6 +20,8 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      - key: CONTACT_EMAIL
+        value: info@groeirichting.nl
       - key: FRONTEND_URL
         value: https://groeirichting-frontend.onrender.com
       - key: OPENAI_API_KEY
