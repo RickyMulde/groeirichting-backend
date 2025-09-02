@@ -19,28 +19,46 @@ router.get('/:orgId/available-periods', async (req, res) => {
   try {
     console.log('🔍 Start ophalen beschikbare periodes voor:', { orgId })
 
-    // Haal alle insights op voor deze organisatie
-    const { data: insights, error: insightsError } = await supabase
-      .from('organization_theme_insights')
-      .select('laatst_bijgewerkt_op, voltooide_medewerkers')
-      .eq('organisatie_id', orgId)
-      .gt('voltooide_medewerkers', 0)
+    // Haal alle werknemers van deze organisatie op
+    const { data: employees, error: employeesError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('employer_id', orgId)
+      .eq('role', 'employee')
 
-    if (insightsError) throw insightsError
+    if (employeesError) throw employeesError
 
-    // Extraheer unieke jaar/maand combinaties
+    // Extraheer unieke jaar/maand combinaties uit gesprekken
     const periods = new Set()
     
-    insights.forEach(insight => {
-      if (insight.laatst_bijgewerkt_op) {
-        const date = new Date(insight.laatst_bijgewerkt_op)
-        const year = date.getFullYear()
-        const month = date.getMonth() + 1 // getMonth() is 0-based
+    if (employees && employees.length > 0) {
+      const employeeIds = employees.map(emp => emp.id)
+      
+      // Haal gesprekken op van alle werknemers
+      const { data: gesprekken, error: gesprekkenError } = await supabase
+        .from('gesprek')
+        .select('gestart_op')
+        .in('werknemer_id', employeeIds)
+        .eq('status', 'Afgerond')
+        .not('gestart_op', 'is', null)
+
+      if (gesprekkenError) throw gesprekkenError
+
+      if (gesprekken && gesprekken.length > 0) {
+        gesprekken.forEach(gesprek => {
+          if (gesprek.gestart_op) {
+            const date = new Date(gesprek.gestart_op)
+            const year = date.getFullYear()
+            const month = date.getMonth() + 1 // getMonth() is 0-based
+            
+            // Voeg toe als "YYYY-MM" string voor unieke identificatie
+            periods.add(`${year}-${month.toString().padStart(2, '0')}`)
+          }
+        })
         
-        // Voeg toe als "YYYY-MM" string voor unieke identificatie
-        periods.add(`${year}-${month.toString().padStart(2, '0')}`)
+        console.log(`✅ ${periods.size} periodes gevonden uit gesprekken`)
       }
-    })
+    }
 
     // Converteer naar array en sorteer op datum (nieuwste eerst)
     const availablePeriods = Array.from(periods)
