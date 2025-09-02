@@ -139,8 +139,27 @@ router.get('/:orgId', async (req, res) => {
       const existingInsight = existingInsights?.find(insight => insight.theme_id === theme.id)
 
       const totalEmployees = employees?.length || 0
-      const completedEmployees = existingInsight?.voltooide_medewerkers || 0
+      let completedEmployees = existingInsight?.voltooide_medewerkers || 0
       const averageScore = existingInsight?.gemiddelde_score || null
+
+      // Als er geen insight is, kijk dan naar gesprekken om completedEmployees te bepalen
+      if (completedEmployees === 0) {
+        const employeeIds = employees?.map(emp => emp.id) || []
+        if (employeeIds.length > 0) {
+          const { data: gesprekken, error: gesprekkenError } = await supabase
+            .from('gesprek')
+            .select('werknemer_id')
+            .in('werknemer_id', employeeIds)
+            .eq('theme_id', theme.id)
+            .eq('status', 'Afgerond')
+
+          if (!gesprekkenError && gesprekken) {
+            // Tel unieke werknemers die dit thema hebben afgerond
+            const uniekeWerknemers = new Set(gesprekken.map(g => g.werknemer_id))
+            completedEmployees = uniekeWerknemers.size
+          }
+        }
+      }
 
       // Haal individuele scores op uit gesprekresultaten
       let individualScores = []
