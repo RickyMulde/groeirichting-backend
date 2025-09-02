@@ -28,6 +28,7 @@ const autoGenerateSummaries = require('./auto-generate-summaries'); // ✅ Nieuw
 const generateTopActions = require('./generate-top-actions'); // ✅ Nieuw toegevoegd
 const saveThemaEvaluatie = require('./save-thema-evaluatie'); // ✅ Nieuw toegevoegd
 const checkThemaEvaluatie = require('./check-thema-evaluatie'); // ✅ Nieuw toegevoegd
+const contact = require('./contact'); // ✅ Nieuw toegevoegd
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
@@ -86,6 +87,7 @@ app.use('/api/auto-generate-summaries', autoGenerateSummaries); // ✅ Nieuwe ro
 app.use('/api/generate-top-actions', generateTopActions); // ✅ Nieuwe route toegevoegd
 app.use('/api/save-thema-evaluatie', saveThemaEvaluatie); // ✅ Nieuwe route toegevoegd
 app.use('/api/check-thema-evaluatie', checkThemaEvaluatie); // ✅ Nieuwe route toegevoegd
+app.use('/api/contact', contact); // ✅ Nieuwe route toegevoegd
 
 // 🏥 Healthcheck endpoint voor Render
 app.get('/health', (req, res) => {
