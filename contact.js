@@ -13,6 +13,8 @@ router.post('/', async (req, res) => {
 
   try {
     console.log('Contactformulier ontvangen van:', { naam, email, telefoon });
+    console.log('CONTACT_EMAIL waarde:', process.env.CONTACT_EMAIL);
+    console.log('Alle environment variabelen:', Object.keys(process.env).filter(key => key.includes('CONTACT')));
 
     const htmlBody = [
       `<h2>Nieuw contactformulier bericht</h2>`,
