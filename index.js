@@ -26,6 +26,8 @@ const verwijderOudeGesprekken = require('./verwijder-oude-gesprekken'); // ✅ N
 const getGespreksresultatenBulk = require('./get-gespreksresultaten-bulk'); // ✅ Nieuw toegevoegd
 const autoGenerateSummaries = require('./auto-generate-summaries'); // ✅ Nieuw toegevoegd
 const generateTopActions = require('./generate-top-actions'); // ✅ Nieuw toegevoegd
+const saveThemaEvaluatie = require('./save-thema-evaluatie'); // ✅ Nieuw toegevoegd
+const checkThemaEvaluatie = require('./check-thema-evaluatie'); // ✅ Nieuw toegevoegd
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
@@ -82,6 +84,8 @@ app.use('/api/get-thema-data-werknemer', getThemaDataWerknemer); // ✅ Nieuwe r
 app.use('/api/verwijder-oude-gesprekken', verwijderOudeGesprekken); // ✅ Nieuwe route toegevoegd
 app.use('/api/auto-generate-summaries', autoGenerateSummaries); // ✅ Nieuwe route toegevoegd
 app.use('/api/generate-top-actions', generateTopActions); // ✅ Nieuwe route toegevoegd
+app.use('/api/save-thema-evaluatie', saveThemaEvaluatie); // ✅ Nieuwe route toegevoegd
+app.use('/api/check-thema-evaluatie', checkThemaEvaluatie); // ✅ Nieuwe route toegevoegd
 
 // 🏥 Healthcheck endpoint voor Render
 app.get('/health', (req, res) => {
