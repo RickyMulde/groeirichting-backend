@@ -1,5 +1,4 @@
 const { createClient } = require('@supabase/supabase-js');
-const { filterInput } = require('./utils/filterInput');
 
 // Supabase configuratie
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -35,8 +34,8 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Filter gevoelige data
-    const filteredGesprekId = filterInput(gesprek_id);
+    // Gebruik de input direct (zoals andere endpoints)
+    const filteredGesprekId = gesprek_id;
 
     // Controleer of er al een evaluatie bestaat voor dit gesprek
     const { data: evaluatie, error: checkError } = await supabase
