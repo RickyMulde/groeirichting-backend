@@ -15,11 +15,16 @@ router.post('/', async (req, res) => {
     last_name,
     birthdate,
     gender,
-    password
+    password,
+    toestemming_avg
   } = req.body
 
   if (!token || !first_name || !last_name || !birthdate || !gender || !password) {
     return res.status(400).json({ error: 'Niet alle verplichte velden zijn ingevuld.' })
+  }
+
+  if (!toestemming_avg) {
+    return res.status(400).json({ error: 'Je moet toestemming geven voor de verwerking van je antwoorden.' })
   }
 
   // 1. Token controleren en gegevens ophalen
@@ -55,7 +60,8 @@ router.post('/', async (req, res) => {
     gender,
     role: 'employee',
     employer_id: invitation.employer_id,
-    functie_omschrijving: invitation.functie_omschrijving || null
+    functie_omschrijving: invitation.functie_omschrijving || null,
+    toestemming_avg: toestemming_avg
   })
 
   if (insertError) {
