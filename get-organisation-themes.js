@@ -222,6 +222,34 @@ router.get('/:orgId', async (req, res) => {
         samenvattingStatus = 'volledig'
       }
 
+      // Als alle werknemers het thema hebben afgerond en er is nog geen samenvatting, genereer er een
+      if (filteredCompletedEmployees === totalEmployees && totalEmployees > 0 && !existingInsight) {
+        console.log(`🚀 Alle werknemers hebben thema ${theme.titel} afgerond, genereer automatisch samenvatting...`)
+        
+        try {
+          // Genereer samenvatting via bestaande endpoint
+          const generateResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/generate-organisation-summary`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              organisatie_id: orgId,
+              theme_id: theme.id
+            })
+          })
+          
+          if (generateResponse.ok) {
+            console.log(`✅ Samenvatting gegenereerd voor thema ${theme.titel}`)
+            samenvattingStatus = 'volledig'
+          } else {
+            console.error(`❌ Fout bij genereren samenvatting voor thema ${theme.titel}:`, generateResponse.status)
+          }
+        } catch (error) {
+          console.error(`❌ Fout bij genereren samenvatting voor thema ${theme.titel}:`, error)
+        }
+      }
+
       // Bepaal uiteindelijke status: als er al een samenvatting bestaat, gebruik die status
       // anders gebruik de berekende status
       const finalStatus = existingInsight?.samenvatting_status || samenvattingStatus
