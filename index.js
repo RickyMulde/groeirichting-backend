@@ -29,6 +29,7 @@ const generateTopActions = require('./generate-top-actions'); // ✅ Nieuw toege
 const saveThemaEvaluatie = require('./save-thema-evaluatie'); // ✅ Nieuw toegevoegd
 const checkThemaEvaluatie = require('./check-thema-evaluatie'); // ✅ Nieuw toegevoegd
 const contact = require('./contact'); // ✅ Nieuw toegevoegd
+const teams = require('./teams'); // ✅ Nieuw toegevoegd voor team management
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
@@ -88,6 +89,7 @@ app.use('/api/generate-top-actions', generateTopActions); // ✅ Nieuwe route to
 app.use('/api/save-thema-evaluatie', saveThemaEvaluatie); // ✅ Nieuwe route toegevoegd
 app.use('/api/check-thema-evaluatie', checkThemaEvaluatie); // ✅ Nieuwe route toegevoegd
 app.use('/api/contact', contact); // ✅ Nieuwe route toegevoegd
+app.use('/api/teams', teams); // ✅ Nieuwe route toegevoegd voor team management
 
 // 🏥 Healthcheck endpoint voor Render
 app.get('/health', (req, res) => {
@@ -104,13 +106,45 @@ app.get('/health', (req, res) => {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.post('/api/send-invite', async (req, res) => {
-  const { to, name, employerId, token, functieOmschrijving } = req.body;
+  const { to, name, employerId, token, functieOmschrijving, teamId } = req.body;
 
-  console.log('Verzoek ontvangen voor:', { to, name, employerId, token, functieOmschrijving });
+  console.log('Verzoek ontvangen voor:', { to, name, employerId, token, functieOmschrijving, teamId });
 
   if (!to || !name || !employerId || !token) {
     console.warn('Verzoek geweigerd: ontbrekende velden');
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  if (!teamId) {
+    console.warn('Verzoek geweigerd: teamId is verplicht');
+    return res.status(400).json({ error: 'teamId is verplicht' });
+  }
+
+  // Valideer dat team bij werkgever hoort en niet gearchiveerd is
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .select('id, werkgever_id, archived_at')
+      .eq('id', teamId)
+      .eq('werkgever_id', employerId)
+      .single();
+
+    if (teamError || !team) {
+      return res.status(403).json({ error: 'Team niet gevonden of behoort niet tot deze organisatie' });
+    }
+
+    if (team.archived_at) {
+      return res.status(403).json({ error: 'Team is gearchiveerd' });
+    }
+  } catch (error) {
+    console.error('Fout bij valideren team:', error);
+    return res.status(500).json({ error: 'Fout bij valideren team' });
   }
 
   // Update de invitation met de functie_omschrijving
@@ -123,7 +157,10 @@ app.post('/api/send-invite', async (req, res) => {
 
     const { error: updateError } = await supabase
       .from('invitations')
-      .update({ functie_omschrijving: functieOmschrijving || null })
+      .update({ 
+        functie_omschrijving: functieOmschrijving || null,
+        team_id: teamId
+      })
       .eq('token', token);
 
     if (updateError) {

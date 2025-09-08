@@ -1,27 +1,29 @@
 const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
+const { authMiddleware } = require('./middleware/auth');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Gebruik auth middleware voor alle routes
+router.use(authMiddleware);
+
 // POST /api/werkgever-gesprek-instellingen
 // Maak nieuwe configuratie aan of update bestaande
 router.post('/', async (req, res) => {
   const {
-    werkgever_id,
     actieve_maanden,
     verplicht,
     actief,
     anonimiseer_na_dagen,
     organisatie_omschrijving
   } = req.body;
+  const werkgever_id = req.ctx.employerId;
 
-  if (!werkgever_id) {
-    return res.status(400).json({ error: 'werkgever_id is verplicht' });
-  }
+  // werkgever_id komt nu uit context, dus altijd aanwezig
 
   if (!actieve_maanden || !Array.isArray(actieve_maanden) || actieve_maanden.length === 0) {
     return res.status(400).json({ error: 'actieve_maanden moet een niet-lege array zijn' });
@@ -96,9 +98,11 @@ router.post('/', async (req, res) => {
 // Haal configuratie op voor een werkgever
 router.get('/:werkgever_id', async (req, res) => {
   const { werkgever_id } = req.params;
+  const employerId = req.ctx.employerId;
 
-  if (!werkgever_id) {
-    return res.status(400).json({ error: 'werkgever_id is verplicht' });
+  // Valideer dat werkgever_id overeenkomt met employerId uit context
+  if (werkgever_id !== employerId) {
+    return res.status(403).json({ error: 'Geen toegang tot deze organisatie' });
   }
 
   try {

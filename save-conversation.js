@@ -3,11 +3,15 @@ const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const { containsSensitiveInfo } = require('./utils/filterInput.js');
+const { authMiddleware } = require('./middleware/auth');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+// Gebruik auth middleware voor alle routes
+router.use(authMiddleware);
 
 router.post('/', async (req, res) => {
   const {
@@ -25,6 +29,7 @@ router.post('/', async (req, res) => {
     toelichting_inhoud, // Nieuwe parameter voor toelichting inhoud
     vraag_id // Nieuwe parameter voor vraag_id bij toelichtingen
   } = req.body;
+  const employerId = req.ctx.employerId;
 
   const now = new Date().toISOString();
 
@@ -40,9 +45,17 @@ router.post('/', async (req, res) => {
         .from('users')
         .select('role, employer_id')
         .eq('id', werknemer_id)
+        .eq('employer_id', employerId)  // Voeg org-scope toe
         .single();
       
-      if (!userError && user && user.role !== 'superadmin' && user.id !== '5bbfffe3-ad87-4ac8-bba4-112729868489') {
+      if (userError) {
+        if (userError.code === 'PGRST116') {
+          return res.status(404).json({ error: 'Werknemer niet gevonden' })
+        }
+        throw userError
+      }
+      
+      if (user && user.role !== 'superadmin' && user.id !== '5bbfffe3-ad87-4ac8-bba4-112729868489') {
         // Haal werkgever configuratie op
         const { data: werkgeverConfig, error: configError } = await supabase
           .from('werkgever_gesprek_instellingen')

@@ -1,6 +1,7 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
 const OpenAI = require('openai')
+const { authMiddleware } = require('./middleware/auth')
 
 const router = express.Router()
 const supabase = createClient(
@@ -8,6 +9,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+// Gebruik auth middleware voor alle routes
+router.use(authMiddleware)
 
 // Helper functie om de volgende maand te berekenen
 function getNextMonth(periode) {
@@ -26,10 +30,11 @@ function getNextMonth(periode) {
 // POST endpoint om top 3 vervolgacties te genereren
 router.post('/', async (req, res) => {
   const { werknemer_id, periode } = req.body
+  const employerId = req.ctx.employerId
   
   if (!werknemer_id || !periode) {
     return res.status(400).json({ 
-      error: 'werknemer_id en periode zijn verplicht' 
+      error: 'werknemer_id en periode zijn verplicht'
     })
   }
 
@@ -92,9 +97,15 @@ router.post('/', async (req, res) => {
       .from('users')
       .select('employer_id, functie_omschrijving, gender')
       .eq('id', werknemer_id)
+      .eq('employer_id', employerId)  // Voeg org-scope toe
       .single()
 
-    if (werknemerError) throw werknemerError
+    if (werknemerError) {
+      if (werknemerError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Werknemer niet gevonden' })
+      }
+      throw werknemerError
+    }
 
     const { data: werkgeverConfig, error: configError } = await supabase
       .from('werkgever_gesprek_instellingen')

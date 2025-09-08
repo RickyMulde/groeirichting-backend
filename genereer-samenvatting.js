@@ -1,6 +1,7 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
 const OpenAI = require('openai')
+const { authMiddleware } = require('./middleware/auth')
 
 const router = express.Router()
 const supabase = createClient(
@@ -9,8 +10,13 @@ const supabase = createClient(
 )
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
+// Gebruik auth middleware voor alle routes
+router.use(authMiddleware)
+
 router.post('/', async (req, res) => {
   const { theme_id, werknemer_id, gesprek_id } = req.body
+  const employerId = req.ctx.employerId
+  
   if (!theme_id || !werknemer_id) {
     return res.status(400).json({ error: 'theme_id en werknemer_id zijn verplicht' })
   }
@@ -90,11 +96,15 @@ router.post('/', async (req, res) => {
     // 2c. Haal werknemer context op voor functie-omschrijving en gender
     const { data: werknemerContext, error: contextError } = await supabase
       .from('users')
-      .select('functie_omschrijving, gender')
+      .select('functie_omschrijving, gender, employer_id')
       .eq('id', werknemer_id)
+      .eq('employer_id', employerId)  // Voeg org-scope toe
       .single()
 
-    if (contextError && contextError.code !== 'PGRST116') {
+    if (contextError) {
+      if (contextError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Werknemer niet gevonden' })
+      }
       console.warn('Kon werknemer context niet ophalen:', contextError)
     }
 

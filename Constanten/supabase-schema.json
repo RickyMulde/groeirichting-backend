@@ -1,857 +1,1406 @@
 [
   {
-    "table_name": "employers",
-    "column_name": "id",
-    "data_type": "uuid"
+    "json_agg": [
+      {
+        "table_name": "employers",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "employers",
+        "column_name": "company_name",
+        "data_type": "text"
+      },
+      {
+        "table_name": "employers",
+        "column_name": "contact_email",
+        "data_type": "text"
+      },
+      {
+        "table_name": "employers",
+        "column_name": "contact_name",
+        "data_type": "text"
+      },
+      {
+        "table_name": "employers",
+        "column_name": "kvk_number",
+        "data_type": "text"
+      },
+      {
+        "table_name": "employers",
+        "column_name": "btw_number",
+        "data_type": "text"
+      },
+      {
+        "table_name": "employers",
+        "column_name": "postcode",
+        "data_type": "text"
+      },
+      {
+        "table_name": "employers",
+        "column_name": "huisnummer",
+        "data_type": "text"
+      },
+      {
+        "table_name": "employers",
+        "column_name": "aantal_medewerkers",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "employers",
+        "column_name": "factuur_email",
+        "data_type": "text"
+      },
+      {
+        "table_name": "employers",
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone"
+      },
+      {
+        "table_name": "employers",
+        "column_name": "contact_phone",
+        "data_type": "text"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "werknemer_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "theme_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "gestart_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "beeindigd_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "status",
+        "data_type": "text"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "taalcode",
+        "data_type": "text"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "aangemaakt_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "afrondingsreden",
+        "data_type": "text"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "werkgever_thema_config_id",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "geanonimiseerd_op",
+        "data_type": "timestamp without time zone"
+      },
+      {
+        "table_name": "gesprekken_compleet",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprekken_compleet",
+        "column_name": "werknemer_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprekken_compleet",
+        "column_name": "theme_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprekken_compleet",
+        "column_name": "gesprek_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprekken_compleet",
+        "column_name": "gespreksgeschiedenis",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "gesprekken_compleet",
+        "column_name": "metadata",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "gesprekken_compleet",
+        "column_name": "gestart_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "gesprekken_compleet",
+        "column_name": "beeindigd_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "gesprekken_compleet",
+        "column_name": "status",
+        "data_type": "text"
+      },
+      {
+        "table_name": "gesprekken_compleet",
+        "column_name": "taalcode",
+        "data_type": "text"
+      },
+      {
+        "table_name": "gesprekken_compleet",
+        "column_name": "team_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "werkgever_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "werknemer_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "theme_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "samenvatting",
+        "data_type": "text"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "score",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "mag_werkgever_inzien",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "tegen_deelname_bezwaar",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "besproken_in_1op1",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "bron_data_hash",
+        "data_type": "text"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "samenvatting_type",
+        "data_type": "text"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "gespreksronde",
+        "data_type": "smallint"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "toon_in_dashboard",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "feedback_van_werkgever",
+        "data_type": "text"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "gegenereerd_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "gesprek_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "periode",
+        "data_type": "character varying"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "vervolgacties",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "vervolgacties_toelichting",
+        "data_type": "text"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "vervolgacties_generatie_datum",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "gesprekresultaten",
+        "column_name": "team_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "invitations",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "invitations",
+        "column_name": "email",
+        "data_type": "text"
+      },
+      {
+        "table_name": "invitations",
+        "column_name": "token",
+        "data_type": "text"
+      },
+      {
+        "table_name": "invitations",
+        "column_name": "employer_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "invitations",
+        "column_name": "status",
+        "data_type": "text"
+      },
+      {
+        "table_name": "invitations",
+        "column_name": "expires_at",
+        "data_type": "timestamp without time zone"
+      },
+      {
+        "table_name": "invitations",
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone"
+      },
+      {
+        "table_name": "invitations",
+        "column_name": "created_by",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "invitations",
+        "column_name": "functie_omschrijving",
+        "data_type": "character varying"
+      },
+      {
+        "table_name": "invitations",
+        "column_name": "team_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "organisatie_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "theme_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "samenvatting",
+        "data_type": "text"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "signaalwoorden",
+        "data_type": "ARRAY"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "verbeteradvies",
+        "data_type": "text"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "aantal_gesprekken",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "laatst_bijgewerkt_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "gemiddelde_score",
+        "data_type": "numeric"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "totaal_medewerkers",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "voltooide_medewerkers",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "samenvatting_status",
+        "data_type": "text"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "gpt_adviezen",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "individuele_scores",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "organization_theme_insights",
+        "column_name": "team_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "teams",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "teams",
+        "column_name": "naam",
+        "data_type": "text"
+      },
+      {
+        "table_name": "teams",
+        "column_name": "werkgever_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "teams",
+        "column_name": "beschrijving",
+        "data_type": "text"
+      },
+      {
+        "table_name": "teams",
+        "column_name": "aangemaakt_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "teams",
+        "column_name": "bijgewerkt_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "teams",
+        "column_name": "archived_at",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "thema_evaluaties",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "thema_evaluaties",
+        "column_name": "werknemer_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "thema_evaluaties",
+        "column_name": "theme_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "thema_evaluaties",
+        "column_name": "gesprek_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "thema_evaluaties",
+        "column_name": "score",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "thema_evaluaties",
+        "column_name": "evaluatie_datum",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "thema_evaluaties",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "thema_evaluaties",
+        "column_name": "team_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "theme_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "tekst",
+        "data_type": "text"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "verplicht",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "type",
+        "data_type": "text"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "taalcode",
+        "data_type": "text"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "volgorde_index",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "versie",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "aangemaakt_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "type_vraag",
+        "data_type": "text"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "doel_vraag",
+        "data_type": "text"
+      },
+      {
+        "table_name": "theme_questions",
+        "column_name": "theme_titel",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "titel",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "klaar_voor_gebruik",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "voorgesteld_als_verplicht",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "standaard_zichtbaar",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "alleen_premium",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "alleen_concept",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "intro_prompt",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "gespreksdoel",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "doel_vraag",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "geeft_score",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "geeft_samenvatting",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "geeft_ai_advies",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "ai_configuratie",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "branche_labels",
+        "data_type": "ARRAY"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "doelgroep_labels",
+        "data_type": "ARRAY"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "zichtbaar_vanaf",
+        "data_type": "date"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "zichtbaar_tot",
+        "data_type": "date"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "zoeklabels",
+        "data_type": "ARRAY"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "taalcode",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "ai_model",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "volgorde_index",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "versiebeheer",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "aangemaakt_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "verwachte_signalen",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_1",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_2",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_3",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_4",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_5",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_1_verplicht",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_1_type",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_2_verplicht",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_2_type",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_3_verplicht",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_3_type",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_4_verplicht",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_4_type",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_5_verplicht",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "vraag_5_type",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "gebruik_gpt_vragen",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "thema_type",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "prompt_style",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "ai_behavior",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "gpt_doelstelling",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "gpt_beperkingen",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "score_instructies",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "beschrijving_werkgever",
+        "data_type": "text"
+      },
+      {
+        "table_name": "themes",
+        "column_name": "beschrijving_werknemer",
+        "data_type": "text"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "werknemer_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "werkgever_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "periode",
+        "data_type": "text"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "actie_1",
+        "data_type": "text"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "actie_2",
+        "data_type": "text"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "actie_3",
+        "data_type": "text"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "prioriteit_1",
+        "data_type": "text"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "prioriteit_2",
+        "data_type": "text"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "prioriteit_3",
+        "data_type": "text"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "toelichting_per_actie",
+        "data_type": "ARRAY"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "algemene_toelichting",
+        "data_type": "text"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "gegenereerd_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "gesprek_ids",
+        "data_type": "ARRAY"
+      },
+      {
+        "table_name": "top_vervolgacties",
+        "column_name": "team_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "users",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "users",
+        "column_name": "email",
+        "data_type": "text"
+      },
+      {
+        "table_name": "users",
+        "column_name": "first_name",
+        "data_type": "text"
+      },
+      {
+        "table_name": "users",
+        "column_name": "middle_name",
+        "data_type": "text"
+      },
+      {
+        "table_name": "users",
+        "column_name": "last_name",
+        "data_type": "text"
+      },
+      {
+        "table_name": "users",
+        "column_name": "birthdate",
+        "data_type": "date"
+      },
+      {
+        "table_name": "users",
+        "column_name": "gender",
+        "data_type": "text"
+      },
+      {
+        "table_name": "users",
+        "column_name": "role",
+        "data_type": "text"
+      },
+      {
+        "table_name": "users",
+        "column_name": "employer_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "users",
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone"
+      },
+      {
+        "table_name": "users",
+        "column_name": "functie_omschrijving",
+        "data_type": "character varying"
+      },
+      {
+        "table_name": "users",
+        "column_name": "toestemming_avg",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "users",
+        "column_name": "account_naam",
+        "data_type": "text"
+      },
+      {
+        "table_name": "users",
+        "column_name": "team_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "werkgever_gesprek_instellingen",
+        "column_name": "id",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "werkgever_gesprek_instellingen",
+        "column_name": "werkgever_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "werkgever_gesprek_instellingen",
+        "column_name": "actieve_maanden",
+        "data_type": "ARRAY"
+      },
+      {
+        "table_name": "werkgever_gesprek_instellingen",
+        "column_name": "verplicht",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "werkgever_gesprek_instellingen",
+        "column_name": "actief",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "werkgever_gesprek_instellingen",
+        "column_name": "anonimiseer_na_dagen",
+        "data_type": "integer"
+      },
+      {
+        "table_name": "werkgever_gesprek_instellingen",
+        "column_name": "aangemaakt_op",
+        "data_type": "timestamp without time zone"
+      },
+      {
+        "table_name": "werkgever_gesprek_instellingen",
+        "column_name": "bijgewerkt_op",
+        "data_type": "timestamp without time zone"
+      },
+      {
+        "table_name": "werkgever_gesprek_instellingen",
+        "column_name": "organisatie_omschrijving",
+        "data_type": "text"
+      }
+    ]
   },
   {
+    "constraint_name": "2200_17319_1_not_null",
     "table_name": "employers",
-    "column_name": "company_name",
-    "data_type": "text"
+    "check_clause": "id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17319_2_not_null",
     "table_name": "employers",
-    "column_name": "contact_email",
-    "data_type": "text"
+    "check_clause": "company_name IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17319_3_not_null",
     "table_name": "employers",
-    "column_name": "contact_name",
-    "data_type": "text"
+    "check_clause": "contact_email IS NOT NULL"
   },
   {
-    "table_name": "employers",
-    "column_name": "kvk_number",
-    "data_type": "text"
-  },
-  {
-    "table_name": "employers",
-    "column_name": "btw_number",
-    "data_type": "text"
-  },
-  {
-    "table_name": "employers",
-    "column_name": "postcode",
-    "data_type": "text"
-  },
-  {
-    "table_name": "employers",
-    "column_name": "huisnummer",
-    "data_type": "text"
-  },
-  {
-    "table_name": "employers",
-    "column_name": "aantal_medewerkers",
-    "data_type": "integer"
-  },
-  {
-    "table_name": "employers",
-    "column_name": "factuur_email",
-    "data_type": "text"
-  },
-  {
-    "table_name": "employers",
-    "column_name": "created_at",
-    "data_type": "timestamp without time zone"
-  },
-  {
-    "table_name": "employers",
-    "column_name": "contact_phone",
-    "data_type": "text"
-  },
-  {
+    "constraint_name": "2200_17326_1_not_null",
     "table_name": "gesprek",
-    "column_name": "id",
-    "data_type": "uuid"
+    "check_clause": "id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17326_2_not_null",
     "table_name": "gesprek",
-    "column_name": "werknemer_id",
-    "data_type": "uuid"
+    "check_clause": "werknemer_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17326_3_not_null",
     "table_name": "gesprek",
-    "column_name": "theme_id",
-    "data_type": "uuid"
+    "check_clause": "theme_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17326_6_not_null",
     "table_name": "gesprek",
-    "column_name": "gestart_op",
-    "data_type": "timestamp with time zone"
+    "check_clause": "status IS NOT NULL"
   },
   {
+    "constraint_name": "check_afrondingsreden",
     "table_name": "gesprek",
-    "column_name": "beeindigd_op",
-    "data_type": "timestamp with time zone"
+    "check_clause": "((afrondingsreden = ANY (ARRAY['MAX_ANTWOORDEN'::text, 'VOLDENDE_DUIDELIJK'::text])))"
   },
   {
-    "table_name": "gesprek",
-    "column_name": "status",
-    "data_type": "text"
-  },
-  {
-    "table_name": "gesprek",
-    "column_name": "taalcode",
-    "data_type": "text"
-  },
-  {
-    "table_name": "gesprek",
-    "column_name": "aangemaakt_op",
-    "data_type": "timestamp with time zone"
-  },
-  {
-    "table_name": "gesprek",
-    "column_name": "afrondingsreden",
-    "data_type": "text"
-  },
-  {
-    "table_name": "gesprek",
-    "column_name": "werkgever_thema_config_id",
-    "data_type": "integer"
-  },
-  {
-    "table_name": "gesprek",
-    "column_name": "geanonimiseerd_op",
-    "data_type": "timestamp without time zone"
-  },
-  {
+    "constraint_name": "2200_17337_1_not_null",
     "table_name": "gesprekken_compleet",
-    "column_name": "id",
-    "data_type": "uuid"
+    "check_clause": "id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17337_2_not_null",
     "table_name": "gesprekken_compleet",
-    "column_name": "werknemer_id",
-    "data_type": "uuid"
+    "check_clause": "werknemer_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17337_3_not_null",
     "table_name": "gesprekken_compleet",
-    "column_name": "theme_id",
-    "data_type": "uuid"
+    "check_clause": "theme_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17337_4_not_null",
     "table_name": "gesprekken_compleet",
-    "column_name": "gesprek_id",
-    "data_type": "uuid"
+    "check_clause": "gesprek_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17337_5_not_null",
     "table_name": "gesprekken_compleet",
-    "column_name": "gespreksgeschiedenis",
-    "data_type": "jsonb"
+    "check_clause": "gespreksgeschiedenis IS NOT NULL"
   },
   {
+    "constraint_name": "valid_gespreksgeschiedenis",
     "table_name": "gesprekken_compleet",
-    "column_name": "metadata",
-    "data_type": "jsonb"
+    "check_clause": "((jsonb_typeof(gespreksgeschiedenis) = 'array'::text))"
   },
   {
+    "constraint_name": "valid_metadata",
     "table_name": "gesprekken_compleet",
-    "column_name": "gestart_op",
-    "data_type": "timestamp with time zone"
+    "check_clause": "((jsonb_typeof(metadata) = 'object'::text))"
   },
   {
+    "constraint_name": "2200_17337_6_not_null",
     "table_name": "gesprekken_compleet",
-    "column_name": "beeindigd_op",
-    "data_type": "timestamp with time zone"
+    "check_clause": "team_id IS NOT NULL"
   },
   {
-    "table_name": "gesprekken_compleet",
-    "column_name": "status",
-    "data_type": "text"
-  },
-  {
-    "table_name": "gesprekken_compleet",
-    "column_name": "taalcode",
-    "data_type": "text"
-  },
-  {
+    "constraint_name": "2200_17350_1_not_null",
     "table_name": "gesprekresultaten",
-    "column_name": "id",
-    "data_type": "uuid"
+    "check_clause": "id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17350_2_not_null",
     "table_name": "gesprekresultaten",
-    "column_name": "werkgever_id",
-    "data_type": "uuid"
+    "check_clause": "werkgever_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17350_3_not_null",
     "table_name": "gesprekresultaten",
-    "column_name": "werknemer_id",
-    "data_type": "uuid"
+    "check_clause": "werknemer_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17350_4_not_null",
     "table_name": "gesprekresultaten",
-    "column_name": "theme_id",
-    "data_type": "uuid"
+    "check_clause": "theme_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17350_5_not_null",
     "table_name": "gesprekresultaten",
-    "column_name": "samenvatting",
-    "data_type": "text"
+    "check_clause": "samenvatting IS NOT NULL"
   },
   {
+    "constraint_name": "gesprekresultaten_samenvatting_type_check",
     "table_name": "gesprekresultaten",
-    "column_name": "score",
-    "data_type": "integer"
+    "check_clause": "((samenvatting_type = ANY (ARRAY['initieel'::text, 'herhaling'::text, 'follow-up'::text])))"
   },
   {
+    "constraint_name": "gesprekresultaten_score_check",
     "table_name": "gesprekresultaten",
-    "column_name": "mag_werkgever_inzien",
-    "data_type": "boolean"
+    "check_clause": "(((score >= 0) AND (score <= 10)))"
   },
   {
+    "constraint_name": "2200_17350_6_not_null",
     "table_name": "gesprekresultaten",
-    "column_name": "tegen_deelname_bezwaar",
-    "data_type": "boolean"
+    "check_clause": "team_id IS NOT NULL"
   },
   {
-    "table_name": "gesprekresultaten",
-    "column_name": "besproken_in_1op1",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "bron_data_hash",
-    "data_type": "text"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "samenvatting_type",
-    "data_type": "text"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "gespreksronde",
-    "data_type": "smallint"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "toon_in_dashboard",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "feedback_van_werkgever",
-    "data_type": "text"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "gegenereerd_op",
-    "data_type": "timestamp with time zone"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "gesprek_id",
-    "data_type": "uuid"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "periode",
-    "data_type": "character varying"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "vervolgacties",
-    "data_type": "jsonb"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "vervolgacties_toelichting",
-    "data_type": "text"
-  },
-  {
-    "table_name": "gesprekresultaten",
-    "column_name": "vervolgacties_generatie_datum",
-    "data_type": "timestamp with time zone"
-  },
-  {
+    "constraint_name": "2200_17365_1_not_null",
     "table_name": "invitations",
-    "column_name": "id",
-    "data_type": "uuid"
+    "check_clause": "id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17365_2_not_null",
     "table_name": "invitations",
-    "column_name": "email",
-    "data_type": "text"
+    "check_clause": "email IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17365_3_not_null",
     "table_name": "invitations",
-    "column_name": "token",
-    "data_type": "text"
+    "check_clause": "token IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17365_6_not_null",
     "table_name": "invitations",
-    "column_name": "employer_id",
-    "data_type": "uuid"
+    "check_clause": "expires_at IS NOT NULL"
   },
   {
+    "constraint_name": "invitations_status_check",
     "table_name": "invitations",
-    "column_name": "status",
-    "data_type": "text"
+    "check_clause": "((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'revoked'::text, 'expired'::text])))"
   },
   {
+    "constraint_name": "2200_17365_7_not_null",
     "table_name": "invitations",
-    "column_name": "expires_at",
-    "data_type": "timestamp without time zone"
+    "check_clause": "team_id IS NOT NULL"
   },
   {
-    "table_name": "invitations",
-    "column_name": "created_at",
-    "data_type": "timestamp without time zone"
-  },
-  {
-    "table_name": "invitations",
-    "column_name": "created_by",
-    "data_type": "uuid"
-  },
-  {
-    "table_name": "invitations",
-    "column_name": "functie_omschrijving",
-    "data_type": "character varying"
-  },
-  {
+    "constraint_name": "2200_17374_1_not_null",
     "table_name": "organization_theme_insights",
-    "column_name": "id",
-    "data_type": "uuid"
+    "check_clause": "id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17374_2_not_null",
     "table_name": "organization_theme_insights",
-    "column_name": "organisatie_id",
-    "data_type": "uuid"
+    "check_clause": "organisatie_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17374_3_not_null",
     "table_name": "organization_theme_insights",
-    "column_name": "theme_id",
-    "data_type": "uuid"
+    "check_clause": "theme_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17374_8_not_null",
     "table_name": "organization_theme_insights",
-    "column_name": "samenvatting",
-    "data_type": "text"
+    "check_clause": "laatst_bijgewerkt_op IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17374_9_not_null",
     "table_name": "organization_theme_insights",
-    "column_name": "signaalwoorden",
-    "data_type": "ARRAY"
+    "check_clause": "team_id IS NOT NULL"
   },
   {
-    "table_name": "organization_theme_insights",
-    "column_name": "verbeteradvies",
-    "data_type": "text"
+    "constraint_name": "2200_60742_1_not_null",
+    "table_name": "teams",
+    "check_clause": "id IS NOT NULL"
   },
   {
-    "table_name": "organization_theme_insights",
-    "column_name": "aantal_gesprekken",
-    "data_type": "integer"
+    "constraint_name": "2200_60742_2_not_null",
+    "table_name": "teams",
+    "check_clause": "naam IS NOT NULL"
   },
   {
-    "table_name": "organization_theme_insights",
-    "column_name": "laatst_bijgewerkt_op",
-    "data_type": "timestamp with time zone"
+    "constraint_name": "2200_60742_3_not_null",
+    "table_name": "teams",
+    "check_clause": "werkgever_id IS NOT NULL"
   },
   {
-    "table_name": "organization_theme_insights",
-    "column_name": "gemiddelde_score",
-    "data_type": "numeric"
+    "constraint_name": "2200_58452_1_not_null",
+    "table_name": "thema_evaluaties",
+    "check_clause": "id IS NOT NULL"
   },
   {
-    "table_name": "organization_theme_insights",
-    "column_name": "totaal_medewerkers",
-    "data_type": "integer"
+    "constraint_name": "2200_58452_2_not_null",
+    "table_name": "thema_evaluaties",
+    "check_clause": "werknemer_id IS NOT NULL"
   },
   {
-    "table_name": "organization_theme_insights",
-    "column_name": "voltooide_medewerkers",
-    "data_type": "integer"
+    "constraint_name": "2200_58452_3_not_null",
+    "table_name": "thema_evaluaties",
+    "check_clause": "theme_id IS NOT NULL"
   },
   {
-    "table_name": "organization_theme_insights",
-    "column_name": "samenvatting_status",
-    "data_type": "text"
+    "constraint_name": "2200_58452_4_not_null",
+    "table_name": "thema_evaluaties",
+    "check_clause": "gesprek_id IS NOT NULL"
   },
   {
-    "table_name": "organization_theme_insights",
-    "column_name": "gpt_adviezen",
-    "data_type": "jsonb"
+    "constraint_name": "2200_58452_5_not_null",
+    "table_name": "thema_evaluaties",
+    "check_clause": "score IS NOT NULL"
   },
   {
-    "table_name": "organization_theme_insights",
-    "column_name": "individuele_scores",
-    "data_type": "jsonb"
+    "constraint_name": "thema_evaluaties_score_check",
+    "table_name": "thema_evaluaties",
+    "check_clause": "(((score >= 1) AND (score <= 10)))"
   },
   {
+    "constraint_name": "2200_58452_6_not_null",
+    "table_name": "thema_evaluaties",
+    "check_clause": "team_id IS NOT NULL"
+  },
+  {
+    "constraint_name": "2200_17382_12_not_null",
     "table_name": "theme_questions",
-    "column_name": "id",
-    "data_type": "uuid"
+    "check_clause": "theme_titel IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17382_1_not_null",
     "table_name": "theme_questions",
-    "column_name": "theme_id",
-    "data_type": "uuid"
+    "check_clause": "id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17382_3_not_null",
     "table_name": "theme_questions",
-    "column_name": "tekst",
-    "data_type": "text"
+    "check_clause": "tekst IS NOT NULL"
   },
   {
+    "constraint_name": "theme_questions_type_check",
     "table_name": "theme_questions",
-    "column_name": "verplicht",
-    "data_type": "boolean"
+    "check_clause": "((type = ANY (ARRAY['initieel'::text, 'vervolg'::text])))"
   },
   {
-    "table_name": "theme_questions",
-    "column_name": "type",
-    "data_type": "text"
-  },
-  {
-    "table_name": "theme_questions",
-    "column_name": "taalcode",
-    "data_type": "text"
-  },
-  {
-    "table_name": "theme_questions",
-    "column_name": "volgorde_index",
-    "data_type": "integer"
-  },
-  {
-    "table_name": "theme_questions",
-    "column_name": "versie",
-    "data_type": "integer"
-  },
-  {
-    "table_name": "theme_questions",
-    "column_name": "aangemaakt_op",
-    "data_type": "timestamp with time zone"
-  },
-  {
-    "table_name": "theme_questions",
-    "column_name": "type_vraag",
-    "data_type": "text"
-  },
-  {
-    "table_name": "theme_questions",
-    "column_name": "doel_vraag",
-    "data_type": "text"
-  },
-  {
-    "table_name": "theme_questions",
-    "column_name": "theme_titel",
-    "data_type": "text"
-  },
-  {
+    "constraint_name": "2200_17395_1_not_null",
     "table_name": "themes",
-    "column_name": "id",
-    "data_type": "uuid"
+    "check_clause": "id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17395_2_not_null",
     "table_name": "themes",
-    "column_name": "titel",
-    "data_type": "text"
+    "check_clause": "titel IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17395_43_not_null",
     "table_name": "themes",
-    "column_name": "klaar_voor_gebruik",
-    "data_type": "boolean"
+    "check_clause": "thema_type IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17395_44_not_null",
     "table_name": "themes",
-    "column_name": "voorgesteld_als_verplicht",
-    "data_type": "boolean"
+    "check_clause": "prompt_style IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17395_45_not_null",
     "table_name": "themes",
-    "column_name": "standaard_zichtbaar",
-    "data_type": "boolean"
+    "check_clause": "ai_behavior IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17395_46_not_null",
     "table_name": "themes",
-    "column_name": "alleen_premium",
-    "data_type": "boolean"
+    "check_clause": "gpt_doelstelling IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17395_47_not_null",
     "table_name": "themes",
-    "column_name": "alleen_concept",
-    "data_type": "boolean"
+    "check_clause": "gpt_beperkingen IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17395_48_not_null",
     "table_name": "themes",
-    "column_name": "intro_prompt",
-    "data_type": "text"
+    "check_clause": "score_instructies IS NOT NULL"
   },
   {
+    "constraint_name": "themes_ai_behavior_check",
     "table_name": "themes",
-    "column_name": "gespreksdoel",
-    "data_type": "text"
+    "check_clause": "((ai_behavior = ANY (ARRAY['coach'::text, 'informer'::text, 'facilitator'::text, 'reviewer'::text])))"
   },
   {
+    "constraint_name": "themes_prompt_style_check",
     "table_name": "themes",
-    "column_name": "doel_vraag",
-    "data_type": "text"
+    "check_clause": "((prompt_style = ANY (ARRAY['vragend'::text, 'informatief'::text, 'gemengd'::text])))"
   },
   {
+    "constraint_name": "themes_thema_type_check",
     "table_name": "themes",
-    "column_name": "geeft_score",
-    "data_type": "boolean"
+    "check_clause": "((thema_type = ANY (ARRAY['coachend'::text, 'informatief'::text, 'toetsend'::text, 'open'::text])))"
   },
   {
-    "table_name": "themes",
-    "column_name": "geeft_samenvatting",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "geeft_ai_advies",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "ai_configuratie",
-    "data_type": "jsonb"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "branche_labels",
-    "data_type": "ARRAY"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "doelgroep_labels",
-    "data_type": "ARRAY"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "zichtbaar_vanaf",
-    "data_type": "date"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "zichtbaar_tot",
-    "data_type": "date"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "zoeklabels",
-    "data_type": "ARRAY"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "taalcode",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "ai_model",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "volgorde_index",
-    "data_type": "integer"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "versiebeheer",
-    "data_type": "jsonb"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "aangemaakt_op",
-    "data_type": "timestamp with time zone"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "verwachte_signalen",
-    "data_type": "jsonb"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_1",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_2",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_3",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_4",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_5",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_1_verplicht",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_1_type",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_2_verplicht",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_2_type",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_3_verplicht",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_3_type",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_4_verplicht",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_4_type",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_5_verplicht",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "vraag_5_type",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "gebruik_gpt_vragen",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "thema_type",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "prompt_style",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "ai_behavior",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "gpt_doelstelling",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "gpt_beperkingen",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "score_instructies",
-    "data_type": "jsonb"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "beschrijving_werkgever",
-    "data_type": "text"
-  },
-  {
-    "table_name": "themes",
-    "column_name": "beschrijving_werknemer",
-    "data_type": "text"
-  },
-  {
+    "constraint_name": "2200_44865_10_not_null",
     "table_name": "top_vervolgacties",
-    "column_name": "id",
-    "data_type": "uuid"
+    "check_clause": "prioriteit_3 IS NOT NULL"
   },
   {
+    "constraint_name": "2200_44865_11_not_null",
     "table_name": "top_vervolgacties",
-    "column_name": "werknemer_id",
-    "data_type": "uuid"
+    "check_clause": "toelichting_per_actie IS NOT NULL"
   },
   {
+    "constraint_name": "2200_44865_1_not_null",
     "table_name": "top_vervolgacties",
-    "column_name": "werkgever_id",
-    "data_type": "uuid"
+    "check_clause": "id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_44865_2_not_null",
     "table_name": "top_vervolgacties",
-    "column_name": "periode",
-    "data_type": "text"
+    "check_clause": "werknemer_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_44865_3_not_null",
     "table_name": "top_vervolgacties",
-    "column_name": "actie_1",
-    "data_type": "text"
+    "check_clause": "werkgever_id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_44865_4_not_null",
     "table_name": "top_vervolgacties",
-    "column_name": "actie_2",
-    "data_type": "text"
+    "check_clause": "periode IS NOT NULL"
   },
   {
+    "constraint_name": "2200_44865_5_not_null",
     "table_name": "top_vervolgacties",
-    "column_name": "actie_3",
-    "data_type": "text"
+    "check_clause": "actie_1 IS NOT NULL"
   },
   {
+    "constraint_name": "2200_44865_6_not_null",
     "table_name": "top_vervolgacties",
-    "column_name": "prioriteit_1",
-    "data_type": "text"
+    "check_clause": "actie_2 IS NOT NULL"
   },
   {
+    "constraint_name": "2200_44865_7_not_null",
     "table_name": "top_vervolgacties",
-    "column_name": "prioriteit_2",
-    "data_type": "text"
+    "check_clause": "actie_3 IS NOT NULL"
   },
   {
+    "constraint_name": "2200_44865_8_not_null",
     "table_name": "top_vervolgacties",
-    "column_name": "prioriteit_3",
-    "data_type": "text"
+    "check_clause": "prioriteit_1 IS NOT NULL"
   },
   {
+    "constraint_name": "2200_44865_9_not_null",
     "table_name": "top_vervolgacties",
-    "column_name": "toelichting_per_actie",
-    "data_type": "ARRAY"
+    "check_clause": "prioriteit_2 IS NOT NULL"
   },
   {
+    "constraint_name": "top_vervolgacties_prioriteit_1_check",
     "table_name": "top_vervolgacties",
-    "column_name": "algemene_toelichting",
-    "data_type": "text"
+    "check_clause": "((prioriteit_1 = ANY (ARRAY['hoog'::text, 'medium'::text, 'laag'::text])))"
   },
   {
+    "constraint_name": "top_vervolgacties_prioriteit_2_check",
     "table_name": "top_vervolgacties",
-    "column_name": "gegenereerd_op",
-    "data_type": "timestamp with time zone"
+    "check_clause": "((prioriteit_2 = ANY (ARRAY['hoog'::text, 'medium'::text, 'laag'::text])))"
   },
   {
+    "constraint_name": "top_vervolgacties_prioriteit_3_check",
     "table_name": "top_vervolgacties",
-    "column_name": "gesprek_ids",
-    "data_type": "ARRAY"
+    "check_clause": "((prioriteit_3 = ANY (ARRAY['hoog'::text, 'medium'::text, 'laag'::text])))"
   },
   {
+    "constraint_name": "2200_44865_12_not_null",
+    "table_name": "top_vervolgacties",
+    "check_clause": "team_id IS NOT NULL"
+  },
+  {
+    "constraint_name": "2200_17432_1_not_null",
     "table_name": "users",
-    "column_name": "id",
-    "data_type": "uuid"
+    "check_clause": "id IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17432_2_not_null",
     "table_name": "users",
-    "column_name": "email",
-    "data_type": "text"
+    "check_clause": "email IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17432_3_not_null",
     "table_name": "users",
-    "column_name": "first_name",
-    "data_type": "text"
+    "check_clause": "first_name IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17432_5_not_null",
     "table_name": "users",
-    "column_name": "middle_name",
-    "data_type": "text"
+    "check_clause": "last_name IS NOT NULL"
   },
   {
+    "constraint_name": "2200_17432_8_not_null",
     "table_name": "users",
-    "column_name": "last_name",
-    "data_type": "text"
+    "check_clause": "role IS NOT NULL"
   },
   {
+    "constraint_name": "users_employee_team_required",
     "table_name": "users",
-    "column_name": "birthdate",
-    "data_type": "date"
+    "check_clause": "(((role <> 'employee'::text) OR (team_id IS NOT NULL)))"
   },
   {
+    "constraint_name": "users_non_employee_no_team",
     "table_name": "users",
-    "column_name": "gender",
-    "data_type": "text"
+    "check_clause": "(((role = 'employee'::text) OR (team_id IS NULL)))"
   },
   {
+    "constraint_name": "users_role_check",
     "table_name": "users",
-    "column_name": "role",
-    "data_type": "text"
+    "check_clause": "((role = ANY (ARRAY['superuser'::text, 'employer'::text, 'employee'::text])))"
   },
   {
-    "table_name": "users",
-    "column_name": "employer_id",
-    "data_type": "uuid"
-  },
-  {
-    "table_name": "users",
-    "column_name": "created_at",
-    "data_type": "timestamp without time zone"
-  },
-  {
-    "table_name": "users",
-    "column_name": "functie_omschrijving",
-    "data_type": "character varying"
-  },
-  {
+    "constraint_name": "2200_17440_1_not_null",
     "table_name": "werkgever_gesprek_instellingen",
-    "column_name": "id",
-    "data_type": "integer"
+    "check_clause": "id IS NOT NULL"
   },
   {
+    "constraint_name": "werkgever_gesprek_instellingen_actieve_maanden_check",
     "table_name": "werkgever_gesprek_instellingen",
-    "column_name": "werkgever_id",
-    "data_type": "uuid"
+    "check_clause": "((array_length(actieve_maanden, 1) > 0))"
   },
   {
+    "constraint_name": "werkgever_gesprek_instellingen_anonimiseer_na_dagen_check",
     "table_name": "werkgever_gesprek_instellingen",
-    "column_name": "actieve_maanden",
-    "data_type": "ARRAY"
-  },
-  {
-    "table_name": "werkgever_gesprek_instellingen",
-    "column_name": "verplicht",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "werkgever_gesprek_instellingen",
-    "column_name": "actief",
-    "data_type": "boolean"
-  },
-  {
-    "table_name": "werkgever_gesprek_instellingen",
-    "column_name": "anonimiseer_na_dagen",
-    "data_type": "integer"
-  },
-  {
-    "table_name": "werkgever_gesprek_instellingen",
-    "column_name": "aangemaakt_op",
-    "data_type": "timestamp without time zone"
-  },
-  {
-    "table_name": "werkgever_gesprek_instellingen",
-    "column_name": "bijgewerkt_op",
-    "data_type": "timestamp without time zone"
-  },
-  {
-    "table_name": "werkgever_gesprek_instellingen",
-    "column_name": "organisatie_omschrijving",
-    "data_type": "text"
+    "check_clause": "((anonimiseer_na_dagen > 0))"
   }
 ]

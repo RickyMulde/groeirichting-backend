@@ -1,5 +1,6 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
+const { authMiddleware } = require('./middleware/auth')
 
 const router = express.Router()
 const supabase = createClient(
@@ -7,13 +8,22 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
+// Gebruik auth middleware voor alle routes
+router.use(authMiddleware)
+
 // GET /api/organisation-themes/:orgId/available-periods
 // Haalt beschikbare jaar/maand combinaties op voor een organisatie
 router.get('/:orgId/available-periods', async (req, res) => {
   const { orgId } = req.params
+  const employerId = req.ctx.employerId
 
   if (!orgId) {
     return res.status(400).json({ error: 'Organisatie ID is verplicht' })
+  }
+
+  // Valideer dat orgId overeenkomt met employerId uit context
+  if (orgId !== employerId) {
+    return res.status(403).json({ error: 'Geen toegang tot deze organisatie' })
   }
 
   try {
@@ -23,7 +33,7 @@ router.get('/:orgId/available-periods', async (req, res) => {
     const { data: employees, error: employeesError } = await supabase
       .from('users')
       .select('id')
-      .eq('employer_id', orgId)
+      .eq('employer_id', employerId)  // Gebruik employerId uit context
       .eq('role', 'employee')
 
     if (employeesError) throw employeesError

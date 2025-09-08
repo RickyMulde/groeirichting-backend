@@ -1,6 +1,7 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
 const OpenAI = require('openai')
+const { authMiddleware } = require('./middleware/auth')
 
 const router = express.Router()
 const supabase = createClient(
@@ -9,10 +10,19 @@ const supabase = createClient(
 )
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
+// Gebruik auth middleware voor alle routes
+router.use(authMiddleware)
+
 // POST /api/generate-organisation-summary
 // Genereert een nieuwe organisatie samenvatting en adviezen
 router.post('/', async (req, res) => {
   const { organisatie_id, theme_id } = req.body
+  const employerId = req.ctx.employerId
+
+  // Valideer dat organisatie_id overeenkomt met employerId uit context
+  if (organisatie_id !== employerId) {
+    return res.status(403).json({ error: 'Geen toegang tot deze organisatie' })
+  }
 
   if (!organisatie_id || !theme_id) {
     return res.status(400).json({ error: 'Organisatie ID en Thema ID zijn verplicht' })
@@ -23,7 +33,7 @@ router.post('/', async (req, res) => {
     const { data: results, error: resultsError } = await supabase
       .from('gesprekresultaten')
       .select('score, werknemer_id')
-      .eq('werkgever_id', organisatie_id)
+      .eq('werkgever_id', employerId)  // Gebruik employerId uit context
       .eq('theme_id', theme_id)
 
     if (resultsError) throw resultsError
@@ -38,7 +48,7 @@ router.post('/', async (req, res) => {
     const { data: employees, error: employeesError } = await supabase
       .from('users')
       .select('id')
-      .eq('employer_id', organisatie_id)
+      .eq('employer_id', employerId)  // Gebruik employerId uit context
       .eq('role', 'employee')
 
     if (employeesError) throw employeesError
@@ -71,7 +81,7 @@ router.post('/', async (req, res) => {
     const { data: werkgeverConfig, error: configError } = await supabase
       .from('werkgever_gesprek_instellingen')
       .select('organisatie_omschrijving')
-      .eq('werkgever_id', organisatie_id)
+      .eq('werkgever_id', employerId)  // Gebruik employerId uit context
       .single()
 
     if (configError && configError.code !== 'PGRST116') {

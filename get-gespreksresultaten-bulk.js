@@ -1,6 +1,7 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
 const OpenAI = require('openai')
+const { authMiddleware, assertTeamInOrg } = require('./middleware/auth')
 
 const router = express.Router()
 const supabase = createClient(
@@ -8,6 +9,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+// Gebruik auth middleware voor alle routes
+router.use(authMiddleware)
 
 // Functie om automatisch samenvatting en vervolgacties te genereren
 const genereerSamenvattingEnVervolgacties = async (theme_id, werknemer_id, gesprek_id) => {
@@ -282,22 +286,35 @@ Antwoord in JSON-formaat:
 
 // GET /api/get-gespreksresultaten-bulk
 // Haalt alle gespreksresultaten op voor een werknemer in een specifieke periode
+// Optioneel: team_id voor team-specifieke filtering
 router.get('/', async (req, res) => {
-  const { werknemer_id, periode } = req.query
+  const { werknemer_id, periode, team_id } = req.query
+  const employerId = req.ctx.employerId
 
   if (!werknemer_id || !periode) {
     return res.status(400).json({ error: 'werknemer_id en periode zijn verplicht' })
   }
 
   try {
-    // Haal werkgever op via werknemer
+    // Valideer team_id als opgegeven
+    if (team_id) {
+      await assertTeamInOrg(team_id, employerId)
+    }
+
+    // Haal werkgever op via werknemer en controleer dat het bij de juiste organisatie hoort
     const { data: werknemer, error: werknemerError } = await supabase
       .from('users')
       .select('employer_id')
       .eq('id', werknemer_id)
+      .eq('employer_id', employerId)  // Voeg org-scope toe
       .single()
 
-    if (werknemerError) throw werknemerError
+    if (werknemerError) {
+      if (werknemerError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Werknemer niet gevonden' })
+      }
+      throw werknemerError
+    }
     if (!werknemer) {
       return res.status(404).json({ error: 'Werknemer niet gevonden' })
     }
@@ -321,11 +338,18 @@ router.get('/', async (req, res) => {
     if (themaError) throw themaError
 
     // Haal alle gespreksresultaten op voor deze periode
-    const { data: resultaten, error: resultatenError } = await supabase
+    let resultatenQuery = supabase
       .from('gesprekresultaten')
-      .select('theme_id, samenvatting, score, gespreksronde, periode, gegenereerd_op, vervolgacties, vervolgacties_toelichting')
+      .select('theme_id, samenvatting, score, gespreksronde, periode, gegenereerd_op, vervolgacties, vervolgacties_toelichting, team_id')
       .eq('werknemer_id', werknemer_id)
       .eq('periode', periode)
+
+    // Voeg team filtering toe als team_id is opgegeven
+    if (team_id) {
+      resultatenQuery = resultatenQuery.eq('team_id', team_id)
+    }
+
+    const { data: resultaten, error: resultatenError } = await resultatenQuery
 
     if (resultatenError) throw resultatenError
 
@@ -336,13 +360,20 @@ router.get('/', async (req, res) => {
     const volgendJaar = maand === 12 ? jaar + 1 : jaar
     const volgendePeriode = `${volgendJaar}-${String(volgendeMaand).padStart(2, '0')}-01`
     
-    const { data: gesprekken, error: gesprekkenError } = await supabase
+    let gesprekkenQuery = supabase
       .from('gesprek')
-      .select('theme_id, gestart_op, status')
+      .select('theme_id, gestart_op, status, team_id')
       .eq('werknemer_id', werknemer_id)
       .is('geanonimiseerd_op', null)
       .gte('gestart_op', `${periode}-01`)
       .lt('gestart_op', volgendePeriode)
+
+    // Voeg team filtering toe als team_id is opgegeven
+    if (team_id) {
+      gesprekkenQuery = gesprekkenQuery.eq('team_id', team_id)
+    }
+
+    const { data: gesprekken, error: gesprekkenError } = await gesprekkenQuery
 
     if (gesprekkenError) throw gesprekkenError
 
@@ -442,7 +473,8 @@ router.get('/', async (req, res) => {
       actieve_maanden: actieveMaanden,
       resultaten: gefilterdeResultaten,
       totaal_themas: themaData.length,
-      themas_met_resultaat: gefilterdeResultaten.length
+      themas_met_resultaat: gefilterdeResultaten.length,
+      team_filter: team_id || null
     })
 
   } catch (err) {

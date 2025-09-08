@@ -30,12 +30,26 @@ router.post('/', async (req, res) => {
   // 1. Token controleren en gegevens ophalen
   const { data: invitation, error: invitationError } = await supabase
     .from('invitations')
-    .select('email, employer_id, status, functie_omschrijving')
+    .select('email, employer_id, status, functie_omschrijving, team_id')
     .eq('token', token)
     .single()
 
   if (invitationError || !invitation || invitation.status !== 'pending') {
     return res.status(400).json({ error: 'Ongeldige of verlopen uitnodiging.' })
+  }
+
+  // Valideer dat team_id behoort tot de juiste werkgever
+  if (invitation.team_id) {
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('id', invitation.team_id)
+      .eq('werkgever_id', invitation.employer_id)
+      .single()
+
+    if (teamError || !team) {
+      return res.status(400).json({ error: 'Ongeldig team voor deze uitnodiging.' })
+    }
   }
 
   // 2. Gebruiker aanmaken in Supabase Auth
@@ -60,6 +74,7 @@ router.post('/', async (req, res) => {
     gender,
     role: 'employee',
     employer_id: invitation.employer_id,
+    team_id: invitation.team_id,     // ✅ team_id van invitation overnemen
     functie_omschrijving: invitation.functie_omschrijving || null,
     toestemming_avg: toestemming_avg
   })
