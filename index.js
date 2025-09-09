@@ -109,14 +109,15 @@ app.post('/api/send-invite', async (req, res) => {
   const { to, name, employerId, token, functieOmschrijving, teamId } = req.body;
 
   console.log('Verzoek ontvangen voor:', { to, name, employerId, token, functieOmschrijving, teamId });
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
 
   if (!to || !name || !employerId || !token) {
-    console.warn('Verzoek geweigerd: ontbrekende velden');
-    return res.status(400).json({ error: 'Missing required fields' });
+    console.warn('Verzoek geweigerd: ontbrekende velden', { to: !!to, name: !!name, employerId: !!employerId, token: !!token });
+    return res.status(400).json({ error: 'Verzoek geweigerd: ontbrekende velden' });
   }
 
   if (!teamId) {
-    console.warn('Verzoek geweigerd: teamId is verplicht');
+    console.warn('Verzoek geweigerd: teamId is verplicht', { teamId });
     return res.status(400).json({ error: 'teamId is verplicht' });
   }
 
