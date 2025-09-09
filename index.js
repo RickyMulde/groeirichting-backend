@@ -147,7 +147,7 @@ app.post('/api/send-invite', async (req, res) => {
     return res.status(500).json({ error: 'Fout bij valideren team' });
   }
 
-  // Update de invitation met de functie_omschrijving
+  // Maak nieuwe uitnodiging aan
   try {
     const { createClient } = require('@supabase/supabase-js');
     const supabase = createClient(
@@ -155,19 +155,30 @@ app.post('/api/send-invite', async (req, res) => {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const { error: updateError } = await supabase
-      .from('invitations')
-      .update({ 
-        functie_omschrijving: functieOmschrijving || null,
-        team_id: teamId
-      })
-      .eq('token', token);
+    // Bereken vervaldatum (30 dagen vanaf nu)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
 
-    if (updateError) {
-      console.error('Fout bij updaten functie_omschrijving:', updateError);
+    const { error: insertError } = await supabase
+      .from('invitations')
+      .insert({
+        email: to,
+        token: token,
+        employer_id: employerId,
+        status: 'pending',
+        expires_at: expiresAt.toISOString(),
+        functie_omschrijving: functieOmschrijving || null,
+        team_id: teamId,
+        created_at: new Date().toISOString()
+      });
+
+    if (insertError) {
+      console.error('Fout bij aanmaken uitnodiging:', insertError);
+      return res.status(500).json({ error: 'Fout bij aanmaken uitnodiging' });
     }
   } catch (error) {
-    console.error('Fout bij database update:', error);
+    console.error('Fout bij database insert:', error);
+    return res.status(500).json({ error: 'Fout bij aanmaken uitnodiging' });
   }
 
   const frontendUrl = process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com';
