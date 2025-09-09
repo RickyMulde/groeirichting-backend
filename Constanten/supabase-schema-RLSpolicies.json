@@ -357,7 +357,7 @@
       "permissive": "PERMISSIVE",
       "roles": "{public}",
       "cmd": "SELECT",
-      "qual": "((werkgever_id = auth.uid()) OR (id IN ( SELECT users.team_id\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.team_id IS NOT NULL)))))",
+      "qual": "((werkgever_id IN (SELECT employer_id FROM users WHERE id = auth.uid() AND role = 'employer')) OR (id IN (SELECT team_id FROM users WHERE id = auth.uid() AND team_id IS NOT NULL)))",
       "with_check": null
     },
     {
