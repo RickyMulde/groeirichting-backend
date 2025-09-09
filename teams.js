@@ -50,8 +50,12 @@ router.get('/', async (req, res) => {
           id,
           email,
           first_name,
+          middle_name,
           last_name,
+          birthdate,
+          gender,
           functie_omschrijving,
+          team_id,
           created_at
         `)
         .eq('team_id', team.id)
