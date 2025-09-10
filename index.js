@@ -1,8 +1,8 @@
 // 📁 Bestand: index.js
 const express = require('express');
 const dotenv = require('dotenv');
-const { Resend } = require('resend');
 const cors = require('cors');
+const { sendEmail } = require('./services/mailer/mailer');
 
 // 🚨 BELANGRIJK: Laad omgevingsvariabelen VOORDAT je ze gebruikt!
 dotenv.config({ path: '.env.test' });
@@ -103,7 +103,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Resend is nu vervangen door de mailer service
 
 app.post('/api/send-invite', async (req, res) => {
   const { to, name, employerId, token, functieOmschrijving, teamId } = req.body;
@@ -199,16 +199,22 @@ Klik op deze link om je aan te melden:
 ${registerUrl}`;
 
   try { 
-    const emailResponse = await resend.emails.send({
-      from: 'GroeiRichting <noreply@groeirichting.nl>',  // Gebruik bestaande domain voor nu
+    const emailResponse = await sendEmail({
       to,
       subject: 'Je bent uitgenodigd voor GroeiRichting',
       html: htmlBody,
-      text: textBody
+      text: textBody,
+      tag: 'INVITE_EMPLOYEE',
+      metadata: { 
+        employerId,
+        teamId,
+        functieOmschrijving,
+        employeeName: name
+      }
     });
 
-    console.log('E-mail verzonden naar:', to, '| ID:', emailResponse.id);
-    res.status(200).json({ success: true, id: emailResponse.id });
+    console.log('E-mail verzonden naar:', to, '| ID:', emailResponse.messageId);
+    res.status(200).json({ success: true, id: emailResponse.messageId });
   } catch (error) {
     console.error('Fout bij verzenden e-mail:', error.message);
     res.status(500).json({ error: error.message });

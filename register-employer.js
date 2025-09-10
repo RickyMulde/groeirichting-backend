@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
-const { Resend } = require('resend');
+const { sendEmail } = require('./services/mailer/mailer');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Resend is nu vervangen door de mailer service
 
 router.post('/', async (req, res) => {
   const {
@@ -131,8 +131,7 @@ router.post('/', async (req, res) => {
   try {
     console.log('Versturen welkomstmail naar:', email);
     
-    await resend.emails.send({
-      from: 'GroeiRichting <noreply@groeirichting.nl>',
+    await sendEmail({
       to: email,
       subject: 'Welkom bij GroeiRichting - Verificeer je e-mailadres',
       html: `
@@ -162,7 +161,13 @@ router.post('/', async (req, res) => {
           <p>Met vriendelijke groet,<br>
           <strong>Het GroeiRichting team</strong></p>
         </div>
-      `
+      `,
+      tag: 'WELCOME_EMPLOYER',
+      metadata: { 
+        type: 'welcome',
+        companyName: company_name,
+        firstName: first_name
+      }
     });
     
     console.log('Welkomstmail succesvol verzonden naar:', email);

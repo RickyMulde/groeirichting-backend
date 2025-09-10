@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Resend } = require('resend');
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+const { sendEmail } = require('./services/mailer/mailer');
 
 router.post('/', async (req, res) => {
   const { naam, email, telefoon, vraag } = req.body;
@@ -41,16 +39,22 @@ router.post('/', async (req, res) => {
       `Dit bericht is verzonden via het contactformulier op groeirichting.nl`
     ].filter(Boolean).join('\n');
 
-    // Stuur naar jezelf (vervang met je eigen email)
-    const emailResponse = await resend.emails.send({
-      from: 'GroeiRichting Contact <noreply@groeirichting.nl>',
-      to: process.env.CONTACTFORMULIER || 'rick@groeirichting.nl', // Vervang met je eigen email
+    // Stuur contactformulier via mailer service
+    const emailResponse = await sendEmail({
+      to: process.env.CONTACTFORMULIER || 'rick@groeirichting.nl',
       subject: `Contactformulier: ${naam}`,
       html: htmlBody,
-      text: textBody
+      text: textBody,
+      tag: 'CONTACT_FORM',
+      metadata: { 
+        source: 'contact_form',
+        naam,
+        email 
+      },
+      replyTo: email // Stel reply-to in op de afzender
     });
 
-    console.log('Contact e-mail verzonden naar:', process.env.CONTACTFORMULIER || 'rick@groeirichting.nl', '| ID:', emailResponse.id);
+    console.log('Contact e-mail verzonden naar:', process.env.CONTACTFORMULIER || 'rick@groeirichting.nl', '| ID:', emailResponse.messageId);
     
     return res.status(200).json({ 
       success: true, 
