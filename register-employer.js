@@ -105,23 +105,8 @@ router.post('/', async (req, res) => {
 
   const userId = authUser.user.id;
 
-  // 4. Voeg gebruiker toe aan users-tabel (zonder employer_id eerst)
-  const { error: userError } = await supabaseAnon.from('users').insert({
-    id: userId,
-    email,
-    role: 'employer',
-    employer_id: null, // Eerst null, wordt later geupdate
-    first_name,
-    middle_name,
-    last_name
-  });
-
-  if (userError) {
-    console.error('Fout bij aanmaken gebruiker:', userError);
-    return res.status(500).json({ error: userError.message });
-  }
-
-  // 5. Voeg bedrijf toe
+  // 4. Voeg eerst bedrijf toe (employers tabel)
+  console.log('Bedrijf aanmaken...');
   const { data: employer, error: employerError } = await supabaseAnon
     .from('employers')
     .insert({
@@ -138,20 +123,26 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: employerError.message });
   }
 
-  // 6. Update gebruiker met employer_id
-  const { error: updateError } = await supabaseAnon
-    .from('users')
-    .update({ employer_id: employer.id })
-    .eq('id', userId);
+  // 5. Voeg gebruiker toe aan users-tabel (met employer_id)
+  console.log('Gebruiker toevoegen aan database...');
+  const { error: userError } = await supabaseAnon.from('users').insert({
+    id: userId,
+    email,
+    role: 'employer',
+    employer_id: employer.id, // Direct de employer_id toewijzen
+    first_name,
+    middle_name,
+    last_name
+  });
 
-  if (updateError) {
-    console.error('Fout bij updaten gebruiker met employer_id:', updateError);
-    return res.status(500).json({ error: updateError.message });
+  if (userError) {
+    console.error('Fout bij aanmaken gebruiker:', userError);
+    return res.status(500).json({ error: userError.message });
   }
 
-  // 7. Supabase verstuurt automatisch verificatie-e-mail bij email_confirm: true
+  // 6. Supabase verstuurt automatisch verificatie-e-mail bij email_confirm: true
 
-  // 8. Stuur welkomstmail via Resend
+  // 7. Stuur welkomstmail via Resend
   try {
     console.log('Versturen welkomstmail naar:', email);
     
@@ -200,7 +191,7 @@ router.post('/', async (req, res) => {
     console.error('Fout bij verzenden welkomstmail:', mailError);
   }
 
-  // 9. Registratie voltooid
+  // 8. Registratie voltooid
   console.log('Registratie voltooid. Supabase verstuurt automatisch verificatie-e-mail en welkomstmail verzonden.');
 
   return res.status(200).json({ 

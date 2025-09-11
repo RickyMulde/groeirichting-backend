@@ -57,11 +57,26 @@ const app = express();
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com',
   'https://groeirichting-frontend.onrender.com',
-  'https://groeirichting.nl'
+  'https://groeirichting.nl',
+  'http://localhost:5173', // Voor lokale ontwikkeling
+  'http://localhost:3000'  // Voor lokale ontwikkeling
 ];
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    console.log('CORS request from origin:', origin);
+    console.log('Allowed origins:', allowedOrigins);
+    
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
@@ -100,6 +115,17 @@ app.get('/health', (req, res) => {
     app_env: process.env.APP_ENV || 'test',
     uptime: process.uptime(),
     version: '1.0.0'
+  });
+});
+
+// 🔍 Debug endpoint voor CORS
+app.get('/api/debug', (req, res) => {
+  res.json({
+    message: 'Backend is bereikbaar!',
+    timestamp: new Date().toISOString(),
+    origin: req.get('Origin'),
+    userAgent: req.get('User-Agent'),
+    allowedOrigins: allowedOrigins
   });
 });
 
