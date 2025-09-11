@@ -5,7 +5,9 @@ const cors = require('cors');
 const { sendEmail } = require('./services/mailer/mailer');
 
 // 🚨 BELANGRIJK: Laad omgevingsvariabelen VOORDAT je ze gebruikt!
-dotenv.config({ path: '.env.test' });
+if (!process.env.RENDER) {
+  dotenv.config({ path: `.env.${process.env.APP_ENV || 'test'}` });
+}
 
 const registerEmployee = require('./register-employee');
 const registerEmployer = require('./register-employer');
