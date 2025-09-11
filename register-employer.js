@@ -57,7 +57,7 @@ router.post('/', async (req, res) => {
   const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
     email,
     password,
-    email_confirm: false, // E-mailverificatie vereist
+    email_confirm: true, // Laat Supabase automatisch verificatie-e-mail versturen
     email_confirm_redirect_to: `${process.env.FRONTEND_URL}/werkgever-portaal`
   });
 
@@ -103,29 +103,7 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: userError.message });
   }
 
-  // 5. Stuur verificatie-e-mail via Supabase Auth
-  try {
-    console.log('Versturen Supabase verificatie-e-mail naar:', email);
-    
-    // Trigger Supabase om verificatie-e-mail te versturen met juiste redirect
-    const { data: resendData, error: emailError } = await supabase.auth.resend({
-      type: 'signup',
-      email: email,
-      options: {
-        redirectTo: `${process.env.FRONTEND_URL}/werkgever-portaal`
-      }
-    });
-    
-    if (emailError) {
-      console.error('Fout bij versturen verificatie-e-mail:', emailError);
-      console.log('Resend data:', resendData);
-    } else {
-      console.log('Supabase verificatie-e-mail succesvol getriggerd voor:', email);
-      console.log('Resend data:', resendData);
-    }
-  } catch (emailError) {
-    console.error('Fout bij triggeren Supabase verificatie-e-mail:', emailError);
-  }
+  // 5. Supabase verstuurt automatisch verificatie-e-mail bij email_confirm: true
 
   // 6. Stuur welkomstmail via Resend
   try {
@@ -145,7 +123,7 @@ router.post('/', async (req, res) => {
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="color: #d32f2f; margin-top: 0;">📧 E-mailverificatie vereist</h3>
             <p><strong>Je moet eerst je e-mailadres verifiëren voordat je kunt inloggen.</strong></p>
-            <p>Controleer je inbox voor een verificatie-e-mail van Supabase.</p>
+            <p>Je ontvangt automatisch een verificatie-e-mail van Supabase.</p>
           </div>
           
           <div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -177,11 +155,11 @@ router.post('/', async (req, res) => {
   }
 
   // 7. Registratie voltooid
-  console.log('Registratie voltooid. Supabase verificatie-e-mail getriggerd en welkomstmail verzonden.');
+  console.log('Registratie voltooid. Supabase verstuurt automatisch verificatie-e-mail en welkomstmail verzonden.');
 
   return res.status(200).json({ 
     success: true, 
-    message: 'Account succesvol aangemaakt! Controleer je e-mailadres voor de verificatie-e-mail.',
+    message: 'Account succesvol aangemaakt! Je ontvangt automatisch een verificatie-e-mail.',
     email: email,
     redirectUrl: `${process.env.FRONTEND_URL}/verify-email?email=${encodeURIComponent(email)}`
   });
