@@ -84,7 +84,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-app.use('/api/register-employer', registerEmployer);
+// app.use('/api/register-employer', registerEmployer); // Uitgeschakeld - nu direct via Supabase
 app.use('/api/register-employee', registerEmployee);
 app.use('/api/resend-verification', resendVerification);
 app.use('/api/check-verification', checkVerification);
@@ -107,6 +107,85 @@ app.use('/api/save-thema-evaluatie', saveThemaEvaluatie); // ✅ Nieuwe route to
 app.use('/api/check-thema-evaluatie', checkThemaEvaluatie); // ✅ Nieuwe route toegevoegd
 app.use('/api/contact', contact); // ✅ Nieuwe route toegevoegd
 app.use('/api/teams', teams); // ✅ Nieuwe route toegevoegd voor team management
+
+// 🔧 Provision employer endpoint - wordt aangeroepen na email verificatie
+app.post('/api/provision-employer', async (req, res) => {
+  try {
+    const authz = req.headers.authorization || '';
+    const token = authz.startsWith('Bearer ') ? authz.slice(7) : null;
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    // Verifieer token en haal user op (met anon client)
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseAnon = createClient(
+      process.env.SUPABASE_URL, 
+      process.env.SUPABASE_ANON_KEY,
+      { auth: { persistSession: false } }
+    );
+    
+    const { data: userData, error: userErr } = await supabaseAnon.auth.getUser(token);
+    if (userErr || !userData?.user?.id) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const userId = userData.user.id;
+    const { company_name, contact_phone, first_name, middle_name, last_name } = req.body;
+
+    if (!company_name || !first_name || !last_name) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Insert employer via service role
+    const supabase = createClient(
+      process.env.SUPABASE_URL, 
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { persistSession: false } }
+    );
+
+    const { data: emp, error: empErr } = await supabase
+      .from('employers')
+      .insert({
+        company_name,
+        contact_email: userData.user.email,
+        contact_phone: contact_phone || null,
+        kvk_number: null
+      })
+      .select('id')
+      .single();
+      
+    if (empErr) {
+      console.error('Employer insert failed:', empErr);
+      return res.status(400).json({ error: 'Employer insert failed', detail: empErr.message });
+    }
+
+    const employerId = emp.id;
+
+    // Insert user-profiel
+    const { error: userInsErr } = await supabase.from('users').insert({
+      id: userId,
+      email: userData.user.email,
+      role: 'employer',
+      employer_id: employerId,
+      first_name,
+      middle_name: middle_name || null,
+      last_name
+    });
+    
+    if (userInsErr) {
+      console.error('User insert failed:', userInsErr);
+      return res.status(400).json({ error: 'User insert failed', detail: userInsErr.message });
+    }
+
+    console.log('Employer provisioned successfully:', { userId, employerId });
+    return res.status(200).json({ success: true, employerId });
+    
+  } catch (e) {
+    console.error('Provisioning failed:', e);
+    return res.status(500).json({ error: 'Provisioning failed' });
+  }
+});
 
 // 🏥 Healthcheck endpoint voor Render
 app.get('/health', (req, res) => {

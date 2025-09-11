@@ -1,24 +1,24 @@
 [
   {
     "tablename": "employers",
-    "policyname": "Allow employer creation during registration",
-    "cmd": "INSERT",
-    "qual": null,
-    "with_check": "true"
-  },
-  {
-    "tablename": "employers",
-    "policyname": "Employers can update own company",
-    "cmd": "UPDATE",
-    "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE (users.employer_id = employers.id)))",
-    "with_check": null
-  },
-  {
-    "tablename": "employers",
-    "policyname": "Employers can view own company",
+    "policyname": "employer - select own",
     "cmd": "SELECT",
-    "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE (users.employer_id = employers.id)))",
+    "qual": "(id IN ( SELECT u.employer_id\n   FROM users u\n  WHERE (u.id = auth.uid())))",
     "with_check": null
+  },
+  {
+    "tablename": "employers",
+    "policyname": "employer - update own",
+    "cmd": "UPDATE",
+    "qual": "(id IN ( SELECT u.employer_id\n   FROM users u\n  WHERE (u.id = auth.uid())))",
+    "with_check": "(id IN ( SELECT u.employer_id\n   FROM users u\n  WHERE (u.id = auth.uid())))"
+  },
+  {
+    "tablename": "employers",
+    "policyname": "service role - all",
+    "cmd": "ALL",
+    "qual": "(auth.role() = 'service_role'::text)",
+    "with_check": "(auth.role() = 'service_role'::text)"
   },
   {
     "tablename": "gesprek",
@@ -386,20 +386,6 @@
   },
   {
     "tablename": "users",
-    "policyname": "Allow user self-insert during registration",
-    "cmd": "INSERT",
-    "qual": null,
-    "with_check": "(EXISTS ( SELECT 1\n   FROM auth.users users_1\n  WHERE ((users_1.id = users_1.id) AND ((users_1.email)::text = (users_1.email)::text))))"
-  },
-  {
-    "tablename": "users",
-    "policyname": "Allow user update during registration",
-    "cmd": "UPDATE",
-    "qual": "(EXISTS ( SELECT 1\n   FROM auth.users users_1\n  WHERE ((users_1.id = users_1.id) AND ((users_1.email)::text = (users_1.email)::text))))",
-    "with_check": "(EXISTS ( SELECT 1\n   FROM auth.users users_1\n  WHERE ((users_1.id = users_1.id) AND ((users_1.email)::text = (users_1.email)::text))))"
-  },
-  {
-    "tablename": "users",
     "policyname": "Service role kan alles",
     "cmd": "ALL",
     "qual": "(auth.role() = 'service_role'::text)",
@@ -446,6 +432,27 @@
     "cmd": "SELECT",
     "qual": "(id = auth.uid())",
     "with_check": null
+  },
+  {
+    "tablename": "users",
+    "policyname": "service role - all",
+    "cmd": "ALL",
+    "qual": "(auth.role() = 'service_role'::text)",
+    "with_check": "(auth.role() = 'service_role'::text)"
+  },
+  {
+    "tablename": "users",
+    "policyname": "user - select self",
+    "cmd": "SELECT",
+    "qual": "(id = auth.uid())",
+    "with_check": null
+  },
+  {
+    "tablename": "users",
+    "policyname": "user - update self",
+    "cmd": "UPDATE",
+    "qual": "(id = auth.uid())",
+    "with_check": "(id = auth.uid())"
   },
   {
     "tablename": "werkgever_gesprek_instellingen",
