@@ -10,7 +10,7 @@ if (!process.env.RENDER) {
 }
 
 const registerEmployee = require('./register-employee');
-const registerEmployer = require('./register-employer');
+// const registerEmployer = require('./register-employer'); // Uitgeschakeld - registratie nu volledig via Supabase Auth
 const resendVerification = require('./resend-verification');
 const checkVerification = require('./check-verification');
 const createThemeWithQuestions = require('./create-theme-with-questions');
@@ -84,7 +84,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// app.use('/api/register-employer', registerEmployer); // Uitgeschakeld - nu direct via Supabase
+// app.use('/api/register-employer', registerEmployer); // Uitgeschakeld - registratie nu volledig via Supabase Auth
 app.use('/api/register-employee', registerEmployee);
 app.use('/api/resend-verification', resendVerification);
 app.use('/api/check-verification', checkVerification);
@@ -144,26 +144,51 @@ app.post('/api/provision-employer', async (req, res) => {
       { auth: { persistSession: false } }
     );
 
-    const { data: emp, error: empErr } = await supabase
-      .from('employers')
-      .insert({
-        company_name,
-        contact_email: userData.user.email,
-        contact_phone: contact_phone || null,
-        kvk_number: null
-      })
-      .select('id')
+    // Check if user already exists and is provisioned
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id, employer_id, role')
+      .eq('id', userId)
       .single();
-      
-    if (empErr) {
-      console.error('Employer insert failed:', empErr);
-      return res.status(400).json({ error: 'Employer insert failed', detail: empErr.message });
+
+    if (existingUser?.employer_id && existingUser?.role === 'employer') {
+      console.log('User already provisioned:', { userId, employerId: existingUser.employer_id });
+      return res.status(200).json({ success: true, employerId: existingUser.employer_id, alreadyProvisioned: true });
     }
 
-    const employerId = emp.id;
+    // Check if employer already exists for this email
+    const { data: existingEmployer } = await supabase
+      .from('employers')
+      .select('id')
+      .eq('contact_email', userData.user.email)
+      .single();
 
-    // Insert user-profiel
-    const { error: userInsErr } = await supabase.from('users').insert({
+    let employerId;
+    if (existingEmployer) {
+      employerId = existingEmployer.id;
+      console.log('Using existing employer:', employerId);
+    } else {
+      // Create new employer
+      const { data: emp, error: empErr } = await supabase
+        .from('employers')
+        .insert({
+          company_name,
+          contact_email: userData.user.email,
+          contact_phone: contact_phone || null,
+          kvk_number: null
+        })
+        .select('id')
+        .single();
+        
+      if (empErr) {
+        console.error('Employer insert failed:', empErr);
+        return res.status(400).json({ error: 'Employer insert failed', detail: empErr.message });
+      }
+      employerId = emp.id;
+    }
+
+    // Insert or update user profile
+    const { error: userInsErr } = await supabase.from('users').upsert({
       id: userId,
       email: userData.user.email,
       role: 'employer',
