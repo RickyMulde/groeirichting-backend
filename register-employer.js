@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const { sendEmail } = require('./services/mailer/mailer');
+const fetch = require('node-fetch');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -15,6 +16,23 @@ const supabaseAnon = createClient(
 );
 
 // Resend is nu vervangen door de mailer service
+
+// Health check functie voor Supabase Auth
+async function pingAuth() {
+  const url = `${process.env.SUPABASE_URL}/auth/v1/health`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    console.log('Auth health:', r.status, url);
+    return r.ok;
+  } catch (e) {
+    console.error('Auth health ping faalde:', e?.name || e);
+    return false;
+  } finally {
+    clearTimeout(t);
+  }
+}
 
 router.post('/', async (req, res) => {
   const {
@@ -58,7 +76,16 @@ router.post('/', async (req, res) => {
     console.log('Bestaande gebruiker succesvol verwijderd uit Auth');
   }
 
-  // 2. Maak nieuwe Supabase Auth gebruiker aan via normale signup flow
+  // 2. Test Supabase Auth verbinding
+  console.log('Testing Supabase Auth connection...');
+  if (!(await pingAuth())) {
+    console.error('Supabase Auth health check failed');
+    return res.status(503).json({ 
+      error: 'Backend heeft geen verbinding met Supabase Auth (health failed).' 
+    });
+  }
+
+  // 3. Maak nieuwe Supabase Auth gebruiker aan via normale signup flow
   console.log('Nieuwe gebruiker aanmaken in Auth...');
   const { data: authUser, error: authError } = await supabaseAnon.auth.signUp({
     email,
@@ -79,7 +106,7 @@ router.post('/', async (req, res) => {
 
   const userId = authUser.user.id;
 
-  // 3. Voeg gebruiker toe aan users-tabel (zonder employer_id eerst)
+  // 4. Voeg gebruiker toe aan users-tabel (zonder employer_id eerst)
   const { error: userError } = await supabase.from('users').insert({
     id: userId,
     email,
@@ -95,7 +122,7 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: userError.message });
   }
 
-  // 4. Voeg bedrijf toe
+  // 5. Voeg bedrijf toe
   const { data: employer, error: employerError } = await supabase
     .from('employers')
     .insert({
@@ -112,7 +139,7 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: employerError.message });
   }
 
-  // 5. Update gebruiker met employer_id
+  // 6. Update gebruiker met employer_id
   const { error: updateError } = await supabase
     .from('users')
     .update({ employer_id: employer.id })
@@ -123,9 +150,9 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: updateError.message });
   }
 
-  // 6. Supabase verstuurt automatisch verificatie-e-mail bij email_confirm: true
+  // 7. Supabase verstuurt automatisch verificatie-e-mail bij email_confirm: true
 
-  // 7. Stuur welkomstmail via Resend
+  // 8. Stuur welkomstmail via Resend
   try {
     console.log('Versturen welkomstmail naar:', email);
     
@@ -174,7 +201,7 @@ router.post('/', async (req, res) => {
     console.error('Fout bij verzenden welkomstmail:', mailError);
   }
 
-  // 8. Registratie voltooid
+  // 9. Registratie voltooid
   console.log('Registratie voltooid. Supabase verstuurt automatisch verificatie-e-mail en welkomstmail verzonden.');
 
   return res.status(200).json({ 

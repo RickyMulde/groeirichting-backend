@@ -40,8 +40,8 @@ TO public
 WITH CHECK (
   -- Toestaan als de gebruiker zichzelf toevoegt
   auth.uid() = id
-  -- En de email overeenkomt met de geauthenticeerde gebruiker
-  AND email = auth.jwt() ->> 'email'
+  -- En de gebruiker bestaat in auth.users (controleer via auth.uid())
+  AND auth.uid() IS NOT NULL
 );
 
 -- 4. De bestaande "Users can update own data" policy dekt al users UPDATE
