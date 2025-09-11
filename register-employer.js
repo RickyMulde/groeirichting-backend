@@ -19,14 +19,31 @@ const supabaseAnon = createClient(
 // Health check functie voor Supabase Auth
 async function pingAuth() {
   const url = `${process.env.SUPABASE_URL}/auth/v1/health`;
+  console.log('Testing Auth health endpoint:', url);
+  console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+  
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 4000);
   try {
-    const r = await globalThis.fetch(url, { signal: ctrl.signal });
-    console.log('Auth health:', r.status, url);
+    const r = await globalThis.fetch(url, { 
+      signal: ctrl.signal,
+      headers: {
+        'apikey': process.env.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`
+      }
+    });
+    console.log('Auth health response:', r.status, r.statusText);
+    console.log('Response headers:', Object.fromEntries(r.headers.entries()));
+    
+    if (!r.ok) {
+      const text = await r.text();
+      console.log('Error response body:', text);
+    }
+    
     return r.ok;
   } catch (e) {
     console.error('Auth health ping faalde:', e?.name || e);
+    console.error('Error details:', e.message);
     return false;
   } finally {
     clearTimeout(t);
