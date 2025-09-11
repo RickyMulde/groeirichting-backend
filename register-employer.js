@@ -107,7 +107,7 @@ router.post('/', async (req, res) => {
   const userId = authUser.user.id;
 
   // 4. Voeg gebruiker toe aan users-tabel (zonder employer_id eerst)
-  const { error: userError } = await supabase.from('users').insert({
+  const { error: userError } = await supabaseAnon.from('users').insert({
     id: userId,
     email,
     role: 'employer',
@@ -123,7 +123,7 @@ router.post('/', async (req, res) => {
   }
 
   // 5. Voeg bedrijf toe
-  const { data: employer, error: employerError } = await supabase
+  const { data: employer, error: employerError } = await supabaseAnon
     .from('employers')
     .insert({
       company_name,
@@ -140,7 +140,7 @@ router.post('/', async (req, res) => {
   }
 
   // 6. Update gebruiker met employer_id
-  const { error: updateError } = await supabase
+  const { error: updateError } = await supabaseAnon
     .from('users')
     .update({ employer_id: employer.id })
     .eq('id', userId);
