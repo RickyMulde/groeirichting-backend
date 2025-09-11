@@ -8,6 +8,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Anonieme client voor signup (heeft anon key nodig)
+const supabaseAnon = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
+
 // Resend is nu vervangen door de mailer service
 
 router.post('/', async (req, res) => {
@@ -52,13 +58,14 @@ router.post('/', async (req, res) => {
     console.log('Bestaande gebruiker succesvol verwijderd uit Auth');
   }
 
-  // 2. Maak nieuwe Supabase Auth gebruiker aan
+  // 2. Maak nieuwe Supabase Auth gebruiker aan via normale signup flow
   console.log('Nieuwe gebruiker aanmaken in Auth...');
-  const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+  const { data: authUser, error: authError } = await supabaseAnon.auth.signUp({
     email,
     password,
-    email_confirm: true, // Laat Supabase automatisch verificatie-e-mail versturen
-    email_confirm_redirect_to: `${process.env.FRONTEND_URL}/werkgever-portaal`
+    options: {
+      emailRedirectTo: `${process.env.FRONTEND_URL}/werkgever-portaal`
+    }
   });
 
   if (authError || !authUser?.user?.id) {
@@ -72,7 +79,23 @@ router.post('/', async (req, res) => {
 
   const userId = authUser.user.id;
 
-  // 3. Voeg bedrijf toe
+  // 3. Voeg gebruiker toe aan users-tabel (zonder employer_id eerst)
+  const { error: userError } = await supabase.from('users').insert({
+    id: userId,
+    email,
+    role: 'employer',
+    employer_id: null, // Eerst null, wordt later geupdate
+    first_name,
+    middle_name,
+    last_name
+  });
+
+  if (userError) {
+    console.error('Fout bij aanmaken gebruiker:', userError);
+    return res.status(500).json({ error: userError.message });
+  }
+
+  // 4. Voeg bedrijf toe
   const { data: employer, error: employerError } = await supabase
     .from('employers')
     .insert({
@@ -85,27 +108,24 @@ router.post('/', async (req, res) => {
     .single();
 
   if (employerError) {
+    console.error('Fout bij aanmaken bedrijf:', employerError);
     return res.status(500).json({ error: employerError.message });
   }
 
-  // 4. Voeg gebruiker toe aan users-tabel
-  const { error: userError } = await supabase.from('users').insert({
-    id: userId,
-    email,
-    role: 'employer',
-    employer_id: employer.id,
-    first_name,
-    middle_name,
-    last_name
-  });
+  // 5. Update gebruiker met employer_id
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ employer_id: employer.id })
+    .eq('id', userId);
 
-  if (userError) {
-    return res.status(500).json({ error: userError.message });
+  if (updateError) {
+    console.error('Fout bij updaten gebruiker met employer_id:', updateError);
+    return res.status(500).json({ error: updateError.message });
   }
 
-  // 5. Supabase verstuurt automatisch verificatie-e-mail bij email_confirm: true
+  // 6. Supabase verstuurt automatisch verificatie-e-mail bij email_confirm: true
 
-  // 6. Stuur welkomstmail via Resend
+  // 7. Stuur welkomstmail via Resend
   try {
     console.log('Versturen welkomstmail naar:', email);
     
@@ -154,7 +174,7 @@ router.post('/', async (req, res) => {
     console.error('Fout bij verzenden welkomstmail:', mailError);
   }
 
-  // 7. Registratie voltooid
+  // 8. Registratie voltooid
   console.log('Registratie voltooid. Supabase verstuurt automatisch verificatie-e-mail en welkomstmail verzonden.');
 
   return res.status(200).json({ 

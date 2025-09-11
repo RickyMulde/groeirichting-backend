@@ -54,6 +54,7 @@ Zorg ervoor dat je in beide `.env` bestanden de juiste waarden hebt:
 # Supabase configuratie
 SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_ANON_KEY=your_anon_key
 
 # OpenAI configuratie
 OPENAI_API_KEY=your_openai_api_key
