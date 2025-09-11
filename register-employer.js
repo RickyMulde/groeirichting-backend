@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const { sendEmail } = require('./services/mailer/mailer');
-const fetch = require('node-fetch');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -23,7 +22,7 @@ async function pingAuth() {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 4000);
   try {
-    const r = await fetch(url, { signal: ctrl.signal });
+    const r = await globalThis.fetch(url, { signal: ctrl.signal });
     console.log('Auth health:', r.status, url);
     return r.ok;
   } catch (e) {
