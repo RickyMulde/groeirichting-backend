@@ -32,6 +32,7 @@ const saveThemaEvaluatie = require('./save-thema-evaluatie'); // ✅ Nieuw toege
 const checkThemaEvaluatie = require('./check-thema-evaluatie'); // ✅ Nieuw toegevoegd
 const contact = require('./contact'); // ✅ Nieuw toegevoegd
 const teams = require('./teams'); // ✅ Nieuw toegevoegd voor team management
+const auth = require('./auth'); // ✅ Nieuwe auth routes voor verificatie
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
@@ -85,6 +86,7 @@ app.use(cors({
 app.use(express.json());
 
 // app.use('/api/register-employer', registerEmployer); // Uitgeschakeld - registratie nu volledig via Supabase Auth
+app.use('/api/auth', auth); // ✅ Nieuwe auth routes
 app.use('/api/register-employee', registerEmployee);
 app.use('/api/resend-verification', resendVerification);
 app.use('/api/check-verification', checkVerification);

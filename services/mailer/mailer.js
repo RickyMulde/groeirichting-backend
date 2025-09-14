@@ -125,8 +125,19 @@ async function sendEmail(opts = {}) {
   }
 }
 
+// Minimalistische sender voor verificatie emails
+async function sendMail({ to, subject, html }) {
+  return await resend.emails.send({
+    from: 'GroeiRichting Support <support@groeirichting.nl>',
+    to,
+    subject,
+    html,
+  });
+}
+
 module.exports = {
   sendEmail,
+  sendMail, // Nieuwe functie voor verificatie emails
   // Helpers exporteren kan handig zijn voor tests:
   __test__: { isProd, isWhitelistEnabled, isAllowedRecipient, assertAllowedRecipient, maybeRedirectAll },
 };

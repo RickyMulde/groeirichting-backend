@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
+const { sendMail } = require('./services/mailer/mailer');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -35,28 +36,78 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'E-mailadres is al geverifieerd.' });
     }
 
-    // Stuur nieuwe verificatielink via Supabase Auth
-    const { error: emailError } = await supabase.auth.admin.generateLink({
+    // Genereer nieuwe verificatielink via Supabase Auth
+    const { data, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'signup',
       email: email,
       options: {
-        emailRedirectTo: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/verify-email?email=${encodeURIComponent(email)}`
+        emailRedirectTo: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/na-verificatie`
       }
     });
     
-    if (emailError) {
-      console.error('Fout bij genereren verificatielink:', emailError);
+    if (linkError) {
+      console.error('Fout bij genereren verificatielink:', linkError);
       return res.status(400).json({ 
-        error: 'Fout bij versturen verificatiemail: ' + emailError.message 
+        error: 'Fout bij genereren verificatielink: ' + linkError.message 
       });
     }
 
-    console.log('Verificatielink succesvol opnieuw verzonden naar:', email);
-    
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Verificatie-e-mail opnieuw verzonden! Controleer je inbox.' 
-    });
+    const link = data?.properties?.action_link;
+    if (!link) {
+      console.error('Geen action_link ontvangen van Supabase');
+      return res.status(500).json({ error: 'Geen verificatielink ontvangen' });
+    }
+
+    // Verstuur via Resend
+    try {
+      await sendMail({
+        to: email,
+        subject: 'Bevestig je account bij GroeiRichting',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #1a73e8; margin-bottom: 10px;">Bevestig je account bij GroeiRichting</h1>
+              <p style="color: #666; font-size: 16px;">Klik op de link hieronder om je e-mailadres te verifiëren</p>
+            </div>
+            
+            <div style="background-color: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center;">
+              <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">
+                Klik op de knop hieronder om je e-mailadres te verifiëren en je account te activeren.
+              </p>
+              
+              <a href="${link}" 
+                 style="display: inline-block; background-color: #1a73e8; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+                E-mailadres verifiëren
+              </a>
+            </div>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+              <p style="color: #888; font-size: 14px; margin: 0;">
+                Werkt de knop niet? Kopieer deze link in je browser:<br>
+                <a href="${link}" style="color: #1a73e8; word-break: break-all;">${link}</a>
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">
+              <p>Met vriendelijke groet,<br><strong>Het GroeiRichting team</strong></p>
+            </div>
+          </div>
+        `
+      });
+
+      console.log('Verificatielink succesvol opnieuw verzonden naar:', email);
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Verificatie-e-mail opnieuw verzonden! Controleer je inbox.' 
+      });
+
+    } catch (mailError) {
+      console.error('Fout bij versturen via Resend:', mailError);
+      return res.status(500).json({ 
+        error: 'Fout bij versturen verificatiemail via Resend' 
+      });
+    }
 
   } catch (error) {
     console.error('Fout bij opnieuw versturen verificatiemail:', error);
