@@ -59,7 +59,7 @@ SUPABASE_ANON_KEY=your_anon_key
 # OpenAI configuratie
 OPENAI_API_KEY=your_openai_api_key
 
-# Resend configuratie (voor e-mails)
+# Resend configuratie (voor e-mails) - alleen voor uitnodigingen
 RESEND_API_KEY=your_resend_api_key
 
 # Frontend URL (voor CORS en e-mail links)

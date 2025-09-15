@@ -1,6 +1,7 @@
 # 📧 Mailer Service
 
-Centrale email service voor GroeiRichting met Resend als provider.
+Centrale email service voor GroeiRichting met Resend als provider. 
+**Let op**: Verificatie emails worden verstuurd via Supabase Auth SMTP, niet via deze service.
 
 ## 🚀 Features
 

@@ -11,7 +11,6 @@ if (!process.env.RENDER) {
 
 const registerEmployee = require('./register-employee');
 // const registerEmployer = require('./register-employer'); // Uitgeschakeld - registratie nu volledig via Supabase Auth
-const resendVerification = require('./resend-verification');
 const checkVerification = require('./check-verification');
 const createThemeWithQuestions = require('./create-theme-with-questions');
 const saveConversation = require('./save-conversation');
@@ -32,7 +31,7 @@ const saveThemaEvaluatie = require('./save-thema-evaluatie'); // ✅ Nieuw toege
 const checkThemaEvaluatie = require('./check-thema-evaluatie'); // ✅ Nieuw toegevoegd
 const contact = require('./contact'); // ✅ Nieuw toegevoegd
 const teams = require('./teams'); // ✅ Nieuw toegevoegd voor team management
-const auth = require('./auth'); // ✅ Nieuwe auth routes voor verificatie
+// const auth = require('./auth'); // Uitgeschakeld - frontend gebruikt direct Supabase Auth
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
 
@@ -86,9 +85,8 @@ app.use(cors({
 app.use(express.json());
 
 // app.use('/api/register-employer', registerEmployer); // Uitgeschakeld - registratie nu volledig via Supabase Auth
-app.use('/api/auth', auth); // ✅ Nieuwe auth routes
+// app.use('/api/auth', auth); // Uitgeschakeld - frontend gebruikt direct Supabase Auth
 app.use('/api/register-employee', registerEmployee);
-app.use('/api/resend-verification', resendVerification);
 app.use('/api/check-verification', checkVerification);
 app.use('/api/create-theme-with-questions', createThemeWithQuestions);
 app.use('/api/save-conversation', saveConversation);
