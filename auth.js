@@ -18,6 +18,8 @@ router.post('/signup-init', async (req, res) => {
     }
 
     console.log('Nieuwe registratie initiëren voor:', email);
+    console.log('Ontvangen redirectTo:', redirectTo);
+    console.log('FRONTEND_URL env var:', process.env.FRONTEND_URL);
 
     // Genereer verificatielink (maakt user aan als die nog niet bestaat)
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({

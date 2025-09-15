@@ -128,7 +128,7 @@ async function sendEmail(opts = {}) {
 // Minimalistische sender voor verificatie emails
 async function sendMail({ to, subject, html }) {
   return await resend.emails.send({
-    from: 'GroeiRichting Support <support@groeirichting.nl>',
+    from: 'Rick van GroeiRichting <support@groeirichting.nl>',
     to,
     subject,
     html,
