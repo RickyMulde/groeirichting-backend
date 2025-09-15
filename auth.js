@@ -9,6 +9,11 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY // service role!
 );
 
+const supabaseAnon = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY // anon key voor signUp
+);
+
 router.post('/signup-init', async (req, res) => {
   try {
     const { email, password, redirectTo } = req.body;
@@ -25,7 +30,7 @@ router.post('/signup-init', async (req, res) => {
             const finalRedirectTo = redirectTo || `${process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com'}/na-verificatie`;
             console.log('Final redirectTo voor Supabase:', finalRedirectTo);
 
-            const { data, error } = await supabaseAdmin.auth.signUp({
+            const { data, error } = await supabaseAnon.auth.signUp({
               email,
               password,
               options: {
