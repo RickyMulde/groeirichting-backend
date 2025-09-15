@@ -21,35 +21,30 @@ router.post('/signup-init', async (req, res) => {
     console.log('Ontvangen redirectTo:', redirectTo);
     console.log('FRONTEND_URL env var:', process.env.FRONTEND_URL);
 
-    // Genereer verificatielink via Supabase (laat Supabase de email versturen)
-    const finalRedirectTo = redirectTo || `${process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com'}/na-verificatie`;
-    console.log('Final redirectTo voor Supabase:', finalRedirectTo);
-    
-    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'signup',
-      email,
-      password,
-      options: { 
-        emailRedirectTo: finalRedirectTo
-      }
-    });
-    
-    if (error) {
-      console.error('Fout bij genereren verificatielink:', error);
-      return res.status(400).json({ error: error.message });
-    }
+            // Gebruik signUp in plaats van generateLink (signUp verstuurt wel email)
+            const finalRedirectTo = redirectTo || `${process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com'}/na-verificatie`;
+            console.log('Final redirectTo voor Supabase:', finalRedirectTo);
 
-    const link = data?.properties?.action_link;
-    if (!link) {
-      console.error('Geen action_link ontvangen van Supabase');
-      return res.status(500).json({ error: 'Geen verificatielink ontvangen' });
-    }
+            const { data, error } = await supabaseAdmin.auth.signUp({
+              email,
+              password,
+              options: {
+                emailRedirectTo: finalRedirectTo
+              }
+            });
 
-    console.log('Verificatielink gegenereerd door Supabase:', link);
-    console.log('Supabase verstuurt automatisch verificatie-e-mail...');
+            if (error) {
+              console.error('Fout bij registreren gebruiker:', error);
+              return res.status(400).json({ error: error.message });
+            }
 
-    // Supabase verstuurt de email automatisch, we hoeven niets meer te doen
-    console.log('Verificatie-e-mail wordt verstuurd door Supabase naar:', email);
+            if (!data.user) {
+              console.error('Geen gebruiker aangemaakt door Supabase');
+              return res.status(500).json({ error: 'Gebruiker kon niet worden aangemaakt' });
+            }
+
+            console.log('Gebruiker aangemaakt door Supabase:', data.user.id);
+            console.log('Supabase verstuurt automatisch verificatie-e-mail naar:', email);
 
     return res.json({ 
       success: true, 
