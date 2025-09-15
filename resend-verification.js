@@ -39,10 +39,7 @@ router.post('/', async (req, res) => {
     // Genereer nieuwe verificatielink via Supabase Auth
     const { data, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'signup',
-      email: email,
-      options: {
-        emailRedirectTo: `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/na-verificatie`
-      }
+      email: email
     });
     
     if (linkError) {
@@ -57,6 +54,21 @@ router.post('/', async (req, res) => {
       console.error('Geen action_link ontvangen van Supabase');
       return res.status(500).json({ error: 'Geen verificatielink ontvangen' });
     }
+
+    // Extraheer token_hash uit de link
+    const url = new URL(link);
+    const token_hash = url.searchParams.get('token_hash');
+    
+    if (!token_hash) {
+      console.error('Geen token_hash gevonden in verificatielink');
+      return res.status(500).json({ error: 'Token hash niet gevonden' });
+    }
+
+    // Bouw onze eigen verificatielink
+    const frontendUrl = process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com';
+    const finalLink = `${frontendUrl}/na-verificatie?token_hash=${token_hash}&type=email`;
+    
+    console.log('Eigen verificatielink gebouwd:', finalLink);
 
     // Verstuur via Resend
     try {
@@ -75,7 +87,7 @@ router.post('/', async (req, res) => {
                 Klik op de knop hieronder om je e-mailadres te verifiëren en je account te activeren.
               </p>
               
-              <a href="${link}" 
+              <a href="${finalLink}" 
                  style="display: inline-block; background-color: #1a73e8; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
                 E-mailadres verifiëren
               </a>
@@ -84,7 +96,7 @@ router.post('/', async (req, res) => {
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
               <p style="color: #888; font-size: 14px; margin: 0;">
                 Werkt de knop niet? Kopieer deze link in je browser:<br>
-                <a href="${link}" style="color: #1a73e8; word-break: break-all;">${link}</a>
+                <a href="${finalLink}" style="color: #1a73e8; word-break: break-all;">${finalLink}</a>
               </p>
             </div>
             
