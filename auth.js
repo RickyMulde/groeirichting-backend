@@ -22,12 +22,15 @@ router.post('/signup-init', async (req, res) => {
     console.log('FRONTEND_URL env var:', process.env.FRONTEND_URL);
 
     // Genereer verificatielink (maakt user aan als die nog niet bestaat)
+    const finalRedirectTo = redirectTo || `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/na-verificatie`;
+    console.log('Final redirectTo voor Supabase:', finalRedirectTo);
+    
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
       email,
       password,
       options: { 
-        emailRedirectTo: redirectTo || `${process.env.FRONTEND_URL || 'https://groeirichting.nl'}/na-verificatie`
+        emailRedirectTo: finalRedirectTo
       }
     });
     
@@ -42,6 +45,7 @@ router.post('/signup-init', async (req, res) => {
       return res.status(500).json({ error: 'Geen verificatielink ontvangen' });
     }
 
+    console.log('Verificatielink gegenereerd:', link);
     console.log('Verificatielink gegenereerd, versturen via Resend...');
 
     // Verstuur via Resend
