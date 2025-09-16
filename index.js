@@ -34,7 +34,7 @@ const teams = require('./teams'); // ✅ Nieuw toegevoegd voor team management
 const emailTemplates = require('./email-templates'); // ✅ Nieuw toegevoegd voor email templates
 const emailQueue = require('./email-queue'); // ✅ Nieuw toegevoegd voor email queue
 const testEmail = require('./test-email'); // ✅ Nieuw toegevoegd voor test emails
-const { processEmailQueue } = require('./cron-jobs'); // ✅ Nieuw toegevoegd voor queue processing
+const { processEmailQueue, processEmailTriggers } = require('./cron-jobs'); // ✅ Nieuw toegevoegd voor queue processing
 // const auth = require('./auth'); // Uitgeschakeld - frontend gebruikt direct Supabase Auth
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
@@ -249,6 +249,18 @@ app.get('/api/debug', (req, res) => {
     frontendUrl: process.env.FRONTEND_URL,
     corsEnabled: true
   });
+});
+
+// Debug endpoint voor triggers
+app.post('/api/debug/process-triggers', async (req, res) => {
+  try {
+    console.log('Manual trigger processing requested');
+    await processEmailTriggers();
+    res.json({ success: true, message: 'Triggers processed successfully' });
+  } catch (error) {
+    console.error('Error in manual trigger processing:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Resend is nu vervangen door de mailer service

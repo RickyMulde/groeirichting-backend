@@ -1,6 +1,186 @@
 [
   {
-    "json_agg": [
+    "columns_info": [
+      {
+        "table_name": "email_queue",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "template_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "template_naam",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "template_onderwerp",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "template_trigger",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "ontvanger_email",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "organisatie_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "status",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "variabelen",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "error_message",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "message_id",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "verzonden_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "email_queue",
+        "column_name": "aangemaakt_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "naam",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "onderwerp",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "html_content",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "text_content",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "doelgroep",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "trigger_event",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "omschrijving",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "is_active",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "organisatie_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "metadata",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "aangemaakt_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "bijgewerkt_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "email_templates",
+        "column_name": "aangemaakt_door",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "email_triggers",
+        "column_name": "id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "email_triggers",
+        "column_name": "organisatie_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "email_triggers",
+        "column_name": "template_id",
+        "data_type": "uuid"
+      },
+      {
+        "table_name": "email_triggers",
+        "column_name": "trigger_naam",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_triggers",
+        "column_name": "trigger_type",
+        "data_type": "text"
+      },
+      {
+        "table_name": "email_triggers",
+        "column_name": "trigger_config",
+        "data_type": "jsonb"
+      },
+      {
+        "table_name": "email_triggers",
+        "column_name": "is_active",
+        "data_type": "boolean"
+      },
+      {
+        "table_name": "email_triggers",
+        "column_name": "aangemaakt_op",
+        "data_type": "timestamp with time zone"
+      },
+      {
+        "table_name": "email_triggers",
+        "column_name": "bijgewerkt_op",
+        "data_type": "timestamp with time zone"
+      },
       {
         "table_name": "employers",
         "column_name": "id",
@@ -115,6 +295,11 @@
         "table_name": "gesprek",
         "column_name": "geanonimiseerd_op",
         "data_type": "timestamp without time zone"
+      },
+      {
+        "table_name": "gesprek",
+        "column_name": "team_id",
+        "data_type": "uuid"
       },
       {
         "table_name": "gesprekken_compleet",
@@ -395,11 +580,6 @@
         "table_name": "organization_theme_insights",
         "column_name": "individuele_scores",
         "data_type": "jsonb"
-      },
-      {
-        "table_name": "organization_theme_insights",
-        "column_name": "team_id",
-        "data_type": "uuid"
       },
       {
         "table_name": "teams",
