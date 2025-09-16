@@ -31,6 +31,10 @@ const saveThemaEvaluatie = require('./save-thema-evaluatie'); // ✅ Nieuw toege
 const checkThemaEvaluatie = require('./check-thema-evaluatie'); // ✅ Nieuw toegevoegd
 const contact = require('./contact'); // ✅ Nieuw toegevoegd
 const teams = require('./teams'); // ✅ Nieuw toegevoegd voor team management
+const emailTemplates = require('./email-templates'); // ✅ Nieuw toegevoegd voor email templates
+const emailQueue = require('./email-queue'); // ✅ Nieuw toegevoegd voor email queue
+const testEmail = require('./test-email'); // ✅ Nieuw toegevoegd voor test emails
+const { processEmailQueue } = require('./cron-jobs'); // ✅ Nieuw toegevoegd voor queue processing
 // const auth = require('./auth'); // Uitgeschakeld - frontend gebruikt direct Supabase Auth
 
 console.log("🚀 Force redeploy: verbeterde HTML + fallback");
@@ -58,7 +62,6 @@ const app = express();
 
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com',
-  'https://groeirichting-frontend.onrender.com',
   'https://groeirichting.nl',
   'http://localhost:5173', // Voor lokale ontwikkeling
   'http://localhost:3000'  // Voor lokale ontwikkeling
@@ -107,6 +110,9 @@ app.use('/api/save-thema-evaluatie', saveThemaEvaluatie); // ✅ Nieuwe route to
 app.use('/api/check-thema-evaluatie', checkThemaEvaluatie); // ✅ Nieuwe route toegevoegd
 app.use('/api/contact', contact); // ✅ Nieuwe route toegevoegd
 app.use('/api/teams', teams); // ✅ Nieuwe route toegevoegd voor team management
+app.use('/api/email-templates', emailTemplates); // ✅ Nieuwe route toegevoegd voor email templates
+app.use('/api/email-queue', emailQueue); // ✅ Nieuwe route toegevoegd voor email queue
+app.use('/api/test-email', testEmail); // ✅ Nieuwe route toegevoegd voor test emails
 
 // 🔧 Provision employer endpoint - wordt aangeroepen na email verificatie
 app.post('/api/provision-employer', async (req, res) => {
