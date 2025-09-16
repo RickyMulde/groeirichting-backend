@@ -69,16 +69,24 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    console.log('CORS request from origin:', origin);
+    console.log('=== CORS DEBUG ===');
+    console.log('Request origin:', origin);
     console.log('Allowed origins:', allowedOrigins);
+    console.log('FRONTEND_URL env var:', process.env.FRONTEND_URL);
+    console.log('==================');
     
     // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('No origin provided, allowing request');
+      return callback(null, true);
+    }
     
     if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
+      console.log('CORS BLOCKED origin:', origin);
+      console.log('This origin is not in allowed list:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -237,7 +245,9 @@ app.get('/api/debug', (req, res) => {
     timestamp: new Date().toISOString(),
     origin: req.get('Origin'),
     userAgent: req.get('User-Agent'),
-    allowedOrigins: allowedOrigins
+    allowedOrigins: allowedOrigins,
+    frontendUrl: process.env.FRONTEND_URL,
+    corsEnabled: true
   });
 });
 

@@ -4,16 +4,29 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+// Test endpoint
+router.get('/test', (req, res) => {
+  res.json({ 
+    message: 'Email templates endpoint is working!',
+    timestamp: new Date().toISOString(),
+    supabaseUrl: process.env.SUPABASE_URL ? 'Set' : 'Not set',
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'Not set'
+  });
+});
 
 // GET /api/email-templates - Alle templates ophalen
 router.get('/', async (req, res) => {
   try {
+    console.log('Fetching email templates...');
     const { data, error } = await supabase
       .from('email_templates')
       .select('*')
       .order('aangemaakt_op', { ascending: false });
+    
+    console.log('Supabase response:', { data, error });
     
     if (error) throw error;
     res.json(data);
