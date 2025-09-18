@@ -87,6 +87,8 @@ class AzureOpenAIClient {
       }
     } catch (error) {
       console.error('❌ Azure OpenAI Error:', error.message)
+      console.error('Error details:', error)
+      console.error('Request options:', JSON.stringify(azureOptions, null, 2))
       
       return {
         success: false,

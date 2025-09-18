@@ -97,20 +97,30 @@ router.post('/', async (req, res) => {
         const clean = raw.startsWith('```') ? raw.replace(/```(?:json)?/g, '').replace(/```/g, '').trim() : raw;
         parsed = JSON.parse(clean);
     } catch (parseError) {
-        console.error('Fout bij parsen van GPT-respons:', parseError, 'Raw response:', raw);
+        console.error('Fout bij parsen van GPT-respons:', parseError);
+        console.error('Raw response:', raw);
+        console.error('Raw response length:', raw.length);
+        console.error('Raw response type:', typeof raw);
+        
         // Fallback: toch doorgaan met een algemene vraag om het gesprek niet te blokkeren
         parsed = {
             doorgaan: true,
-            reactie: '',
-            vervolgvraag: 'Kun je dat verder toelichten?',
-            toelichting: 'Er was een klein technisch probleem, we gaan verder.'
+            reactie: 'Ik begrijp dat je het niet helemaal zeker weet. Dat is helemaal oké.',
+            vervolgvraag: 'Kun je vertellen wat je precies bedoelt met "ik weet het niet zo goed"?',
+            toelichting: 'Ik wil je graag helpen om je gedachten te verduidelijken.'
         };
     }
     
     // Na JSON parsing, valideer verplichte velden
     if (!parsed.hasOwnProperty('doorgaan') || typeof parsed.doorgaan !== 'boolean') {
         console.error('Ongeldige response: doorgaan veld ontbreekt');
-        parsed = { doorgaan: true, reactie: '', vervolgvraag: 'Kun je dat verder toelichten?', toelichting: 'Technische fout, we gaan verder.' };
+        console.error('Parsed object:', parsed);
+        parsed = { 
+            doorgaan: true, 
+            reactie: 'Ik hoor dat je het niet helemaal zeker weet. Dat is normaal in dit soort gesprekken.', 
+            vervolgvraag: 'Kun je vertellen wat je precies bedoelt?', 
+            toelichting: 'Ik wil je graag helpen om je gedachten te verduidelijken.' 
+        };
     }
     
     return res.json(parsed);
