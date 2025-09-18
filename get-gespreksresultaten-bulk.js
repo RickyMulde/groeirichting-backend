@@ -1,6 +1,6 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
-const OpenAI = require('openai')
+const azureClient = require('./utils/azureOpenAI')
 const { authMiddleware, assertTeamInOrg } = require('./middleware/auth')
 
 const router = express.Router()
@@ -8,7 +8,6 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 // Gebruik auth middleware voor alle routes
 router.use(authMiddleware)
@@ -155,14 +154,18 @@ Antwoord in JSON-formaat:
   "vervolgacties_toelichting": "Korte uitleg waarom deze acties passend zijn voor de werknemer"
 }`
 
-    // Stuur naar GPT
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+    // Stuur naar Azure OpenAI
+    const completion = await azureClient.createCompletion({
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7
+      temperature: 0.7,
+      max_completion_tokens: 1000
     })
 
-    const gptResponse = completion.choices[0].message.content
+    if (!completion.success) {
+      throw new Error(`Azure OpenAI fout: ${completion.error}`)
+    }
+
+    const gptResponse = completion.data.choices[0].message.content
     let parsed
     try {
       parsed = JSON.parse(gptResponse)

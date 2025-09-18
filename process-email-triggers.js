@@ -663,7 +663,7 @@ async function processGesprekGeplandTriggers() {
           email,
           employer_id
         ),
-        thema!inner(
+        themes!inner(
           id,
           titel
         )
@@ -720,7 +720,7 @@ async function processGesprekGeplandTriggers() {
             organisatie_id: gesprek.users.employer_id,
             variabelen: {
               voornaam: gesprek.users.first_name || 'Er',
-              thema_titel: gesprek.thema.titel,
+              thema_titel: gesprek.themes.titel,
               gesprek_datum: gesprekDatum,
               gesprek_link: `${process.env.FRONTEND_URL}/gesprek/${gesprek.id}`
             },
@@ -760,7 +760,7 @@ async function processGesprekHerinneringTriggers() {
           email,
           employer_id
         ),
-        thema!inner(
+        themes!inner(
           id,
           titel
         )
@@ -818,7 +818,7 @@ async function processGesprekHerinneringTriggers() {
             organisatie_id: gesprek.users.employer_id,
             variabelen: {
               voornaam: gesprek.users.first_name || 'Er',
-              thema_titel: gesprek.thema.titel,
+              thema_titel: gesprek.themes.titel,
               gesprek_datum: gesprekDatum,
               gesprek_link: `${process.env.FRONTEND_URL}/gesprek/${gesprek.id}`
             },
@@ -851,7 +851,7 @@ async function processGesprekAfgerondTriggers() {
           email,
           employer_id
         ),
-        thema!inner(
+        themes!inner(
           id,
           titel
         )
@@ -898,7 +898,7 @@ async function processGesprekAfgerondTriggers() {
             organisatie_id: gesprek.users.employer_id,
             variabelen: {
               voornaam: gesprek.users.first_name || 'Er',
-              thema_titel: gesprek.thema.titel,
+              thema_titel: gesprek.themes.titel,
               dashboard_url: `${process.env.FRONTEND_URL}/werknemer-dashboard`
             },
             metadata: {

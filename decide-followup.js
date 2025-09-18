@@ -1,14 +1,10 @@
 // 📁 routes/decide-followup.js
 const express = require('express');
 const router = express.Router();
-const OpenAI = require('openai');
+const azureClient = require('./utils/azureOpenAI');
 const dotenv = require('dotenv');
 
 dotenv.config({ path: '.env.test' });
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
 
 router.post('/', async (req, res) => {
   // We ontvangen nu de volledige gespreksgeschiedenis
@@ -43,11 +39,11 @@ router.post('/', async (req, res) => {
   console.log('Aantal gespreksitems:', gespreksgeschiedenis.length);
   console.log('Laatste antwoord lengte:', laatsteAntwoord.length);
 
-  // 2. GPT-call met de volledige prompt
+  // 2. Azure OpenAI call met de volledige prompt
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    const completion = await azureClient.createCompletion({
       temperature: 0.4,
+      max_completion_tokens: 500,
       messages: [
         {
           role: 'system',
@@ -90,7 +86,11 @@ router.post('/', async (req, res) => {
       ]
     });
 
-    const raw = completion.choices[0].message.content.trim();
+    if (!completion.success) {
+      throw new Error(`Azure OpenAI fout: ${completion.error}`)
+    }
+
+    const raw = completion.data.choices[0].message.content.trim();
     // Robuuster maken voor het geval de API geen JSON teruggeeft
     let parsed;
     try {

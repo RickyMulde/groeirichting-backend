@@ -24,7 +24,13 @@ services:
         value: info@groeirichting.nl
       - key: FRONTEND_URL
         value: https://groeirichting-frontend.onrender.com
-      - key: OPENAI_API_KEY
+      - key: AZURE_OPENAI_ENDPOINT
         sync: false
+      - key: AZURE_OPENAI_KEY
+        sync: false
+      - key: AZURE_OPENAI_DEPLOYMENT
+        sync: false
+      - key: AZURE_OPENAI_API_VERSION
+        value: 2025-04-01-preview
     healthCheckPath: /health
     autoDeploy: true
