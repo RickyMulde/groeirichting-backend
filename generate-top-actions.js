@@ -192,7 +192,7 @@ Antwoord in JSON-formaat:
     const completion = await azureClient.createCompletion({
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
-      max_completion_tokens: 1500
+      max_completion_tokens: 4000
     })
 
     if (!completion.success) {

@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
   try {
         const completion = await azureClient.createCompletion({
           temperature: 1, // Azure model ondersteunt alleen temperature 1
-          max_completion_tokens: 500,
+          max_completion_tokens: 4000, // Veilige limiet voor GPT-5-mini
       messages: [
         {
           role: 'system',
