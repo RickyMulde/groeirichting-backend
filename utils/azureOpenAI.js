@@ -72,13 +72,27 @@ class AzureOpenAIClient {
       // Gebruik deployment name als model
       const azureOptions = {
         ...options,
-        model: this.deployment,
-        response_format: { type: "json_object" } // Forceer JSON response
+        model: this.deployment
+        // response_format wordt niet ondersteund door alle Azure modellen
       }
 
       console.log(`🤖 Azure OpenAI call: ${options.messages?.length || 0} messages, max_tokens: ${options.max_completion_tokens || options.max_tokens}`)
 
       const completion = await this.client.chat.completions.create(azureOptions)
+
+      // Log de response voor debugging
+      console.log('Azure response:', JSON.stringify(completion, null, 2))
+      
+      // Check of er een content is
+      if (!completion.choices || !completion.choices[0] || !completion.choices[0].message) {
+        console.error('Azure response heeft geen choices of message')
+        return {
+          success: false,
+          error: 'Azure response heeft geen choices of message',
+          provider: 'azure',
+          details: completion
+        }
+      }
 
       return {
         success: true,

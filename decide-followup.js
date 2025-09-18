@@ -90,7 +90,26 @@ router.post('/', async (req, res) => {
       throw new Error(`Azure OpenAI fout: ${completion.error}`)
     }
 
-    const raw = completion.data.choices[0].message.content.trim();
+    // Uitgebreide logging van Azure response
+    console.log('=== AZURE RESPONSE DEBUG ===');
+    console.log('Completion success:', completion.success);
+    console.log('Completion data keys:', Object.keys(completion.data || {}));
+    console.log('Choices length:', completion.data?.choices?.length || 0);
+    console.log('First choice:', completion.data?.choices?.[0] || 'No choices');
+    console.log('Message content:', completion.data?.choices?.[0]?.message?.content || 'No content');
+    console.log('Message role:', completion.data?.choices?.[0]?.message?.role || 'No role');
+    console.log('Full completion data:', JSON.stringify(completion.data, null, 2));
+    console.log('=== END AZURE DEBUG ===');
+
+    const raw = completion.data.choices[0].message.content?.trim() || '';
+    
+    // Check voor lege response
+    if (!raw || raw.length === 0) {
+        console.error('Lege response van Azure OpenAI');
+        console.error('Completion data:', JSON.stringify(completion.data, null, 2));
+        throw new Error('Azure OpenAI gaf een lege response terug');
+    }
+    
     // Robuuster maken voor het geval de API geen JSON teruggeeft
     let parsed;
     try {
