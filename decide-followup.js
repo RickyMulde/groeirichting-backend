@@ -41,9 +41,9 @@ router.post('/', async (req, res) => {
 
   // 2. Azure OpenAI call met de volledige prompt
   try {
-    const completion = await azureClient.createCompletion({
-      temperature: 0.4,
-      max_completion_tokens: 500,
+        const completion = await azureClient.createCompletion({
+          temperature: 1, // Azure model ondersteunt alleen temperature 1
+          max_completion_tokens: 500,
       messages: [
         {
           role: 'system',

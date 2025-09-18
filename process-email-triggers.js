@@ -30,10 +30,10 @@ async function processAccountVerificatieTriggers() {
     // Haal alle werkgevers op die recent geverifieerd zijn (laatste 24 uur)
     const { data: recentWerkgevers, error } = await supabase
       .from('users')
-      .select('id, first_name, employer_id, email_confirmed_at, email')
+      .select('id, first_name, employer_id, email')
       .eq('role', 'employer')
       .eq('email_confirmed', true)
-      .gte('email_confirmed_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
     
     if (error) throw error;
     
@@ -655,7 +655,7 @@ async function processGesprekGeplandTriggers() {
       .select(`
         id,
         werknemer_id,
-        thema_id,
+        theme_id,
         gepland_op,
         users!inner(
           id,
@@ -752,7 +752,7 @@ async function processGesprekHerinneringTriggers() {
       .select(`
         id,
         werknemer_id,
-        thema_id,
+        theme_id,
         gepland_op,
         users!inner(
           id,
@@ -843,7 +843,7 @@ async function processGesprekAfgerondTriggers() {
       .select(`
         id,
         werknemer_id,
-        thema_id,
+        theme_id,
         afgerond_op,
         users!inner(
           id,
