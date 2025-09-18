@@ -72,7 +72,8 @@ class AzureOpenAIClient {
       // Gebruik deployment name als model
       const azureOptions = {
         ...options,
-        model: this.deployment
+        model: this.deployment,
+        response_format: { type: "json_object" } // Forceer JSON response
       }
 
       console.log(`🤖 Azure OpenAI call: ${options.messages?.length || 0} messages, max_tokens: ${options.max_completion_tokens || options.max_tokens}`)

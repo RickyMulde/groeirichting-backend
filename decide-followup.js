@@ -81,7 +81,7 @@ router.post('/', async (req, res) => {
             (laatste_samenvatting ? `Eerdere gesprekken samenvatting (gesprek ${laatste_samenvatting.gespreksronde}):\n${laatste_samenvatting.samenvatting}\n\n` : '') +
             `Gespreksgeschiedenis tot nu toe:\n${gespreksContext}\n\n` +
             `Opdracht:\n- Analyseer het volledige gesprek tot nu toe.\n- ${laatste_samenvatting ? 'Houd rekening met wat er eerder is besproken in de samenvatting hierboven.\n- ' : ''}Beoordeel of het doel van de huidige vraag is bereikt.\n- Als het doel nog niet is bereikt, geef dan eerst een korte reactie/bevestiging/nuance op het laatste antwoord, gevolgd door maximaal één relevante vervolgvraag.\n- Als het doel wel is bereikt, geef dat aan en sluit het gesprek af.\n- Zorg ervoor dat je vervolgvraag een OPEN vraag is die de medewerker uitnodigt tot uitgebreide reflectie. Stel dus geen gesloten vragen'\n- ${laatste_samenvatting ? 'Stel gerichte vragen die aansluiten op wat er eerder is besproken.\n- ' : ''}Vergelijk de huidige antwoorden met eerdere inzichten waar mogelijk.\n\n` +
-            `Geef je antwoord in het volgende JSON-formaat:\n{\n  "doorgaan": true/false,\n  "reactie": "korte reactie op het laatste antwoord (kan leeg zijn als niet nodig)",\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de medewerker uit waarom je wel of niet doorgaat"\n}`
+            `BELANGRIJK: Geef je antwoord ALLEEN in het volgende JSON-formaat. Geen andere tekst, geen uitleg, alleen de JSON:\n{\n  "doorgaan": true,\n  "reactie": "korte reactie op het laatste antwoord (kan leeg zijn als niet nodig)",\n  "vervolgvraag": "tekst of null",\n  "toelichting": "leg aan de medewerker uit waarom je wel of niet doorgaat"\n}\n\nZorg ervoor dat de JSON geldig is en alle velden aanwezig zijn.`
         }
       ]
     });
@@ -102,25 +102,15 @@ router.post('/', async (req, res) => {
         console.error('Raw response length:', raw.length);
         console.error('Raw response type:', typeof raw);
         
-        // Fallback: toch doorgaan met een algemene vraag om het gesprek niet te blokkeren
-        parsed = {
-            doorgaan: true,
-            reactie: 'Ik begrijp dat je het niet helemaal zeker weet. Dat is helemaal oké.',
-            vervolgvraag: 'Kun je vertellen wat je precies bedoelt met "ik weet het niet zo goed"?',
-            toelichting: 'Ik wil je graag helpen om je gedachten te verduidelijken.'
-        };
+        // Geen fallback - laat de echte error door
+        throw new Error(`JSON parsing failed: ${parseError.message}. Raw response: ${raw.substring(0, 200)}...`);
     }
     
     // Na JSON parsing, valideer verplichte velden
     if (!parsed.hasOwnProperty('doorgaan') || typeof parsed.doorgaan !== 'boolean') {
         console.error('Ongeldige response: doorgaan veld ontbreekt');
         console.error('Parsed object:', parsed);
-        parsed = { 
-            doorgaan: true, 
-            reactie: 'Ik hoor dat je het niet helemaal zeker weet. Dat is normaal in dit soort gesprekken.', 
-            vervolgvraag: 'Kun je vertellen wat je precies bedoelt?', 
-            toelichting: 'Ik wil je graag helpen om je gedachten te verduidelijken.' 
-        };
+        throw new Error(`Invalid response format: missing or invalid 'doorgaan' field. Response: ${JSON.stringify(parsed)}`);
     }
     
     return res.json(parsed);
