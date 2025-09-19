@@ -191,8 +191,8 @@ Antwoord in JSON-formaat:
     console.log('🤖 Stuur prompt naar Azure OpenAI...')
     const completion = await azureClient.createCompletion({
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
-      max_completion_tokens: 4000
+      temperature: 1,
+      max_completion_tokens: 6000  // Verhoogd voor top-actions
     })
 
     if (!completion.success) {

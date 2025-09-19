@@ -157,7 +157,7 @@ Antwoord in JSON-formaat:
     // Stuur naar Azure OpenAI
     const completion = await azureClient.createCompletion({
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
+      temperature: 1,
       max_completion_tokens: 4000
     })
 
