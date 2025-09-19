@@ -136,6 +136,7 @@ Antwoord in JSON-formaat:
 
     // 5. Stuur naar Azure OpenAI
     const completion = await azureClient.createCompletion({
+      model: 'gpt-5-mini', // Expliciet GPT-5-mini gebruiken
       messages: [{ role: 'user', content: prompt }],
       temperature: 1,
       max_completion_tokens: 15000  // Verhoogd voor organisatie samenvatting

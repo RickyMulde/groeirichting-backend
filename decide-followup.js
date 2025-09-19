@@ -42,8 +42,9 @@ router.post('/', async (req, res) => {
   // 2. Azure OpenAI call met de volledige prompt
   try {
         const completion = await azureClient.createCompletion({
-          temperature: 1, // Azure model ondersteunt alleen temperature 1
-          max_completion_tokens: 4000, // Veilige limiet voor GPT-5-mini
+          model: 'gpt-4o', // Gebruik GPT-4o voor snellere responses
+          temperature: 1,
+          max_completion_tokens: 4000,
       messages: [
         {
           role: 'system',
