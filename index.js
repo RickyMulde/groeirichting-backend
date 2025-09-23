@@ -374,8 +374,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
+// 404 handler - catch all routes
+app.use((req, res) => {
   console.warn('404 - Endpoint niet gevonden:', {
     url: req.originalUrl,
     method: req.method,
