@@ -1,0 +1,404 @@
+[
+  {
+    "schemaname": "public",
+    "tablename": "email_queue",
+    "indexname": "email_queue_pkey",
+    "indexdef": "CREATE UNIQUE INDEX email_queue_pkey ON public.email_queue USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_queue",
+    "indexname": "email_queue_template_id_ontvanger_email_aangemaakt_op_key",
+    "indexdef": "CREATE UNIQUE INDEX email_queue_template_id_ontvanger_email_aangemaakt_op_key ON public.email_queue USING btree (template_id, ontvanger_email, aangemaakt_op)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_queue",
+    "indexname": "idx_email_queue_created",
+    "indexdef": "CREATE INDEX idx_email_queue_created ON public.email_queue USING btree (aangemaakt_op)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_queue",
+    "indexname": "idx_email_queue_org",
+    "indexdef": "CREATE INDEX idx_email_queue_org ON public.email_queue USING btree (organisatie_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_queue",
+    "indexname": "idx_email_queue_status",
+    "indexdef": "CREATE INDEX idx_email_queue_status ON public.email_queue USING btree (status)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_templates",
+    "indexname": "email_templates_pkey",
+    "indexdef": "CREATE UNIQUE INDEX email_templates_pkey ON public.email_templates USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_triggers",
+    "indexname": "email_triggers_pkey",
+    "indexdef": "CREATE UNIQUE INDEX email_triggers_pkey ON public.email_triggers USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_triggers",
+    "indexname": "idx_email_triggers_active",
+    "indexdef": "CREATE INDEX idx_email_triggers_active ON public.email_triggers USING btree (is_active)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_triggers",
+    "indexname": "idx_email_triggers_org",
+    "indexdef": "CREATE INDEX idx_email_triggers_org ON public.email_triggers USING btree (organisatie_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_triggers",
+    "indexname": "idx_email_triggers_type",
+    "indexdef": "CREATE INDEX idx_email_triggers_type ON public.email_triggers USING btree (trigger_type)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "employers",
+    "indexname": "employers_company_name_key",
+    "indexdef": "CREATE UNIQUE INDEX employers_company_name_key ON public.employers USING btree (company_name)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "employers",
+    "indexname": "employers_pkey",
+    "indexdef": "CREATE UNIQUE INDEX employers_pkey ON public.employers USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprek",
+    "indexname": "gesprek_pkey",
+    "indexdef": "CREATE UNIQUE INDEX gesprek_pkey ON public.gesprek USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprek",
+    "indexname": "idx_gesprek_geanonimiseerd",
+    "indexdef": "CREATE INDEX idx_gesprek_geanonimiseerd ON public.gesprek USING btree (geanonimiseerd_op)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprek",
+    "indexname": "idx_gesprek_team_id",
+    "indexdef": "CREATE INDEX idx_gesprek_team_id ON public.gesprek USING btree (team_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekken_compleet",
+    "indexname": "gesprekken_compleet_pkey",
+    "indexdef": "CREATE UNIQUE INDEX gesprekken_compleet_pkey ON public.gesprekken_compleet USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekken_compleet",
+    "indexname": "idx_gesprekken_compleet_gesprek",
+    "indexdef": "CREATE INDEX idx_gesprekken_compleet_gesprek ON public.gesprekken_compleet USING btree (gesprek_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekken_compleet",
+    "indexname": "idx_gesprekken_compleet_gespreksgeschiedenis",
+    "indexdef": "CREATE INDEX idx_gesprekken_compleet_gespreksgeschiedenis ON public.gesprekken_compleet USING gin (gespreksgeschiedenis)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekken_compleet",
+    "indexname": "idx_gesprekken_compleet_gestart_op",
+    "indexdef": "CREATE INDEX idx_gesprekken_compleet_gestart_op ON public.gesprekken_compleet USING btree (gestart_op)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekken_compleet",
+    "indexname": "idx_gesprekken_compleet_metadata",
+    "indexdef": "CREATE INDEX idx_gesprekken_compleet_metadata ON public.gesprekken_compleet USING gin (metadata)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekken_compleet",
+    "indexname": "idx_gesprekken_compleet_status",
+    "indexdef": "CREATE INDEX idx_gesprekken_compleet_status ON public.gesprekken_compleet USING btree (status)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekken_compleet",
+    "indexname": "idx_gesprekken_compleet_team_id",
+    "indexdef": "CREATE INDEX idx_gesprekken_compleet_team_id ON public.gesprekken_compleet USING btree (team_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekken_compleet",
+    "indexname": "idx_gesprekken_compleet_theme",
+    "indexdef": "CREATE INDEX idx_gesprekken_compleet_theme ON public.gesprekken_compleet USING btree (theme_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekken_compleet",
+    "indexname": "idx_gesprekken_compleet_werknemer",
+    "indexdef": "CREATE INDEX idx_gesprekken_compleet_werknemer ON public.gesprekken_compleet USING btree (werknemer_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekresultaten",
+    "indexname": "gesprekresultaten_gesprek_id_key",
+    "indexdef": "CREATE UNIQUE INDEX gesprekresultaten_gesprek_id_key ON public.gesprekresultaten USING btree (gesprek_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekresultaten",
+    "indexname": "gesprekresultaten_pkey",
+    "indexdef": "CREATE UNIQUE INDEX gesprekresultaten_pkey ON public.gesprekresultaten USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekresultaten",
+    "indexname": "idx_gesprekresultaten_gesprek_id",
+    "indexdef": "CREATE INDEX idx_gesprekresultaten_gesprek_id ON public.gesprekresultaten USING btree (gesprek_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekresultaten",
+    "indexname": "idx_gesprekresultaten_periode",
+    "indexdef": "CREATE INDEX idx_gesprekresultaten_periode ON public.gesprekresultaten USING btree (werknemer_id, periode)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekresultaten",
+    "indexname": "idx_gesprekresultaten_team_id",
+    "indexdef": "CREATE INDEX idx_gesprekresultaten_team_id ON public.gesprekresultaten USING btree (team_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "gesprekresultaten",
+    "indexname": "idx_gesprekresultaten_werknemer_theme_gesprek",
+    "indexdef": "CREATE INDEX idx_gesprekresultaten_werknemer_theme_gesprek ON public.gesprekresultaten USING btree (werknemer_id, theme_id, gesprek_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "invitations",
+    "indexname": "idx_invitations_team_id",
+    "indexdef": "CREATE INDEX idx_invitations_team_id ON public.invitations USING btree (team_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "invitations",
+    "indexname": "invitations_pkey",
+    "indexdef": "CREATE UNIQUE INDEX invitations_pkey ON public.invitations USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "invitations",
+    "indexname": "invitations_token_key",
+    "indexdef": "CREATE UNIQUE INDEX invitations_token_key ON public.invitations USING btree (token)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "organization_theme_insights",
+    "indexname": "organization_theme_insights_pkey",
+    "indexdef": "CREATE UNIQUE INDEX organization_theme_insights_pkey ON public.organization_theme_insights USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "organization_theme_insights",
+    "indexname": "organization_theme_insights_unique",
+    "indexdef": "CREATE UNIQUE INDEX organization_theme_insights_unique ON public.organization_theme_insights USING btree (organisatie_id, theme_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "teams",
+    "indexname": "idx_teams_archived_at",
+    "indexdef": "CREATE INDEX idx_teams_archived_at ON public.teams USING btree (archived_at)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "teams",
+    "indexname": "idx_teams_werkgever_id",
+    "indexdef": "CREATE INDEX idx_teams_werkgever_id ON public.teams USING btree (werkgever_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "teams",
+    "indexname": "teams_pkey",
+    "indexdef": "CREATE UNIQUE INDEX teams_pkey ON public.teams USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "teams",
+    "indexname": "unique_naam_per_werkgever",
+    "indexdef": "CREATE UNIQUE INDEX unique_naam_per_werkgever ON public.teams USING btree (naam, werkgever_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "thema_evaluaties",
+    "indexname": "idx_thema_evaluaties_evaluatie_datum",
+    "indexdef": "CREATE INDEX idx_thema_evaluaties_evaluatie_datum ON public.thema_evaluaties USING btree (evaluatie_datum)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "thema_evaluaties",
+    "indexname": "idx_thema_evaluaties_gesprek_id",
+    "indexdef": "CREATE INDEX idx_thema_evaluaties_gesprek_id ON public.thema_evaluaties USING btree (gesprek_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "thema_evaluaties",
+    "indexname": "idx_thema_evaluaties_team_id",
+    "indexdef": "CREATE INDEX idx_thema_evaluaties_team_id ON public.thema_evaluaties USING btree (team_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "thema_evaluaties",
+    "indexname": "idx_thema_evaluaties_theme_id",
+    "indexdef": "CREATE INDEX idx_thema_evaluaties_theme_id ON public.thema_evaluaties USING btree (theme_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "thema_evaluaties",
+    "indexname": "idx_thema_evaluaties_werknemer_id",
+    "indexdef": "CREATE INDEX idx_thema_evaluaties_werknemer_id ON public.thema_evaluaties USING btree (werknemer_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "thema_evaluaties",
+    "indexname": "thema_evaluaties_gesprek_id_key",
+    "indexdef": "CREATE UNIQUE INDEX thema_evaluaties_gesprek_id_key ON public.thema_evaluaties USING btree (gesprek_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "thema_evaluaties",
+    "indexname": "thema_evaluaties_pkey",
+    "indexdef": "CREATE UNIQUE INDEX thema_evaluaties_pkey ON public.thema_evaluaties USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "theme_questions",
+    "indexname": "idx_theme_questions_theme_titel",
+    "indexdef": "CREATE INDEX idx_theme_questions_theme_titel ON public.theme_questions USING btree (theme_titel)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "theme_questions",
+    "indexname": "theme_questions_pkey",
+    "indexdef": "CREATE UNIQUE INDEX theme_questions_pkey ON public.theme_questions USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "themes",
+    "indexname": "idx_themes_ai_behavior",
+    "indexdef": "CREATE INDEX idx_themes_ai_behavior ON public.themes USING btree (ai_behavior)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "themes",
+    "indexname": "idx_themes_prompt_style",
+    "indexdef": "CREATE INDEX idx_themes_prompt_style ON public.themes USING btree (prompt_style)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "themes",
+    "indexname": "idx_themes_thema_type",
+    "indexdef": "CREATE INDEX idx_themes_thema_type ON public.themes USING btree (thema_type)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "themes",
+    "indexname": "themes_pkey",
+    "indexdef": "CREATE UNIQUE INDEX themes_pkey ON public.themes USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "top_vervolgacties",
+    "indexname": "idx_top_vervolgacties_gegenereerd_op",
+    "indexdef": "CREATE INDEX idx_top_vervolgacties_gegenereerd_op ON public.top_vervolgacties USING btree (gegenereerd_op)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "top_vervolgacties",
+    "indexname": "idx_top_vervolgacties_team_id",
+    "indexdef": "CREATE INDEX idx_top_vervolgacties_team_id ON public.top_vervolgacties USING btree (team_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "top_vervolgacties",
+    "indexname": "idx_top_vervolgacties_werkgever",
+    "indexdef": "CREATE INDEX idx_top_vervolgacties_werkgever ON public.top_vervolgacties USING btree (werkgever_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "top_vervolgacties",
+    "indexname": "idx_top_vervolgacties_werknemer_periode",
+    "indexdef": "CREATE INDEX idx_top_vervolgacties_werknemer_periode ON public.top_vervolgacties USING btree (werknemer_id, periode)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "top_vervolgacties",
+    "indexname": "top_vervolgacties_pkey",
+    "indexdef": "CREATE UNIQUE INDEX top_vervolgacties_pkey ON public.top_vervolgacties USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "top_vervolgacties",
+    "indexname": "top_vervolgacties_werknemer_id_periode_key",
+    "indexdef": "CREATE UNIQUE INDEX top_vervolgacties_werknemer_id_periode_key ON public.top_vervolgacties USING btree (werknemer_id, periode)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "indexname": "idx_users_email_account_naam",
+    "indexdef": "CREATE INDEX idx_users_email_account_naam ON public.users USING btree (email, account_naam)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "indexname": "idx_users_employer",
+    "indexdef": "CREATE INDEX idx_users_employer ON public.users USING btree (employer_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "indexname": "idx_users_team_id",
+    "indexdef": "CREATE INDEX idx_users_team_id ON public.users USING btree (team_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "indexname": "unique_email_account_naam",
+    "indexdef": "CREATE UNIQUE INDEX unique_email_account_naam ON public.users USING btree (email, account_naam)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "indexname": "users_email_key",
+    "indexdef": "CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "indexname": "users_pkey",
+    "indexdef": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "werkgever_gesprek_instellingen",
+    "indexname": "idx_wgi_werkgever_actief",
+    "indexdef": "CREATE INDEX idx_wgi_werkgever_actief ON public.werkgever_gesprek_instellingen USING btree (werkgever_id, actief)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "werkgever_gesprek_instellingen",
+    "indexname": "werkgever_gesprek_instellingen_pkey",
+    "indexdef": "CREATE UNIQUE INDEX werkgever_gesprek_instellingen_pkey ON public.werkgever_gesprek_instellingen USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "werkgever_gesprek_instellingen",
+    "indexname": "werkgever_gesprek_instellingen_werkgever_id_key",
+    "indexdef": "CREATE UNIQUE INDEX werkgever_gesprek_instellingen_werkgever_id_key ON public.werkgever_gesprek_instellingen USING btree (werkgever_id)"
+  }
+]

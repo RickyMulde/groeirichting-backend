@@ -75,6 +75,18 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// 📊 Request Logging Middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${req.method} ${req.url} - ${res.statusCode} - ${duration}ms`);
+  });
+  
+  next();
+});
+
 // app.use('/api/register-employer', registerEmployer); // Uitgeschakeld - registratie nu volledig via Supabase Auth
 // app.use('/api/auth', auth); // Uitgeschakeld - frontend gebruikt direct Supabase Auth
 app.use('/api/register-employee', registerEmployee);
@@ -344,6 +356,40 @@ ${registerUrl}`;
   }
 });
 
+// 🛡️ Error Handling Middleware
+app.use((err, req, res, next) => {
+  console.error('API Error:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+  
+  res.status(500).json({
+    error: 'Interne serverfout',
+    ...(process.env.NODE_ENV === 'development' && { 
+      details: err.message 
+    })
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  console.warn('404 - Endpoint niet gevonden:', {
+    url: req.originalUrl,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+  
+  res.status(404).json({
+    error: 'Endpoint niet gevonden',
+    path: req.originalUrl
+  });
+});
+
 app.listen(3000, () => {
-  // API server started
+  console.log('🚀 API Server gestart op poort 3000');
+  console.log('🌐 CORS geconfigureerd');
+  console.log('📊 Logging geactiveerd');
 });

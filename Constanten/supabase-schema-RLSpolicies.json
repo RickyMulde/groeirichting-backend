@@ -1,476 +1,820 @@
 [
   {
+    "schemaname": "public",
+    "tablename": "email_queue",
+    "policyname": "Organizations can view their queue",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(organisatie_id = ( SELECT users.employer_id\n   FROM users\n  WHERE (users.id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_queue",
+    "policyname": "Superadmin can view all queue",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.role = 'superuser'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_templates",
+    "policyname": "Organizations can view their templates",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(organisatie_id = ( SELECT users.employer_id\n   FROM users\n  WHERE (users.id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_templates",
+    "policyname": "Superadmin can view all templates",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.role = 'superuser'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_triggers",
+    "policyname": "Organizations can manage their triggers",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(organisatie_id = ( SELECT users.employer_id\n   FROM users\n  WHERE (users.id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_triggers",
+    "policyname": "Superadmin can manage all triggers",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.role = 'superuser'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
     "tablename": "employers",
     "policyname": "employer - select own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
     "cmd": "SELECT",
     "qual": "(id IN ( SELECT u.employer_id\n   FROM users u\n  WHERE (u.id = auth.uid())))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "employers",
     "policyname": "employer - update own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
     "cmd": "UPDATE",
     "qual": "(id IN ( SELECT u.employer_id\n   FROM users u\n  WHERE (u.id = auth.uid())))",
     "with_check": "(id IN ( SELECT u.employer_id\n   FROM users u\n  WHERE (u.id = auth.uid())))"
   },
   {
+    "schemaname": "public",
     "tablename": "employers",
     "policyname": "service role - all",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.role() = 'service_role'::text)",
     "with_check": "(auth.role() = 'service_role'::text)"
   },
   {
+    "schemaname": "public",
     "tablename": "gesprek",
     "policyname": "Employees can insert own conversations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "INSERT",
     "qual": null,
     "with_check": "(auth.uid() = werknemer_id)"
   },
   {
+    "schemaname": "public",
     "tablename": "gesprek",
     "policyname": "Employees can update own conversations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "UPDATE",
     "qual": "(auth.uid() = werknemer_id)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprek",
     "policyname": "Employees can view own conversations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() = werknemer_id)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprek",
     "policyname": "Employers can view team conversations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = ( SELECT teams.werkgever_id\n           FROM teams\n          WHERE (teams.id = gesprek.team_id))))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprek",
     "policyname": "Service role kan alles",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.role() = 'service_role'::text)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprek",
     "policyname": "Users kunnen eigen gesprekken zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(werknemer_id = auth.uid())",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekken_compleet",
     "policyname": "Employees can insert own complete conversations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "INSERT",
     "qual": null,
     "with_check": "(auth.uid() = werknemer_id)"
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekken_compleet",
     "policyname": "Employees can update own complete conversations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "UPDATE",
     "qual": "(auth.uid() = werknemer_id)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekken_compleet",
     "policyname": "Employees can view own complete conversations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() = werknemer_id)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekken_compleet",
     "policyname": "Employers can view employee complete conversations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = ( SELECT users_1.employer_id\n           FROM users users_1\n          WHERE (users_1.id = gesprekken_compleet.werknemer_id))))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekken_compleet",
     "policyname": "Service role kan alles",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.role() = 'service_role'::text)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekken_compleet",
     "policyname": "Users kunnen eigen complete gesprekken zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(werknemer_id = auth.uid())",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekresultaten",
     "policyname": "Employees can insert own results",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "INSERT",
     "qual": null,
     "with_check": "(auth.uid() = werknemer_id)"
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekresultaten",
     "policyname": "Employees can update own results",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "UPDATE",
     "qual": "(auth.uid() = werknemer_id)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekresultaten",
     "policyname": "Employees can view own results",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() = werknemer_id)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekresultaten",
     "policyname": "Employers can view team results",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = ( SELECT teams.werkgever_id\n           FROM teams\n          WHERE (teams.id = gesprekresultaten.team_id))))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekresultaten",
     "policyname": "Service role kan alles",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.role() = 'service_role'::text)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "gesprekresultaten",
     "policyname": "Users kunnen eigen gesprekresultaten zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "((werknemer_id = auth.uid()) OR (werkgever_id = auth.uid()))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "invitations",
     "policyname": "Anonymous users can read invitations by token",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "((token IS NOT NULL) AND (status = 'pending'::text))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "invitations",
     "policyname": "Employers can insert own invitations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "INSERT",
     "qual": null,
     "with_check": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = invitations.employer_id))))"
   },
   {
+    "schemaname": "public",
     "tablename": "invitations",
     "policyname": "Employers can insert team invitations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "INSERT",
     "qual": null,
     "with_check": "((auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = invitations.employer_id)))) AND (team_id IS NOT NULL))"
   },
   {
+    "schemaname": "public",
     "tablename": "invitations",
     "policyname": "Employers can update own invitations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "UPDATE",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = invitations.employer_id))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "invitations",
     "policyname": "Employers can view own invitations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = invitations.employer_id))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "organization_theme_insights",
     "policyname": "Employers can insert own organization insights",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "INSERT",
     "qual": null,
     "with_check": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = ( SELECT users_1.employer_id\n           FROM users users_1\n          WHERE (users_1.id = organization_theme_insights.organisatie_id))))))"
   },
   {
+    "schemaname": "public",
     "tablename": "organization_theme_insights",
     "policyname": "Employers can update own organization insights",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "UPDATE",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = ( SELECT users_1.employer_id\n           FROM users users_1\n          WHERE (users_1.id = organization_theme_insights.organisatie_id))))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "organization_theme_insights",
     "policyname": "Employers can view own organization insights",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = ( SELECT users_1.employer_id\n           FROM users users_1\n          WHERE (users_1.id = organization_theme_insights.organisatie_id))))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "organization_theme_insights",
     "policyname": "Service role kan alles",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.role() = 'service_role'::text)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "organization_theme_insights",
     "policyname": "Users kunnen eigen insights zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(organisatie_id = auth.uid())",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "teams",
     "policyname": "Employers can delete own teams",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "DELETE",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = teams.werkgever_id))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
+    "tablename": "teams",
+    "policyname": "Employers can delete their own teams",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'employer'::text) AND (u.employer_id = teams.werkgever_id))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
     "tablename": "teams",
     "policyname": "Employers can insert own teams",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "INSERT",
     "qual": null,
     "with_check": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = teams.werkgever_id))))"
   },
   {
+    "schemaname": "public",
+    "tablename": "teams",
+    "policyname": "Employers can insert their own teams",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'employer'::text) AND (u.employer_id = teams.werkgever_id))))"
+  },
+  {
+    "schemaname": "public",
     "tablename": "teams",
     "policyname": "Employers can update own teams",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "UPDATE",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = teams.werkgever_id))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
+    "tablename": "teams",
+    "policyname": "Employers can update their own teams",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'employer'::text) AND (u.employer_id = teams.werkgever_id))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'employer'::text) AND (u.employer_id = teams.werkgever_id))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "teams",
+    "policyname": "Employers can view their own teams",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = auth.uid()) AND (u.role = 'employer'::text) AND (u.employer_id = teams.werkgever_id))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
     "tablename": "teams",
     "policyname": "Service role kan alles",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.role() = 'service_role'::text)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "teams",
     "policyname": "Users kunnen eigen teams zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(werkgever_id IN ( SELECT users.employer_id\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.role = 'employer'::text))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "thema_evaluaties",
     "policyname": "Employers can view team evaluations",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = ( SELECT teams.werkgever_id\n           FROM teams\n          WHERE (teams.id = thema_evaluaties.team_id))))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "thema_evaluaties",
     "policyname": "Service role kan alle evaluaties zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.role() = 'service_role'::text)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "thema_evaluaties",
     "policyname": "Werknemers kunnen eigen evaluaties aanmaken",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "INSERT",
     "qual": null,
     "with_check": "(auth.uid() = werknemer_id)"
   },
   {
+    "schemaname": "public",
     "tablename": "thema_evaluaties",
     "policyname": "Werknemers kunnen eigen evaluaties niet verwijderen",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "DELETE",
     "qual": "false",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "thema_evaluaties",
     "policyname": "Werknemers kunnen eigen evaluaties niet wijzigen",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "UPDATE",
     "qual": "false",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "thema_evaluaties",
     "policyname": "Werknemers kunnen eigen evaluaties zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() = werknemer_id)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "theme_questions",
     "policyname": "Anyone can view theme questions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "true",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "theme_questions",
     "policyname": "Only superusers can modify theme questions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE (users.role = 'superuser'::text)))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "themes",
     "policyname": "Anyone can view themes",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "true",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "themes",
     "policyname": "Only superusers can modify themes",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE (users.role = 'superuser'::text)))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "top_vervolgacties",
     "policyname": "Employees can insert own top actions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "INSERT",
     "qual": null,
     "with_check": "(auth.uid() = werknemer_id)"
   },
   {
+    "schemaname": "public",
     "tablename": "top_vervolgacties",
     "policyname": "Employees can update own top actions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "UPDATE",
     "qual": "(auth.uid() = werknemer_id)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "top_vervolgacties",
     "policyname": "Employees can view own top actions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() = werknemer_id)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "top_vervolgacties",
     "policyname": "Employers can view team top actions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = ( SELECT teams.werkgever_id\n           FROM teams\n          WHERE (teams.id = top_vervolgacties.team_id))))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "top_vervolgacties",
     "policyname": "Service role heeft volledige toegang",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "true",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "top_vervolgacties",
     "policyname": "Service role kan alles",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.role() = 'service_role'::text)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "top_vervolgacties",
     "policyname": "Users kunnen eigen top acties zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "((werknemer_id = auth.uid()) OR (werkgever_id = auth.uid()))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "top_vervolgacties",
     "policyname": "Werkgevers kunnen top acties van hun werknemers zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(werkgever_id = auth.uid())",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "top_vervolgacties",
     "policyname": "Werknemers kunnen hun eigen top acties zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(werknemer_id = auth.uid())",
     "with_check": null
   },
   {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "Employers can delete their team employees",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (users u\n     JOIN teams t ON ((t.werkgever_id = u.employer_id)))\n  WHERE ((u.id = auth.uid()) AND (u.role = 'employer'::text) AND (t.id = users.team_id))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "Employers can insert employees to their teams",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (users u\n     JOIN teams t ON ((t.werkgever_id = u.employer_id)))\n  WHERE ((u.id = auth.uid()) AND (u.role = 'employer'::text) AND (t.id = users.team_id))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "Employers can update their team employees",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (users u\n     JOIN teams t ON ((t.werkgever_id = u.employer_id)))\n  WHERE ((u.id = auth.uid()) AND (u.role = 'employer'::text) AND (t.id = users.team_id))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (users u\n     JOIN teams t ON ((t.werkgever_id = u.employer_id)))\n  WHERE ((u.id = auth.uid()) AND (u.role = 'employer'::text) AND (t.id = users.team_id))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "Employers can view their team employees",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (users u\n     JOIN teams t ON ((t.werkgever_id = u.employer_id)))\n  WHERE ((u.id = auth.uid()) AND (u.role = 'employer'::text) AND (t.id = users.team_id))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
     "tablename": "users",
     "policyname": "Service role kan alles",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.role() = 'service_role'::text)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "users",
     "policyname": "Users can insert own data",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "INSERT",
     "qual": null,
     "with_check": "(auth.uid() = id)"
   },
   {
+    "schemaname": "public",
     "tablename": "users",
     "policyname": "Users can update own data",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "UPDATE",
     "qual": "(auth.uid() = id)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "users",
     "policyname": "Users can view own data",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() = id)",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "users",
     "policyname": "Users kunnen eigen profiel updaten",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "UPDATE",
     "qual": "(id = auth.uid())",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "users",
     "policyname": "Users kunnen eigen profiel zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(id = auth.uid())",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "users",
     "policyname": "Users kunnen eigen role zien",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(id = auth.uid())",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "users",
     "policyname": "service role - all",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "ALL",
     "qual": "(auth.role() = 'service_role'::text)",
     "with_check": "(auth.role() = 'service_role'::text)"
   },
   {
+    "schemaname": "public",
     "tablename": "users",
     "policyname": "user - select self",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
     "cmd": "SELECT",
     "qual": "(id = auth.uid())",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "users",
     "policyname": "user - update self",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
     "cmd": "UPDATE",
     "qual": "(id = auth.uid())",
     "with_check": "(id = auth.uid())"
   },
   {
+    "schemaname": "public",
     "tablename": "werkgever_gesprek_instellingen",
     "policyname": "Employers can insert own settings",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "INSERT",
     "qual": null,
     "with_check": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = werkgever_gesprek_instellingen.werkgever_id))))"
   },
   {
+    "schemaname": "public",
     "tablename": "werkgever_gesprek_instellingen",
     "policyname": "Employers can update own settings",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "UPDATE",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = werkgever_gesprek_instellingen.werkgever_id))))",
     "with_check": null
   },
   {
+    "schemaname": "public",
     "tablename": "werkgever_gesprek_instellingen",
     "policyname": "Employers can view own settings",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
     "cmd": "SELECT",
     "qual": "(auth.uid() IN ( SELECT users.id\n   FROM users\n  WHERE ((users.role = 'employer'::text) AND (users.employer_id = werkgever_gesprek_instellingen.werkgever_id))))",
     "with_check": null
