@@ -75,17 +75,17 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// 📊 Request Logging Middleware
-app.use((req, res, next) => {
-  const start = Date.now();
-  
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    console.log(`${req.method} ${req.url} - ${res.statusCode} - ${duration}ms`);
-  });
-  
-  next();
-});
+// 📊 Request Logging Middleware - tijdelijk uitgeschakeld voor debugging
+// app.use((req, res, next) => {
+//   const start = Date.now();
+//   
+//   res.on('finish', () => {
+//     const duration = Date.now() - start;
+//     console.log(`${req.method} ${req.url} - ${res.statusCode} - ${duration}ms`);
+//   });
+//   
+//   next();
+// });
 
 // app.use('/api/register-employer', registerEmployer); // Uitgeschakeld - registratie nu volledig via Supabase Auth
 // app.use('/api/auth', auth); // Uitgeschakeld - frontend gebruikt direct Supabase Auth
