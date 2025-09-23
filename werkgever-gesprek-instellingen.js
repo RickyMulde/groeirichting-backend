@@ -203,7 +203,7 @@ router.get('/:werkgever_id/taken-status', async (req, res) => {
     // Haal configuratie op
     const { data: config, error: configError } = await supabase
       .from('werkgever_gesprek_instellingen')
-      .select('organisatie_omschrijving, actieve_maanden')
+      .select('organisatie_omschrijving, actieve_maanden, takenlijst_verborgen')
       .eq('werkgever_id', werkgever_id)
       .single();
 
@@ -223,7 +223,7 @@ router.get('/:werkgever_id/taken-status', async (req, res) => {
       {
         id: 'organisatie_omschrijving',
         titel: 'Vul een omschrijving van de werkzaamheden van je bedrijf/team in',
-        beschrijving: 'Help je team om beter te begrijpen wat er van hen wordt verwacht',
+        beschrijving: 'We kunnen dan gerichtere vragen stellen en beter signaleren',
         icon: '🏢',
         voltooid: !!(config?.organisatie_omschrijving && config.organisatie_omschrijving.trim() !== ''),
         link: '/instellingen'
@@ -231,24 +231,92 @@ router.get('/:werkgever_id/taken-status', async (req, res) => {
       {
         id: 'actieve_maanden',
         titel: 'Stel in, in welke maand de gesprekken moeten plaatsvinden',
-        beschrijving: 'Plan je gesprekscyclus voor optimale resultaten',
+        beschrijving: 'Kies wanneer de eerste en volgende gespreksrondes plaats moeten vinden',
         icon: '📅',
         voltooid: !!(config?.actieve_maanden && Array.isArray(config.actieve_maanden) && config.actieve_maanden.length > 0),
         link: '/instellingen'
       },
       {
         id: 'uitnodigingen_versturen',
-        titel: 'Nodig de betreffende werknemers/teamleden uit',
-        beschrijving: 'Start je eerste gesprekken en begin met groeien',
+        titel: 'Nodig werknemers uit en/of maak teams aan',
+        beschrijving: 'Jouw werknemers ontvangen vervolgens een uitnodiging om deel te nemen aan de gespreksrondes',
         icon: '👥',
         voltooid: !!(invitations && invitations.length > 0),
         link: '/beheer-teams-werknemers'
       }
     ];
 
-    res.json({ taken });
+    res.json({ 
+      taken, 
+      verborgen: config?.takenlijst_verborgen || false 
+    });
   } catch (error) {
     console.error('Fout bij ophalen taken status:', error);
+    res.status(500).json({ error: 'Interne serverfout', detail: error.message });
+  }
+});
+
+// PUT /api/werkgever-gesprek-instellingen/:werkgever_id/verberg-takenlijst
+// Verberg de takenlijst voor een werkgever
+router.put('/:werkgever_id/verberg-takenlijst', async (req, res) => {
+  const { werkgever_id } = req.params;
+  const employerId = req.ctx.employerId;
+
+  // Valideer dat werkgever_id overeenkomt met employerId uit context
+  if (werkgever_id !== employerId) {
+    return res.status(403).json({ error: 'Geen toegang tot deze organisatie' });
+  }
+
+  try {
+    // Check of er al een configuratie bestaat
+    const { data: bestaandeConfig, error: checkError } = await supabase
+      .from('werkgever_gesprek_instellingen')
+      .select('id')
+      .eq('werkgever_id', werkgever_id)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      throw checkError;
+    }
+
+    let result;
+    if (bestaandeConfig) {
+      // Update bestaande configuratie
+      const { data, error } = await supabase
+        .from('werkgever_gesprek_instellingen')
+        .update({
+          takenlijst_verborgen: true,
+          bijgewerkt_op: new Date().toISOString()
+        })
+        .eq('werkgever_id', werkgever_id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      result = data;
+    } else {
+      // Maak nieuwe configuratie aan met verborgen takenlijst
+      const { data, error } = await supabase
+        .from('werkgever_gesprek_instellingen')
+        .insert({
+          werkgever_id,
+          actieve_maanden: [3, 6, 9], // Standaard waarden
+          verplicht: true,
+          actief: true,
+          anonimiseer_na_dagen: 60,
+          organisatie_omschrijving: null,
+          takenlijst_verborgen: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      result = data;
+    }
+
+    res.json({ success: true, verborgen: true });
+  } catch (error) {
+    console.error('Fout bij verbergen takenlijst:', error);
     res.status(500).json({ error: 'Interne serverfout', detail: error.message });
   }
 });
