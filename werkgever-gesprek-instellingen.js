@@ -188,4 +188,69 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// GET /api/werkgever-gesprek-instellingen/:werkgever_id/taken-status
+// Haal taken status op voor een werkgever
+router.get('/:werkgever_id/taken-status', async (req, res) => {
+  const { werkgever_id } = req.params;
+  const employerId = req.ctx.employerId;
+
+  // Valideer dat werkgever_id overeenkomt met employerId uit context
+  if (werkgever_id !== employerId) {
+    return res.status(403).json({ error: 'Geen toegang tot deze organisatie' });
+  }
+
+  try {
+    // Haal configuratie op
+    const { data: config, error: configError } = await supabase
+      .from('werkgever_gesprek_instellingen')
+      .select('organisatie_omschrijving, actieve_maanden')
+      .eq('werkgever_id', werkgever_id)
+      .single();
+
+    // Check uitnodigingen
+    const { data: invitations, error: invitationsError } = await supabase
+      .from('invitations')
+      .select('id')
+      .eq('employer_id', werkgever_id)
+      .limit(1);
+
+    if (invitationsError) {
+      console.error('Fout bij ophalen uitnodigingen:', invitationsError);
+    }
+
+    // Bepaal taken status
+    const taken = [
+      {
+        id: 'organisatie_omschrijving',
+        titel: 'Vul een omschrijving van de werkzaamheden van je bedrijf/team in',
+        beschrijving: 'Help je team om beter te begrijpen wat er van hen wordt verwacht',
+        icon: '🏢',
+        voltooid: !!(config?.organisatie_omschrijving && config.organisatie_omschrijving.trim() !== ''),
+        link: '/instellingen'
+      },
+      {
+        id: 'actieve_maanden',
+        titel: 'Stel in, in welke maand de gesprekken moeten plaatsvinden',
+        beschrijving: 'Plan je gesprekscyclus voor optimale resultaten',
+        icon: '📅',
+        voltooid: !!(config?.actieve_maanden && Array.isArray(config.actieve_maanden) && config.actieve_maanden.length > 0),
+        link: '/instellingen'
+      },
+      {
+        id: 'uitnodigingen_versturen',
+        titel: 'Nodig de betreffende werknemers/teamleden uit',
+        beschrijving: 'Start je eerste gesprekken en begin met groeien',
+        icon: '👥',
+        voltooid: !!(invitations && invitations.length > 0),
+        link: '/beheer-teams-werknemers'
+      }
+    ];
+
+    res.json({ taken });
+  } catch (error) {
+    console.error('Fout bij ophalen taken status:', error);
+    res.status(500).json({ error: 'Interne serverfout', detail: error.message });
+  }
+});
+
 module.exports = router; 

@@ -32,7 +32,7 @@ async function processAccountVerificatieTriggers() {
       .from('users')
       .select('id, first_name, employer_id, email')
       .eq('role', 'employer')
-      .eq('email_confirmed', true)
+      .not('email_confirmed_at', 'is', null)
       .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
     
     if (error) throw error;
@@ -656,7 +656,7 @@ async function processGesprekGeplandTriggers() {
         id,
         werknemer_id,
         theme_id,
-        gepland_op,
+        gestart_op,
         users!inner(
           id,
           first_name,
@@ -669,7 +669,7 @@ async function processGesprekGeplandTriggers() {
         )
       `)
       .eq('status', 'Gepland')
-      .gte('gepland_op', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      .gte('gestart_op', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
     
     if (error) throw error;
     
@@ -701,7 +701,7 @@ async function processGesprekGeplandTriggers() {
         }
         
         // Format datum
-        const gesprekDatum = new Date(gesprek.gepland_op).toLocaleDateString('nl-NL', {
+        const gesprekDatum = new Date(gesprek.gestart_op).toLocaleDateString('nl-NL', {
           weekday: 'long',
           year: 'numeric',
           month: 'long',
@@ -753,7 +753,7 @@ async function processGesprekHerinneringTriggers() {
         id,
         werknemer_id,
         theme_id,
-        gepland_op,
+        gestart_op,
         users!inner(
           id,
           first_name,
@@ -766,8 +766,8 @@ async function processGesprekHerinneringTriggers() {
         )
       `)
       .eq('status', 'Gepland')
-      .gte('gepland_op', morgen.toISOString())
-      .lte('gepland_op', morgenEinde.toISOString());
+      .gte('gestart_op', morgen.toISOString())
+      .lte('gestart_op', morgenEinde.toISOString());
     
     if (error) throw error;
     
@@ -799,7 +799,7 @@ async function processGesprekHerinneringTriggers() {
         }
         
         // Format datum
-        const gesprekDatum = new Date(gesprek.gepland_op).toLocaleDateString('nl-NL', {
+        const gesprekDatum = new Date(gesprek.gestart_op).toLocaleDateString('nl-NL', {
           weekday: 'long',
           year: 'numeric',
           month: 'long',
@@ -844,7 +844,7 @@ async function processGesprekAfgerondTriggers() {
         id,
         werknemer_id,
         theme_id,
-        afgerond_op,
+        beeindigd_op,
         users!inner(
           id,
           first_name,
@@ -857,7 +857,7 @@ async function processGesprekAfgerondTriggers() {
         )
       `)
       .eq('status', 'Afgerond')
-      .gte('afgerond_op', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      .gte('beeindigd_op', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
     
     if (error) throw error;
     
