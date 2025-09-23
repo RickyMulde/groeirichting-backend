@@ -37,25 +37,15 @@ const testEmail = require('./test-email'); // ✅ Nieuw toegevoegd voor test ema
 const { processEmailQueue, processEmailTriggers } = require('./cron-jobs'); // ✅ Nieuw toegevoegd voor queue processing
 // const auth = require('./auth'); // Uitgeschakeld - frontend gebruikt direct Supabase Auth
 
-console.log("🚀 Force redeploy: verbeterde HTML + fallback");
+// Server starting...
 
 // 🛡️ PRODUCTIE BEVEILIGING - Controleer of je bewust in productie werkt
 if (process.env.CONFIRM_PRODUCTION === 'YES') {
-  console.log('⚠️  ⚠️  ⚠️  PRODUCTIE OMGEVING GEDETECTEERD ⚠️  ⚠️  ⚠️');
-  console.log('🚨 Je draait nu in de PRODUCTIE omgeving!');
-  console.log('🔒 Zorg ervoor dat dit bewust is en dat alle configuratie correct is.');
-  console.log('📊 Database:', process.env.SUPABASE_URL || 'Niet ingesteld');
-  console.log('🌐 Frontend URL:', process.env.FRONTEND_URL || 'Niet ingesteld');
-  console.log('');
-  
+  // Productieomgeving gedetecteerd - extra voorzichtigheid vereist
   // Optioneel: wacht 3 seconden om bewustzijn te creëren
-  console.log('⏳ Wacht 3 seconden voordat de server start...');
   setTimeout(() => {
-    console.log('✅ Server start nu in productieomgeving');
-    console.log('');
+    // Server start nu in productieomgeving
   }, 3000);
-} else {
-  console.log('🧪 Testomgeving gedetecteerd - Veilig om te ontwikkelen');
 }
 
 const app = express();
@@ -69,24 +59,14 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    console.log('=== CORS DEBUG ===');
-    console.log('Request origin:', origin);
-    console.log('Allowed origins:', allowedOrigins);
-    console.log('FRONTEND_URL env var:', process.env.FRONTEND_URL);
-    console.log('==================');
-    
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) {
-      console.log('No origin provided, allowing request');
       return callback(null, true);
     }
     
     if (allowedOrigins.indexOf(origin) !== -1) {
-      console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
-      console.log('CORS BLOCKED origin:', origin);
-      console.log('This origin is not in allowed list:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -166,7 +146,6 @@ app.post('/api/provision-employer', async (req, res) => {
       .single();
 
     if (existingUser?.employer_id && existingUser?.role === 'employer') {
-      console.log('User already provisioned:', { userId, employerId: existingUser.employer_id });
       return res.status(200).json({ success: true, employerId: existingUser.employer_id, alreadyProvisioned: true });
     }
 
@@ -180,7 +159,6 @@ app.post('/api/provision-employer', async (req, res) => {
     let employerId;
     if (existingEmployer) {
       employerId = existingEmployer.id;
-      console.log('Using existing employer:', employerId);
     } else {
       // Create new employer
       const { data: emp, error: empErr } = await supabase
@@ -195,7 +173,6 @@ app.post('/api/provision-employer', async (req, res) => {
         .single();
         
       if (empErr) {
-        console.error('Employer insert failed:', empErr);
         return res.status(400).json({ error: 'Employer insert failed', detail: empErr.message });
       }
       employerId = emp.id;
@@ -213,15 +190,12 @@ app.post('/api/provision-employer', async (req, res) => {
     });
     
     if (userInsErr) {
-      console.error('User insert failed:', userInsErr);
       return res.status(400).json({ error: 'User insert failed', detail: userInsErr.message });
     }
 
-    console.log('Employer provisioned successfully:', { userId, employerId });
     return res.status(200).json({ success: true, employerId });
     
   } catch (e) {
-    console.error('Provisioning failed:', e);
     return res.status(500).json({ error: 'Provisioning failed' });
   }
 });
@@ -254,11 +228,9 @@ app.get('/api/debug', (req, res) => {
 // Debug endpoint voor triggers
 app.post('/api/debug/process-triggers', async (req, res) => {
   try {
-    console.log('Manual trigger processing requested');
     await processEmailTriggers();
     res.json({ success: true, message: 'Triggers processed successfully' });
   } catch (error) {
-    console.error('Error in manual trigger processing:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -268,16 +240,12 @@ app.post('/api/debug/process-triggers', async (req, res) => {
 app.post('/api/send-invite', async (req, res) => {
   const { to, name, employerId, token, functieOmschrijving, teamId } = req.body;
 
-  console.log('Verzoek ontvangen voor:', { to, name, employerId, token, functieOmschrijving, teamId });
-  console.log('Request body:', JSON.stringify(req.body, null, 2));
 
   if (!to || !name || !employerId || !token) {
-    console.warn('Verzoek geweigerd: ontbrekende velden', { to: !!to, name: !!name, employerId: !!employerId, token: !!token });
     return res.status(400).json({ error: 'Verzoek geweigerd: ontbrekende velden' });
   }
 
   if (!teamId) {
-    console.warn('Verzoek geweigerd: teamId is verplicht', { teamId });
     return res.status(400).json({ error: 'teamId is verplicht' });
   }
 
@@ -304,7 +272,6 @@ app.post('/api/send-invite', async (req, res) => {
       return res.status(403).json({ error: 'Team is gearchiveerd' });
     }
   } catch (error) {
-    console.error('Fout bij valideren team:', error);
     return res.status(500).json({ error: 'Fout bij valideren team' });
   }
 
@@ -334,11 +301,9 @@ app.post('/api/send-invite', async (req, res) => {
       });
 
     if (insertError) {
-      console.error('Fout bij aanmaken uitnodiging:', insertError);
       return res.status(500).json({ error: 'Fout bij aanmaken uitnodiging' });
     }
   } catch (error) {
-    console.error('Fout bij database insert:', error);
     return res.status(500).json({ error: 'Fout bij aanmaken uitnodiging' });
   }
 
@@ -373,12 +338,12 @@ ${registerUrl}`;
       }
     });
 
-    console.log('E-mail verzonden naar:', to, '| ID:', emailResponse.messageId);
     res.status(200).json({ success: true, id: emailResponse.messageId });
   } catch (error) {
-    console.error('Fout bij verzenden e-mail:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
-app.listen(3000, () => console.log('API draait op http://localhost:3000'));
+app.listen(3000, () => {
+  // API server started
+});

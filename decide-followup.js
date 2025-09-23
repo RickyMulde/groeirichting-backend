@@ -35,9 +35,6 @@ router.post('/', async (req, res) => {
     `Vraag: ${item.vraag}\nAntwoord: ${item.antwoord}`
   ).join('\n\n');
 
-  console.log('Thema:', thema);
-  console.log('Aantal gespreksitems:', gespreksgeschiedenis.length);
-  console.log('Laatste antwoord lengte:', laatsteAntwoord.length);
 
   // 2. Azure OpenAI call met de volledige prompt
   try {
@@ -91,23 +88,11 @@ router.post('/', async (req, res) => {
       throw new Error(`Azure OpenAI fout: ${completion.error}`)
     }
 
-    // Uitgebreide logging van Azure response
-    console.log('=== AZURE RESPONSE DEBUG ===');
-    console.log('Completion success:', completion.success);
-    console.log('Completion data keys:', Object.keys(completion.data || {}));
-    console.log('Choices length:', completion.data?.choices?.length || 0);
-    console.log('First choice:', completion.data?.choices?.[0] || 'No choices');
-    console.log('Message content:', completion.data?.choices?.[0]?.message?.content || 'No content');
-    console.log('Message role:', completion.data?.choices?.[0]?.message?.role || 'No role');
-    console.log('Full completion data:', JSON.stringify(completion.data, null, 2));
-    console.log('=== END AZURE DEBUG ===');
 
     const raw = completion.data.choices[0].message.content?.trim() || '';
     
     // Check voor lege response
     if (!raw || raw.length === 0) {
-        console.error('Lege response van Azure OpenAI');
-        console.error('Completion data:', JSON.stringify(completion.data, null, 2));
         throw new Error('Azure OpenAI gaf een lege response terug');
     }
     
@@ -117,26 +102,18 @@ router.post('/', async (req, res) => {
         const clean = raw.startsWith('```') ? raw.replace(/```(?:json)?/g, '').replace(/```/g, '').trim() : raw;
         parsed = JSON.parse(clean);
     } catch (parseError) {
-        console.error('Fout bij parsen van GPT-respons:', parseError);
-        console.error('Raw response:', raw);
-        console.error('Raw response length:', raw.length);
-        console.error('Raw response type:', typeof raw);
-        
         // Geen fallback - laat de echte error door
         throw new Error(`JSON parsing failed: ${parseError.message}. Raw response: ${raw.substring(0, 200)}...`);
     }
     
     // Na JSON parsing, valideer verplichte velden
     if (!parsed.hasOwnProperty('doorgaan') || typeof parsed.doorgaan !== 'boolean') {
-        console.error('Ongeldige response: doorgaan veld ontbreekt');
-        console.error('Parsed object:', parsed);
         throw new Error(`Invalid response format: missing or invalid 'doorgaan' field. Response: ${JSON.stringify(parsed)}`);
     }
     
     return res.json(parsed);
 
   } catch (err) {
-    console.error('GPT-fout:', err);
     return res.status(500).json({ error: 'GPT-verwerking mislukt', details: err.message });
   }
 });

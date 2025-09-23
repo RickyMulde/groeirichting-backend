@@ -65,18 +65,7 @@ class AzureOpenAIClient {
       throw new Error('AZURE_OPENAI_ENDPOINT moet beginnen met https://')
     }
 
-    console.log('✅ Azure OpenAI configuratie geldig')
-    console.log(`   GPT-5-mini Endpoint: ${this.endpoint}`)
-    console.log(`   GPT-5-mini Deployment: ${this.deployment}`)
-    console.log(`   GPT-5-mini API Version: ${this.apiVersion}`)
-    
-    if (this.gpt4oDeployment && this.gpt4oEndpoint && this.gpt4oApiKey) {
-      console.log(`   GPT-4o Endpoint: ${this.gpt4oEndpoint}`)
-      console.log(`   GPT-4o Deployment: ${this.gpt4oDeployment}`)
-      console.log(`   GPT-4o API Version: ${this.gpt4oApiVersion}`)
-    } else {
-      console.log(`   GPT-4o: Niet geconfigureerd`)
-    }
+    // Configuratie validatie voltooid
   }
 
   /**
@@ -113,16 +102,10 @@ class AzureOpenAIClient {
         // response_format wordt niet ondersteund door alle Azure modellen
       }
 
-      console.log(`🤖 Azure OpenAI call (${useGpt4o ? 'GPT-4o' : 'GPT-5-mini'}): ${options.messages?.length || 0} messages, max_tokens: ${options.max_completion_tokens || options.max_tokens}`)
-
       const completion = await selectedClient.chat.completions.create(azureOptions)
-
-      // Log de response voor debugging
-      console.log('Azure response:', JSON.stringify(completion, null, 2))
       
       // Check of er een content is
       if (!completion.choices || !completion.choices[0] || !completion.choices[0].message) {
-        console.error('Azure response heeft geen choices of message')
         return {
           success: false,
           error: 'Azure response heeft geen choices of message',
@@ -138,10 +121,6 @@ class AzureOpenAIClient {
         usage: completion.usage
       }
     } catch (error) {
-      console.error('❌ Azure OpenAI Error:', error.message)
-      console.error('Error details:', error)
-      console.error('Request options:', JSON.stringify(azureOptions, null, 2))
-      
       return {
         success: false,
         error: error.message,
@@ -163,27 +142,20 @@ class AzureOpenAIClient {
       })
 
       if (result.success) {
-        console.log('✅ Azure OpenAI verbinding succesvol')
         return true
       } else {
-        console.error('❌ Azure OpenAI verbinding gefaald:', result.error)
         return false
       }
     } catch (error) {
-      console.error('❌ Azure OpenAI test error:', error.message)
       return false
     }
   }
 
   /**
-   * Log configuratie status
+   * Log configuratie status (alleen voor debugging)
    */
   logStatus() {
-    console.log('🔧 Azure OpenAI Status:')
-    console.log(`   Endpoint: ${this.endpoint}`)
-    console.log(`   Deployment: ${this.deployment}`)
-    console.log(`   API Version: ${this.apiVersion}`)
-    console.log(`   API Key: ${this.apiKey ? '✅ Set' : '❌ Missing'}`)
+    // Status logging verwijderd voor productie
   }
 }
 

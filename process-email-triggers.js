@@ -7,7 +7,6 @@ const supabase = createClient(
 
 async function processEmailTriggers() {
   try {
-    console.log('Processing email triggers...');
     
     // 1. Account verificatie triggers
     await processAccountVerificatieTriggers();
