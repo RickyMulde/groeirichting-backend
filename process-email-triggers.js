@@ -59,7 +59,7 @@ async function processAccountVerificatieTriggers() {
         // Haal welkomstmail template op
         const { data: template, error: templateError } = await supabase
           .from('email_templates')
-          .select('id')
+          .select('id, template_naam, template_onderwerp')
           .eq('trigger_event', 'account_verificatie')
           .eq('doelgroep', 'werkgever')
           .eq('is_active', true)
@@ -75,6 +75,9 @@ async function processAccountVerificatieTriggers() {
           .from('email_queue')
           .insert({
             template_id: template.id,
+            template_naam: template.template_naam,
+            template_onderwerp: template.template_onderwerp,
+            template_trigger: 'account_verificatie',
             ontvanger_email: werkgever.email,
             organisatie_id: werkgever.employer_id,
             variabelen: {
@@ -123,7 +126,7 @@ async function processAccountVerificatieTriggers() {
         // Haal welkomstmail template op
         const { data: template, error: templateError } = await supabase
           .from('email_templates')
-          .select('id')
+          .select('id, template_naam, template_onderwerp')
           .eq('trigger_event', 'werknemer_registratie')
           .eq('doelgroep', 'werknemer')
           .eq('is_active', true)
@@ -139,6 +142,9 @@ async function processAccountVerificatieTriggers() {
           .from('email_queue')
           .insert({
             template_id: template.id,
+            template_naam: template.template_naam,
+            template_onderwerp: template.template_onderwerp,
+            template_trigger: 'werknemer_registratie',
             ontvanger_email: werknemer.email,
             organisatie_id: werknemer.employer_id,
             variabelen: {
