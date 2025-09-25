@@ -374,6 +374,83 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Check if user exists by email (authenticated endpoint)
+app.post('/api/check-user-exists', async (req, res) => {
+  // Authenticatie check
+  const authz = req.headers.authorization || '';
+  const token = authz.startsWith('Bearer ') ? authz.slice(7) : null;
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  const { email } = req.body;
+  
+  // Input validatie
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Valid email is required' });
+  }
+
+  // Email format validatie
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+
+  try {
+    // Verifieer token en haal user op
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseAnon = createClient(
+      process.env.SUPABASE_URL, 
+      process.env.SUPABASE_ANON_KEY,
+      { auth: { persistSession: false } }
+    );
+    
+    const { data: userData, error: userErr } = await supabaseAnon.auth.getUser(token);
+    if (userErr || !userData?.user?.id) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Alleen werkgevers mogen deze endpoint gebruiken
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const { data: currentUser } = await supabase
+      .from('users')
+      .select('role, employer_id')
+      .eq('id', userData.user.id)
+      .single();
+
+    if (!currentUser || currentUser.role !== 'employer') {
+      return res.status(403).json({ error: 'Access denied. Only employers can check user existence.' });
+    }
+
+    // Check if user exists
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('email', email.toLowerCase().trim())
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+      console.error('Database error checking user existence:', error);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    // Log de actie voor audit trail
+    console.log(`User existence check by employer ${currentUser.employer_id} for email: ${email}`);
+
+    return res.status(200).json({ 
+      exists: !!user
+      // Geen user object teruggeven voor privacy
+    });
+  } catch (error) {
+    console.error('Error in check-user-exists:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // 404 handler - catch all routes
 app.use((req, res) => {
   console.warn('404 - Endpoint niet gevonden:', {
