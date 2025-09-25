@@ -1780,7 +1780,6 @@ export const voornamenSet = new Set([
   'peet',
   'pelle',
   'pepijn',
-  'per',
   'percy',
   'peter',
   'phil',
