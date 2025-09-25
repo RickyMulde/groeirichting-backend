@@ -76,7 +76,6 @@ async function processAccountVerificatieTriggers() {
           .insert({
             template_id: template.id,
             ontvanger_email: werkgever.email,
-            ontvanger_type: 'werkgever',
             organisatie_id: werkgever.employer_id,
             variabelen: {
               voornaam: werkgever.first_name || 'Er',
@@ -141,7 +140,6 @@ async function processAccountVerificatieTriggers() {
           .insert({
             template_id: template.id,
             ontvanger_email: werknemer.email,
-            ontvanger_type: 'werknemer',
             organisatie_id: werknemer.employer_id,
             variabelen: {
               voornaam: werknemer.first_name || 'Er',
@@ -282,7 +280,6 @@ async function processActievePeriodeStart(werkgeverId, bedrijfsnaam) {
         .insert({
           template_id: template.id,
           ontvanger_email: werkgever.email,
-          ontvanger_type: 'werkgever',
           organisatie_id: werkgeverId,
           variabelen: {
             voornaam: werkgever.first_name || 'Er',
@@ -354,7 +351,6 @@ async function processActievePeriode5DagenVoor(werkgeverId, bedrijfsnaam) {
         .insert({
           template_id: template.id,
           ontvanger_email: werkgever.email,
-          ontvanger_type: 'werkgever',
           organisatie_id: werkgeverId,
           variabelen: {
             voornaam: werkgever.first_name || 'Er',
@@ -435,7 +431,6 @@ async function processActievePeriodeHerinnering(werkgeverId, bedrijfsnaam) {
         .insert({
           template_id: template.id,
           ontvanger_email: werkgever.email,
-          ontvanger_type: 'werkgever',
           organisatie_id: werkgeverId,
           variabelen: {
             voornaam: werkgever.first_name || 'Er',
@@ -516,7 +511,6 @@ async function processActievePeriode5DagenEinde(werkgeverId, bedrijfsnaam) {
         .insert({
           template_id: template.id,
           ontvanger_email: werkgever.email,
-          ontvanger_type: 'werkgever',
           organisatie_id: werkgeverId,
           variabelen: {
             voornaam: werkgever.first_name || 'Er',
@@ -575,7 +569,6 @@ async function processResultatenBeschikbaar(werkgeverId, bedrijfsnaam) {
         .insert({
           template_id: template.id,
           ontvanger_email: werkgever.email,
-          ontvanger_type: 'werkgever',
           organisatie_id: werkgeverId,
           variabelen: {
             voornaam: werkgever.first_name || 'Er',
@@ -630,7 +623,6 @@ async function processVerbeteradviezen(werkgeverId, bedrijfsnaam) {
         .insert({
           template_id: template.id,
           ontvanger_email: werkgever.email,
-          ontvanger_type: 'werkgever',
           organisatie_id: werkgeverId,
           variabelen: {
             voornaam: werkgever.first_name || 'Er',
@@ -731,7 +723,6 @@ async function processGesprekGeplandTriggers() {
           .insert({
             template_id: template.id,
             ontvanger_email: gesprek.users.email,
-            ontvanger_type: 'werknemer',
             organisatie_id: gesprek.users.employer_id,
             variabelen: {
               voornaam: gesprek.users.first_name || 'Er',
@@ -829,7 +820,6 @@ async function processGesprekHerinneringTriggers() {
           .insert({
             template_id: template.id,
             ontvanger_email: gesprek.users.email,
-            ontvanger_type: 'werknemer',
             organisatie_id: gesprek.users.employer_id,
             variabelen: {
               voornaam: gesprek.users.first_name || 'Er',
@@ -909,7 +899,6 @@ async function processGesprekAfgerondTriggers() {
           .insert({
             template_id: template.id,
             ontvanger_email: gesprek.users.email,
-            ontvanger_type: 'werknemer',
             organisatie_id: gesprek.users.employer_id,
             variabelen: {
               voornaam: gesprek.users.first_name || 'Er',
