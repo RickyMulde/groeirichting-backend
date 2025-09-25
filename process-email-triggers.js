@@ -26,19 +26,27 @@ async function processEmailTriggers() {
 
 async function processAccountVerificatieTriggers() {
   try {
-    // Haal alle werkgevers op die recent geverifieerd zijn (laatste 24 uur)
+    // Haal alle werkgevers op die recent zijn aangemaakt (laatste 24 uur)
+    // We controleren later via Supabase Auth of ze geverifieerd zijn
     const { data: recentWerkgevers, error } = await supabase
       .from('users')
       .select('id, first_name, employer_id, email')
       .eq('role', 'employer')
-      .not('email_confirmed_at', 'is', null)
       .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
     
     if (error) throw error;
     
-    console.log(`Found ${recentWerkgevers?.length || 0} recently verified employers`);
+    console.log(`Found ${recentWerkgevers?.length || 0} recently created employers`);
     
     for (const werkgever of recentWerkgevers || []) {
+      // Controleer via Supabase Auth of de gebruiker geverifieerd is
+      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(werkgever.id);
+      
+      if (authError || !authUser?.user?.email_confirmed_at) {
+        // Gebruiker is niet geverifieerd, sla over
+        continue;
+      }
+      
       // Check of er al een welkomstmail is verstuurd
       const { data: existingEmail } = await supabase
         .from('email_queue')
@@ -96,6 +104,14 @@ async function processAccountVerificatieTriggers() {
     console.log(`Found ${recentWerknemers?.length || 0} recently registered employees`);
     
     for (const werknemer of recentWerknemers || []) {
+      // Controleer via Supabase Auth of de gebruiker geverifieerd is
+      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(werknemer.id);
+      
+      if (authError || !authUser?.user?.email_confirmed_at) {
+        // Gebruiker is niet geverifieerd, sla over
+        continue;
+      }
+      
       // Check of er al een welkomstmail is verstuurd
       const { data: existingEmail } = await supabase
         .from('email_queue')
