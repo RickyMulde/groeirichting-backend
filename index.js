@@ -17,6 +17,7 @@ const saveConversation = require('./save-conversation');
 const getConversationAnswers = require('./get-conversation-answers');
 const decideFollowup = require('./decide-followup'); // ✅ Nieuw toegevoegd
 const genereerSamenvatting = require('./genereer-samenvatting'); // ✅ Nieuw toegevoegd
+const genereerVervolgacties = require('./genereer-vervolgacties'); // ✅ Nieuw toegevoegd
 const getSamenvatting = require('./get-samenvatting'); // ✅ Nieuw toegevoegd
 const getOrganisationThemes = require('./get-organisation-themes'); // ✅ Nieuw toegevoegd
 const getOrganisationSummary = require('./get-organisation-summary'); // ✅ Nieuw toegevoegd
@@ -96,6 +97,7 @@ app.use('/api/save-conversation', saveConversation);
 app.use('/api/get-conversation-answers', getConversationAnswers);
 app.use('/api/decide-followup', decideFollowup); // ✅ Nieuwe route toegevoegd
 app.use('/api/genereer-samenvatting', genereerSamenvatting); // ✅ Nieuwe route toegevoegd
+app.use('/api/genereer-vervolgacties', genereerVervolgacties); // ✅ Nieuwe route toegevoegd
 app.use('/api/get-samenvatting', getSamenvatting);
 app.use('/api/get-gespreksresultaten-bulk', getGespreksresultatenBulk); // ✅ Nieuwe route toegevoegd
 app.use('/api/organisation-themes', getOrganisationThemes); // ✅ Nieuwe route toegevoegd

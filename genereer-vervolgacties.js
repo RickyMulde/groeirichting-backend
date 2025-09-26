@@ -33,14 +33,15 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Thema niet gevonden' })
     }
 
-    // Controleer of samenvatting gewenst is
+    // Controleer of samenvatting gewenst is (vervolgacties zijn onderdeel van samenvatting)
     if (thema.geeft_samenvatting === false) {
       return res.status(200).json({
-        samenvatting: null,
-        score: null,
-        melding: 'Voor dit thema hoeft geen samenvatting te worden gegenereerd.'
+        vervolgacties: [],
+        vervolgacties_toelichting: '',
+        melding: 'Voor dit thema hoeven geen vervolgacties te worden gegenereerd.'
       })
     }
+
     // ✅ 1. Haal de complete gespreksgeschiedenis op uit de nieuwe tabel
     const { data: gesprekData, error: gesprekError } = await supabase
       .from('gesprekken_compleet')
@@ -117,13 +118,8 @@ router.post('/', async (req, res) => {
     const inputJSON = gespreksgeschiedenis.map(item => 
       `Vraag: ${item.vraag_tekst}\nAntwoord: ${item.antwoord}`
     ).join('\n\n')
-    
-    // Voeg score_instructies toe aan de prompt
-    const scoreInstructiesTekst = thema.score_instructies ?
-      `Gebruik onderstaande beoordelingscriteria voor het bepalen van de score:\nScore instructie: ${thema.score_instructies.score_instructie}\n${Object.entries(thema.score_instructies).filter(([k]) => k.startsWith('score_bepalen_')).map(([k, v]) => `${k.replace('score_bepalen_', 'Score ')}: ${v}`).join('\n')}`
-      : '';
 
-    const prompt = `Je bent een HR-assistent die een gesprek samenvat en vervolgacties voorstelt voor een WERKNEMER.
+    const prompt = `Je bent een HR-assistent die vervolgacties voorstelt voor een WERKNEMER.
 
 Thema: ${thema.titel}
 ${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}${werknemerContext?.functie_omschrijving ? `\n\nFunctie context: ${werknemerContext.functie_omschrijving}` : ''}${werknemerContext?.gender ? `\n\nGeslacht: ${werknemerContext.gender}` : ''}
@@ -134,19 +130,34 @@ Doel van het gesprek: ${doelantwoord}
 Gespreksgeschiedenis:
 ${inputJSON}
 
-${scoreInstructiesTekst}
-
 Opdracht:
-1. Vat het gesprek samen in maximaal 6 zinnen
-   - Schrijf de samenvatting in de TWEEDE PERSOON (jij, je, jouw) in plaats van de derde persoon (de werknemer, hij/zij)
-   - Bijvoorbeeld: "Jij bent pas begonnen..." in plaats van "De werknemer is pas begonnen..."
-   - Maak het persoonlijk en direct gericht aan de werknemer
-2. Geef een score van 1-10 op basis van de score instructies
+Genereer 3 concrete en uitvoerbare vervolgacties die direct aansluiten op de inhoud van het gesprek.
+
+De acties moeten voldoen aan deze regels:
+- Schrijf altijd in de tweede persoon ("jij/je/jouw")
+- Gericht op jou als werknemer, nooit op de werkgever
+- Acties die jij zelf kunt ondernemen en beïnvloeden
+- Aansluiten bij het thema en jouw antwoorden
+- Specifiek en praktisch, geen algemene adviezen
+- Geen suggesties die primair bij de werkgever horen
+- Als het gesprek positief en in balans is: formuleer acties die helpen om dit vast te houden of te versterken
+
+Voorbeelden van passende vervolgacties:
+- "Plan een gesprek met je leidinggevende over…"
+- "Zoek een workshop of training over…"
+- "Maak een concreet actieplan voor…"
+- "Stel jezelf als doel om in de komende weken…"
+- "Blijf de gezamenlijke takenlijst gebruiken om overzicht te behouden."
+- "Blijf na werktijd bewust offline, dat zorgt voor een goede balans."
 
 Antwoord in JSON-formaat:
 {
-  "samenvatting": "Vat het gesprek samen in maximaal 6 zinnen in de tweede persoon (jij, je, jouw)",
-  "score": 7
+  "vervolgacties": [
+    "Concrete actie 1",
+    "Concrete actie 2", 
+    "Concrete actie 3"
+  ],
+  "vervolgacties_toelichting": "Korte uitleg waarom deze acties passend zijn voor de werknemer"
 }`
 
     // ✅ 4. Stuur prompt naar Azure OpenAI
@@ -154,7 +165,7 @@ Antwoord in JSON-formaat:
       model: 'gpt-4o', // Gebruik GPT-4.1 via gpt-4o deployment
       messages: [{ role: 'user', content: prompt }],
       temperature: 1,
-      max_completion_tokens: 2000  // Verlaagd omdat we alleen samenvatting + score genereren
+      max_completion_tokens: 4000  // Minder tokens nodig voor alleen vervolgacties
     })
 
     if (!completion.success) {
@@ -210,46 +221,84 @@ Antwoord in JSON-formaat:
       }
     }
 
-    // ✅ 7. Opslaan in gesprekresultaten
-    const resultaatData = {
-      werkgever_id: werknemer.employer_id,
-      werknemer_id,
-      theme_id,
-      gesprek_id: gesprek_id, // Voeg gesprek_id toe
-      samenvatting: parsed.samenvatting,
-      score: parsed.score,
-      samenvatting_type: 'initieel',
-      gespreksronde,
-      periode: periode, // Voeg periode toe
-      gegenereerd_op: new Date().toISOString()
+    // ✅ 7. Update gesprekresultaten met vervolgacties (met retry logica)
+    const updateData = {
+      vervolgacties: parsed.vervolgacties || [],
+      vervolgacties_toelichting: parsed.vervolgacties_toelichting || '',
+      vervolgacties_generatie_datum: new Date().toISOString()
     }
 
-    // Probeer eerst een update op gesprek_id, anders een insert
-    const { data: updateData, error: updateError } = await supabase
-      .from('gesprekresultaten')
-      .update(resultaatData)
-      .eq('gesprek_id', gesprek_id)
-      .select(); // zodat je weet of er iets is aangepast
-    
-    if (updateError) {
-      console.error('Fout bij updaten gesprekresultaat:', updateError);
-      throw updateError;
-    }
-    if (!updateData || updateData.length === 0) {
-      // Geen bestaande rij, dus insert
-      const { error: insertError } = await supabase
-        .from('gesprekresultaten')
-        .insert(resultaatData);
-      if (insertError) {
-        console.error('Fout bij invoegen gesprekresultaat:', insertError);
-        throw insertError;
+    // Retry logica voor race conditions
+    let success = false
+    let attempts = 0
+    const maxAttempts = 3
+
+    while (!success && attempts < maxAttempts) {
+      attempts++
+      
+      try {
+        // Probeer eerst een update op gesprek_id
+        const { data: updateResult, error: updateError } = await supabase
+          .from('gesprekresultaten')
+          .update(updateData)
+          .eq('gesprek_id', gesprek_id)
+          .select()
+        
+        if (updateError) {
+          throw updateError
+        }
+        
+        if (updateResult && updateResult.length > 0) {
+          // Update succesvol
+          success = true
+        } else {
+          // Geen bestaande rij, probeer insert
+          const resultaatData = {
+            werkgever_id: werknemer.employer_id,
+            werknemer_id,
+            theme_id,
+            gesprek_id: gesprek_id,
+            samenvatting: null, // Wordt later ingevuld door samenvatting endpoint
+            score: null, // Wordt later ingevuld door samenvatting endpoint
+            samenvatting_type: 'initieel',
+            gespreksronde,
+            periode: periode,
+            gegenereerd_op: new Date().toISOString(),
+            ...updateData
+          }
+          
+          const { error: insertError } = await supabase
+            .from('gesprekresultaten')
+            .insert(resultaatData)
+          
+          if (insertError) {
+            // Mogelijk race condition - wacht en probeer opnieuw
+            if (attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempts))
+              continue
+            }
+            throw insertError
+          }
+          
+          success = true
+        }
+      } catch (error) {
+        if (attempts >= maxAttempts) {
+          console.error('Fout bij opslaan vervolgacties na', maxAttempts, 'pogingen:', error)
+          throw error
+        }
+        // Wacht en probeer opnieuw
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempts))
       }
     }
 
-    return res.json(parsed)
+    return res.json({
+      vervolgacties: parsed.vervolgacties || [],
+      vervolgacties_toelichting: parsed.vervolgacties_toelichting || ''
+    })
   } catch (err) {
-    console.error('Fout bij genereren samenvatting:', err)
-    return res.status(500).json({ error: 'Fout bij genereren samenvatting' })
+    console.error('Fout bij genereren vervolgacties:', err)
+    return res.status(500).json({ error: 'Fout bij genereren vervolgacties' })
   }
 })
 

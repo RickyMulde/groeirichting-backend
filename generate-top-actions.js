@@ -153,19 +153,19 @@ ${completeContext}
 
 OPDRACHT:
 Analyseer alle gesprekken en bepaal de TOP 3 vervolgacties die:
-1. De HOOGSTE IMPACT hebben op jouw groei en ontwikkeling
-2. De MEESTE URGENTIE hebben (wat moet je eerst aanpakken?)
-3. HAALBAAR zijn voor jou om zelf uit te voeren
-4. VERBANDEN leggen tussen verschillende thema's waar mogelijk
-5. SPECIFIEK en PRAKTISCH zijn (geen algemene adviezen)
+- Hebben de hoogste impact op jouw groei en ontwikkeling
+- Hebben de meeste urgentie (wat moet je eerst aanpakken?)
+- Zijn haalbaar voor jou om zelf uit te voeren
+- Leggen verbanden tussen verschillende thema's waar mogelijk
+- Zijn specifiek en praktisch (geen algemene adviezen)
+- Schrijf altijd in de tweede persoon ("jij/je/jouw")
+- Als de gesprekken positief en in balans zijn: formuleer acties die helpen om dit te behouden of verder te versterken (bijv. "Blijf…" of "Blijf ontwikkelen door…")
 
 PRIORITEER op basis van:
-- URGENTIE: Wat moet je eerst doen?
-- IMPACT: Welke actie heeft het meeste effect op jou?
-- HAALBAARHEID: Wat kun je realistisch doen?
-- VERBANDEN: Welke actie lost meerdere problemen op?
-
-BELANGRIJK: Gebruik ALTIJD de tweede persoon (jij/jou/je) in alle teksten, alsof je direct tegen de werknemer praat.
+- Urgentie – wat moet jij als eerste oppakken?
+- Impact – welke actie heeft het grootste effect op jou?
+- Haalbaarheid – wat kun jij realistisch doen?
+- Verbanden – welke actie helpt bij meerdere thema's tegelijk?
 
 Antwoord in JSON-formaat:
 {
@@ -190,7 +190,7 @@ Antwoord in JSON-formaat:
     // 6️⃣ Stuur naar Azure OpenAI
     console.log('🤖 Stuur prompt naar Azure OpenAI...')
     const completion = await azureClient.createCompletion({
-      model: 'gpt-5-mini', // Expliciet GPT-5-mini gebruiken
+      model: 'gpt-4o', // Gebruik GPT-4.1 via gpt-4o deployment
       messages: [{ role: 'user', content: prompt }],
       temperature: 1,
       max_completion_tokens: 6000  // Verhoogd voor top-actions
