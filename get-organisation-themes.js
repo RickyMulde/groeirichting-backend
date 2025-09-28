@@ -258,11 +258,13 @@ router.get('/:orgId', async (req, res) => {
         
         try {
           // Genereer samenvatting via bestaande endpoint
+          // Gebruik de werkgever's JWT token uit de originele request
+          const authHeader = req.headers.authorization
           const generateResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/generate-organisation-summary`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+              'Authorization': authHeader // Gebruik de werkgever's JWT token
             },
             body: JSON.stringify({
               organisatie_id: orgId,
