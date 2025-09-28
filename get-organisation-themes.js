@@ -104,14 +104,19 @@ router.get('/:orgId/available-periods', async (req, res) => {
 // Haalt alle thema's op met voortgang, scores en samenvattingen voor een organisatie
 router.get('/:orgId', async (req, res) => {
   const { orgId } = req.params
-  const { maand, jaar } = req.query // Nieuwe query parameters voor maand en jaar filtering
+  const { maand, jaar, team_id } = req.query // Nieuwe query parameters voor maand, jaar en team filtering
 
   if (!orgId) {
     return res.status(400).json({ error: 'Organisatie ID is verplicht' })
   }
 
   try {
-    console.log('🔍 Start ophalen organisatie thema\'s voor:', { orgId, maand, jaar })
+    console.log('🔍 Start ophalen organisatie thema\'s voor:', { orgId, maand, jaar, team_id })
+
+    // Valideer team_id als opgegeven
+    if (team_id) {
+      await assertTeamInOrg(team_id, orgId)
+    }
 
     // 1. Haal alle actieve thema's op
     const { data: themeData, error: themeError } = await supabase
@@ -124,12 +129,19 @@ router.get('/:orgId', async (req, res) => {
     if (themeError) throw themeError
     console.log('✅ Thema\'s opgehaald:', themeData?.length || 0)
 
-    // 2. Haal alle werknemers van deze organisatie op
-    const { data: employees, error: employeesError } = await supabase
+    // 2. Haal werknemers van deze organisatie op (met team filtering)
+    let employeeQuery = supabase
       .from('users')
-      .select('id')
+      .select('id, team_id')
       .eq('employer_id', orgId)
       .eq('role', 'employee')
+
+    // Voeg team filtering toe als team_id is opgegeven
+    if (team_id) {
+      employeeQuery = employeeQuery.eq('team_id', team_id)
+    }
+
+    const { data: employees, error: employeesError } = await employeeQuery
 
     if (employeesError) throw employeesError
     console.log('✅ Werknemers opgehaald:', employees?.length || 0)
