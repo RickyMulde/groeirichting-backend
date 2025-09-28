@@ -12,8 +12,8 @@ const supabase = createClient(
 // Gebruik auth middleware voor alle routes
 router.use(authMiddleware)
 
-// Functie om automatisch samenvatting en vervolgacties te genereren
-const genereerSamenvattingEnVervolgacties = async (theme_id, werknemer_id, gesprek_id) => {
+// Functie om automatisch samenvatting te genereren (zonder vervolgacties)
+const genereerSamenvatting = async (theme_id, werknemer_id, gesprek_id) => {
   try {
     // Haal het thema op
     const { data: thema, error: themaError } = await supabase
@@ -31,9 +31,7 @@ const genereerSamenvattingEnVervolgacties = async (theme_id, werknemer_id, gespr
     if (thema.geeft_samenvatting === false) {
       return {
         samenvatting: null,
-        score: null,
-        vervolgacties: [],
-        vervolgacties_toelichting: 'Voor dit thema hoeft geen samenvatting te worden gegenereerd.'
+        score: null
       }
     }
 
@@ -228,27 +226,20 @@ Antwoord in JSON-formaat:
       }
     }
 
-    // Update database
-    const resultaatData = {
-      werkgever_id: werknemer.employer_id,
-      werknemer_id,
-      theme_id,
-      gesprek_id: gesprek_id,
+    // Update database (alleen samenvatting, behoud bestaande vervolgacties)
+    const updateData = {
       samenvatting: parsed.samenvatting,
       score: parsed.score,
       samenvatting_type: 'initieel',
       gespreksronde,
       periode: periode,
-      gegenereerd_op: new Date().toISOString(),
-      vervolgacties: parsed.vervolgacties || [],
-      vervolgacties_toelichting: parsed.vervolgacties_toelichting || '',
-      vervolgacties_generatie_datum: new Date().toISOString()
+      gegenereerd_op: new Date().toISOString()
     }
 
-    // Update of insert
-    const { data: updateData, error: updateError } = await supabase
+    // Probeer eerst update op gesprek_id, anders een insert
+    const { data: updateResult, error: updateError } = await supabase
       .from('gesprekresultaten')
-      .update(resultaatData)
+      .update(updateData)
       .eq('gesprek_id', gesprek_id)
       .select()
     
@@ -256,7 +247,21 @@ Antwoord in JSON-formaat:
       console.error('Fout bij updaten gesprekresultaat:', updateError)
       throw updateError
     }
-    if (!updateData || updateData.length === 0) {
+    if (!updateResult || updateResult.length === 0) {
+      // Geen bestaande rij, dus insert met volledige data
+      const resultaatData = {
+        werkgever_id: werknemer.employer_id,
+        werknemer_id,
+        theme_id,
+        gesprek_id: gesprek_id,
+        samenvatting: parsed.samenvatting,
+        score: parsed.score,
+        samenvatting_type: 'initieel',
+        gespreksronde,
+        periode: periode,
+        gegenereerd_op: new Date().toISOString()
+      }
+      
       const { error: insertError } = await supabase
         .from('gesprekresultaten')
         .insert(resultaatData)
@@ -268,22 +273,14 @@ Antwoord in JSON-formaat:
 
     return {
       samenvatting: parsed.samenvatting,
-      score: parsed.score,
-      vervolgacties: parsed.vervolgacties || [],
-      vervolgacties_toelichting: parsed.vervolgacties_toelichting || ''
+      score: parsed.score
     }
 
   } catch (error) {
-    console.error('Fout bij genereren samenvatting en vervolgacties:', error)
+    console.error('Fout bij genereren samenvatting:', error)
     return {
       samenvatting: 'Er was een fout bij het genereren van de samenvatting.',
-      score: 5,
-      vervolgacties: [
-        'Plan een vervolggesprek met je leidinggevende.',
-        'Bekijk het interne aanbod van workshops en trainingen.',
-        'Neem contact op met de HR-afdeling voor persoonlijk advies.'
-      ],
-      vervolgacties_toelichting: 'Er was een fout bij het genereren van vervolgacties.'
+      score: 5
     }
   }
 }
@@ -402,54 +399,50 @@ router.get('/', async (req, res) => {
       let moetGenereren = false
       let afgerondGesprek = null
       
-      // Tijdelijk uitgeschakeld om 500 fouten te voorkomen
-      // if (!resultaat) {
-      //   // Geen resultaat gevonden - probeer te genereren
-      //   moetGenereren = true
-      // } else if (resultaat.samenvatting && (!resultaat.vervolgacties || resultaat.vervolgacties.length === 0)) {
-      //   // Er is wel een samenvatting, maar geen vervolgacties - probeer te genereren
-      //   moetGenereren = true
-      //   console.log(`🔄 Vervolgacties ontbreken voor thema: ${thema.titel}, probeer te genereren...`)
-      // }
+      if (!resultaat) {
+        // Geen resultaat gevonden - probeer te genereren
+        moetGenereren = true
+      } else if (resultaat.samenvatting && (!resultaat.vervolgacties || resultaat.vervolgacties.length === 0)) {
+        // Er is wel een samenvatting, maar geen vervolgacties - probeer te genereren
+        moetGenereren = true
+        console.log(`🔄 Vervolgacties ontbreken voor thema: ${thema.titel}, probeer te genereren...`)
+      }
       
       if (moetGenereren) {
-        // Tijdelijk uitgeschakeld om 500 fouten te voorkomen
-        // // Zoek eerst of er een afgerond gesprek is voor dit thema in deze periode
-        // const { data: gesprekData, error: gesprekError } = await supabase
-        //   .from('gesprek')
-        //   .select('id')
-        //   .eq('theme_id', thema.id)
-        //   .eq('werknemer_id', werknemer_id)
-        //   .eq('status', 'Afgerond')
-        //   .single()
+        // Zoek eerst of er een afgerond gesprek is voor dit thema in deze periode
+        const { data: gesprekData, error: gesprekError } = await supabase
+          .from('gesprek')
+          .select('id')
+          .eq('theme_id', thema.id)
+          .eq('werknemer_id', werknemer_id)
+          .eq('status', 'Afgerond')
+          .single()
 
-        // if (!gesprekError && gesprekData) {
-        //   afgerondGesprek = gesprekData
-        //   console.log(`🔄 Automatisch genereren samenvatting en vervolgacties voor thema: ${thema.titel}`)
+        if (!gesprekError && gesprekData) {
+          afgerondGesprek = gesprekData
+          console.log(`🔄 Automatisch genereren samenvatting voor thema: ${thema.titel}`)
           
-        //   try {
-        //     const gegenereerdeData = await genereerSamenvattingEnVervolgacties(
-        //       thema.id, 
-        //       werknemer_id, 
-        //       afgerondGesprek.id
-        //     )
+          try {
+            const gegenereerdeData = await genereerSamenvatting(
+              thema.id, 
+              werknemer_id, 
+              afgerondGesprek.id
+            )
             
-        //     resultaat = {
-        //       theme_id: thema.id,
-        //       samenvatting: gegenereerdeData.samenvatting,
-        //       score: gegenereerdeData.score,
-        //       gespreksronde: 1,
-        //       periode: periode,
-        //       gegenereerd_op: new Date().toISOString(),
-        //       vervolgacties: gegenereerdeData.vervolgacties,
-        //       vervolgacties_toelichting: gegenereerdeData.vervolgacties_toelichting
-        //     }
+            resultaat = {
+              theme_id: thema.id,
+              samenvatting: gegenereerdeData.samenvatting,
+              score: gegenereerdeData.score,
+              gespreksronde: 1,
+              periode: periode,
+              gegenereerd_op: new Date().toISOString()
+            }
             
-        //     console.log(`✅ Automatisch gegenereerd voor thema: ${thema.titel}`)
-        //   } catch (error) {
-        //     console.error(`❌ Fout bij automatisch genereren voor thema ${thema.titel}:`, error)
-        //   }
-        // }
+            console.log(`✅ Automatisch gegenereerd voor thema: ${thema.titel}`)
+          } catch (error) {
+            console.error(`❌ Fout bij automatisch genereren voor thema ${thema.titel}:`, error)
+          }
+        }
       }
 
       return {

@@ -123,7 +123,7 @@ router.post('/', async (req, res) => {
       `Gebruik onderstaande beoordelingscriteria voor het bepalen van de score:\nScore instructie: ${thema.score_instructies.score_instructie}\n${Object.entries(thema.score_instructies).filter(([k]) => k.startsWith('score_bepalen_')).map(([k, v]) => `${k.replace('score_bepalen_', 'Score ')}: ${v}`).join('\n')}`
       : '';
 
-    const prompt = `Je bent een HR-assistent die een gesprek samenvat en vervolgacties voorstelt voor een WERKNEMER.
+    const prompt = `Je bent een HR-assistent die een gesprek samenvat voor een WERKNEMER.
 
 Thema: ${thema.titel}
 ${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}${werknemerContext?.functie_omschrijving ? `\n\nFunctie context: ${werknemerContext.functie_omschrijving}` : ''}${werknemerContext?.gender ? `\n\nGeslacht: ${werknemerContext.gender}` : ''}
@@ -210,24 +210,20 @@ Antwoord in JSON-formaat:
       }
     }
 
-    // ✅ 7. Opslaan in gesprekresultaten
-    const resultaatData = {
-      werkgever_id: werknemer.employer_id,
-      werknemer_id,
-      theme_id,
-      gesprek_id: gesprek_id, // Voeg gesprek_id toe
+    // ✅ 7. Opslaan in gesprekresultaten (alleen samenvatting en score, behoud bestaande vervolgacties)
+    const updateData = {
       samenvatting: parsed.samenvatting,
       score: parsed.score,
       samenvatting_type: 'initieel',
       gespreksronde,
-      periode: periode, // Voeg periode toe
+      periode: periode,
       gegenereerd_op: new Date().toISOString()
     }
 
     // Probeer eerst een update op gesprek_id, anders een insert
-    const { data: updateData, error: updateError } = await supabase
+    const { data: updateResult, error: updateError } = await supabase
       .from('gesprekresultaten')
-      .update(resultaatData)
+      .update(updateData)
       .eq('gesprek_id', gesprek_id)
       .select(); // zodat je weet of er iets is aangepast
     
@@ -235,8 +231,21 @@ Antwoord in JSON-formaat:
       console.error('Fout bij updaten gesprekresultaat:', updateError);
       throw updateError;
     }
-    if (!updateData || updateData.length === 0) {
-      // Geen bestaande rij, dus insert
+    if (!updateResult || updateResult.length === 0) {
+      // Geen bestaande rij, dus insert met volledige data
+      const resultaatData = {
+        werkgever_id: werknemer.employer_id,
+        werknemer_id,
+        theme_id,
+        gesprek_id: gesprek_id,
+        samenvatting: parsed.samenvatting,
+        score: parsed.score,
+        samenvatting_type: 'initieel',
+        gespreksronde,
+        periode: periode,
+        gegenereerd_op: new Date().toISOString()
+      }
+      
       const { error: insertError } = await supabase
         .from('gesprekresultaten')
         .insert(resultaatData);
@@ -246,7 +255,13 @@ Antwoord in JSON-formaat:
       }
     }
 
-    return res.json(parsed)
+    // ✅ 8. Return response met samenvatting en score (vervolgacties worden apart gegenereerd)
+    return res.json({
+      samenvatting: parsed.samenvatting,
+      score: parsed.score,
+      vervolgacties: [], // Lege array omdat vervolgacties apart worden gegenereerd
+      vervolgacties_toelichting: '' // Lege string omdat vervolgacties apart worden gegenereerd
+    })
   } catch (err) {
     console.error('Fout bij genereren samenvatting:', err)
     return res.status(500).json({ error: 'Fout bij genereren samenvatting' })
