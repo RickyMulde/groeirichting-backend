@@ -1,6 +1,6 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
-const { authMiddleware } = require('./middleware/auth')
+const { authMiddleware, assertTeamInOrg } = require('./middleware/auth')
 
 const router = express.Router()
 const supabase = createClient(
