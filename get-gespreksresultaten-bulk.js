@@ -140,16 +140,10 @@ Voorbeelden van goede vervolgacties voor werknemers:
 - "Maak een actieplan voor..."
 - "Stel jezelf een doel om..."
 
-Antwoord in JSON-formaat:
+Antwoord in JSON-formaat (zonder markdown code blocks):
 {
   "samenvatting": "Vat het gesprek samen in maximaal 6 zinnen",
-  "score": 7,
-  "vervolgacties": [
-    "Concrete actie 1",
-    "Concrete actie 2", 
-    "Concrete actie 3"
-  ],
-  "vervolgacties_toelichting": "Korte uitleg waarom deze acties passend zijn voor de werknemer"
+  "score": 7
 }`
 
     // Stuur naar Azure OpenAI
@@ -165,21 +159,24 @@ Antwoord in JSON-formaat:
     }
 
     const gptResponse = completion.data.choices[0].message.content
+    
+    // Verwijder markdown code blocks als die er zijn
+    let cleanResponse = gptResponse
+    if (cleanResponse.includes('```json')) {
+      cleanResponse = cleanResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    }
+    
     let parsed
     try {
-      parsed = JSON.parse(gptResponse)
+      parsed = JSON.parse(cleanResponse)
     } catch (parseError) {
       console.error('Fout bij parsen van GPT-respons:', parseError)
+      console.error('Raw response:', gptResponse)
+      console.error('Cleaned response:', cleanResponse)
       // Fallback
       parsed = {
         samenvatting: 'Er was een technisch probleem bij het genereren van de samenvatting.',
-        score: 5,
-        vervolgacties: [
-          'Plan een vervolggesprek met je leidinggevende.',
-          'Bekijk het interne aanbod van workshops en trainingen.',
-          'Neem contact op met de HR-afdeling voor persoonlijk advies.'
-        ],
-        vervolgacties_toelichting: 'Er was een technisch probleem bij het genereren van vervolgacties.'
+        score: 5
       }
     }
 

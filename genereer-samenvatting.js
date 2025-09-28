@@ -143,7 +143,7 @@ Opdracht:
    - Maak het persoonlijk en direct gericht aan de werknemer
 2. Geef een score van 1-10 op basis van de score instructies
 
-Antwoord in JSON-formaat:
+Antwoord in JSON-formaat (zonder markdown code blocks):
 {
   "samenvatting": "Vat het gesprek samen in maximaal 6 zinnen in de tweede persoon (jij, je, jouw)",
   "score": 7
@@ -162,7 +162,22 @@ Antwoord in JSON-formaat:
     }
 
     const gptResponse = completion.data.choices[0].message.content
-    const parsed = JSON.parse(gptResponse)
+    
+    // Verwijder markdown code blocks als die er zijn
+    let cleanResponse = gptResponse
+    if (cleanResponse.includes('```json')) {
+      cleanResponse = cleanResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    }
+    
+    let parsed
+    try {
+      parsed = JSON.parse(cleanResponse)
+    } catch (parseError) {
+      console.error('Fout bij parsen van GPT-respons:', parseError)
+      console.error('Raw response:', gptResponse)
+      console.error('Cleaned response:', cleanResponse)
+      throw new Error('Fout bij parsen van GPT response')
+    }
 
     // ✅ 5. Haal werkgever op via werknemer
     const { data: werknemer, error: werknemerError } = await supabase

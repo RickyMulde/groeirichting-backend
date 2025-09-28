@@ -167,7 +167,7 @@ PRIORITEER op basis van:
 - Haalbaarheid – wat kun jij realistisch doen?
 - Verbanden – welke actie helpt bij meerdere thema's tegelijk?
 
-Antwoord in JSON-formaat:
+Antwoord in JSON-formaat (zonder markdown code blocks):
 {
   "actie_1": {
     "tekst": "Concrete, specifieke actie",
@@ -201,7 +201,22 @@ Antwoord in JSON-formaat:
     }
 
     const gptResponse = completion.data.choices[0].message.content
-    const parsed = JSON.parse(gptResponse)
+    
+    // Verwijder markdown code blocks als die er zijn
+    let cleanResponse = gptResponse
+    if (cleanResponse.includes('```json')) {
+      cleanResponse = cleanResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    }
+    
+    let parsed
+    try {
+      parsed = JSON.parse(cleanResponse)
+    } catch (parseError) {
+      console.error('Fout bij parsen van GPT-respons:', parseError)
+      console.error('Raw response:', gptResponse)
+      console.error('Cleaned response:', cleanResponse)
+      throw new Error('Fout bij parsen van GPT response')
+    }
 
     // 7️⃣ Sla op in database
     const topActiesData = {
