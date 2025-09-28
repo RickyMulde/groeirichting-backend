@@ -72,8 +72,6 @@ router.post('/', async (req, res) => {
       })
     }
 
-    const employeeIds = employees?.map(emp => emp.id) || []
-
     // Haal alle complete gesprekken op
     const { data: conversations, error: conversationsError } = await supabase
       .from('gesprekken_compleet')
