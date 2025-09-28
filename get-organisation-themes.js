@@ -146,11 +146,20 @@ router.get('/:orgId', async (req, res) => {
     if (employeesError) throw employeesError
     console.log('✅ Werknemers opgehaald:', employees?.length || 0)
 
-    // 3. Haal bestaande organisatie insights op
-    const { data: existingInsights, error: insightsError } = await supabase
+    // 3. Haal bestaande organisatie insights op (team-specifiek of organisatie-breed)
+    let insightsQuery = supabase
       .from('organization_theme_insights')
       .select('*')
       .eq('organisatie_id', orgId)
+
+    // Filter op team_id als opgegeven, anders organisatie-breed (team_id IS NULL)
+    if (team_id) {
+      insightsQuery = insightsQuery.eq('team_id', team_id)
+    } else {
+      insightsQuery = insightsQuery.is('team_id', null)
+    }
+
+    const { data: existingInsights, error: insightsError } = await insightsQuery
 
     if (insightsError) throw insightsError
     console.log('✅ Insights opgehaald:', existingInsights?.length || 0)
@@ -253,10 +262,12 @@ router.get('/:orgId', async (req, res) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
             },
             body: JSON.stringify({
               organisatie_id: orgId,
-              theme_id: theme.id
+              theme_id: theme.id,
+              team_id: team_id || null // team_id voor team-specifieke insights
             })
           })
           

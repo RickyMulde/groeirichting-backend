@@ -58,119 +58,208 @@ async function autoGenerateSummaries() {
       try {
         console.log(`\n🏢 Verwerk werkgever: ${employer.contact_email}`)
         
-        // Haal organisatie thema's op voor deze werkgever
-        const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/organisation-themes/${employer.id}`)
+        // Haal teams op voor deze werkgever
+        const { data: teams, error: teamsError } = await supabase
+          .from('teams')
+          .select('id, naam')
+          .eq('werkgever_id', employer.id)
+          .is('archived_at', null)
         
-        if (!response.ok) {
-          console.error(`❌ Fout bij ophalen thema's voor werkgever ${employer.id}: ${response.status}`)
+        if (teamsError) {
+          console.error(`❌ Fout bij ophalen teams voor werkgever ${employer.id}:`, teamsError)
           continue
         }
         
-        const data = await response.json()
-        const themes = data.thema_s || []
+        console.log(`👥 ${teams.length} teams gevonden voor werkgever ${employer.id}`)
         
-        if (themes.length === 0) {
-          console.log(`📝 Geen thema's gevonden voor werkgever ${employer.id}`)
-          continue
-        }
+        // Verwerk organisatie-brede thema's
+        await processOrganizationThemes(employer, isLastDay)
         
-        console.log(`📝 ${themes.length} thema's gevonden voor werkgever ${employer.id}`)
-        
-        for (const theme of themes) {
-          try {
-            // Controleer of er al een samenvatting is
-            if (theme.heeft_samenvatting) {
-              console.log(`✅ Thema ${theme.titel} heeft al een samenvatting`)
-              continue
-            }
-            
-            // Controleer of er minimaal 4 medewerkers klaar zijn
-            if (theme.voltooide_medewerkers < 4) {
-              console.log(`⏳ Thema ${theme.titel}: nog maar ${theme.voltooide_medewerkers}/4 medewerkers klaar`)
-              continue
-            }
-            
-            // Controleer voorwaarden voor automatische generatie
-            const shouldGenerate = isLastDay || theme.voltooide_medewerkers === theme.totaal_medewerkers
-            
-            if (!shouldGenerate) {
-              console.log(`⏳ Thema ${theme.titel}: voorwaarden niet vervuld (laatste dag: ${isLastDay}, voortgang: ${theme.voltooide_medewerkers}/${theme.totaal_medewerkers})`)
-              continue
-            }
-            
-            console.log(`🚀 Genereer samenvatting voor thema ${theme.titel} (reden: ${isLastDay ? 'laatste dag van maand' : '100% voortgang'})`)
-            
-            // Genereer samenvatting via bestaande endpoint
-            const generateResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/generate-organisation-summary`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                organisatie_id: employer.id,
-                theme_id: theme.theme_id
-              })
-            })
-            
-            if (generateResponse.ok) {
-              const result = await generateResponse.json()
-              console.log(`✅ Samenvatting gegenereerd voor thema ${theme.titel}:`, result.samenvatting ? 'Succes' : 'Geen samenvatting')
-            } else {
-              const errorData = await generateResponse.json().catch(() => ({}))
-              console.error(`❌ Fout bij genereren samenvatting voor thema ${theme.titel}:`, errorData.error || `HTTP ${generateResponse.status}`)
-            }
-            
-            // Wacht even tussen thema's om API rate limiting te voorkomen
-            await new Promise(resolve => setTimeout(resolve, 1000))
-            
-          } catch (themeError) {
-            console.error(`❌ Fout bij verwerken thema ${theme.titel}:`, themeError)
-            continue
-          }
+        // Verwerk team-specifieke thema's
+        for (const team of teams) {
+          await processTeamThemes(employer, team, isLastDay)
         }
         
       } catch (employerError) {
-        console.error(`❌ Fout bij verwerken werkgever ${employer.id}:`, employerError)
-        continue
+        console.error(`❌ Fout bij verwerken werkgever ${employer.contact_email}:`, employerError)
       }
     }
-    
-    console.log('✅ Automatische generatie van samenvattingen voltooid')
-    
   } catch (error) {
-    console.error('❌ Fout bij automatische generatie van samenvattingen:', error)
+    console.error('❌ Fout bij automatische generatie:', error)
   }
 }
 
-// Start dagelijkse cron job om 02:00 's nachts (laagste belasting)
-cron.schedule('0 2 * * *', () => {
-  console.log('⏰ Start dagelijkse cron job voor automatische samenvattingen')
+// Functie om organisatie-brede thema's te verwerken
+async function processOrganizationThemes(employer, isLastDay) {
+  try {
+    // Haal organisatie thema's op voor deze werkgever
+    const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/organisation-themes/${employer.id}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+      }
+    })
+    
+    if (!response.ok) {
+      console.error(`❌ Fout bij ophalen thema's voor werkgever ${employer.id}: ${response.status}`)
+      return
+    }
+    
+    const data = await response.json()
+    const themes = data.thema_s || []
+    
+    if (themes.length === 0) {
+      console.log(`📝 Geen thema's gevonden voor werkgever ${employer.id}`)
+      return
+    }
+    
+    console.log(`📝 ${themes.length} thema's gevonden voor werkgever ${employer.id}`)
+    
+    for (const theme of themes) {
+      try {
+        // Controleer of er al een samenvatting is
+        if (theme.heeft_samenvatting) {
+          console.log(`✅ Thema ${theme.titel} heeft al een samenvatting`)
+          continue
+        }
+        
+        // Controleer of er minimaal 4 medewerkers klaar zijn
+        if (theme.voltooide_medewerkers < 4) {
+          console.log(`⏳ Thema ${theme.titel}: nog maar ${theme.voltooide_medewerkers}/4 medewerkers klaar`)
+          continue
+        }
+        
+        // Controleer voorwaarden voor automatische generatie
+        const shouldGenerate = isLastDay || theme.voltooide_medewerkers === theme.totaal_medewerkers
+        
+        if (!shouldGenerate) {
+          console.log(`⏳ Thema ${theme.titel}: voorwaarden niet vervuld (laatste dag: ${isLastDay}, voortgang: ${theme.voltooide_medewerkers}/${theme.totaal_medewerkers})`)
+          continue
+        }
+        
+        console.log(`🚀 Genereer organisatie-brede samenvatting voor thema ${theme.titel} (reden: ${isLastDay ? 'laatste dag van maand' : '100% voortgang'})`)
+        
+        // Genereer organisatie-brede samenvatting
+        await generateInsight(employer.id, theme.theme_id, null, theme.titel)
+        
+        // Wacht even tussen thema's om API rate limiting te voorkomen
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+      } catch (themeError) {
+        console.error(`❌ Fout bij verwerken thema ${theme.titel}:`, themeError)
+      }
+    }
+  } catch (error) {
+    console.error(`❌ Fout bij verwerken organisatie thema's voor ${employer.contact_email}:`, error)
+  }
+}
+
+// Functie om team-specifieke thema's te verwerken
+async function processTeamThemes(employer, team, isLastDay) {
+  try {
+    // Haal team thema's op voor dit team
+    const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/organisation-themes/${employer.id}?team_id=${team.id}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+      }
+    })
+    
+    if (!response.ok) {
+      console.error(`❌ Fout bij ophalen team thema's voor team ${team.naam}: ${response.status}`)
+      return
+    }
+    
+    const data = await response.json()
+    const themes = data.thema_s || []
+    
+    if (themes.length === 0) {
+      console.log(`📝 Geen thema's gevonden voor team ${team.naam}`)
+      return
+    }
+    
+    console.log(`📝 ${themes.length} thema's gevonden voor team ${team.naam}`)
+    
+    for (const theme of themes) {
+      try {
+        // Controleer of er al een team-specifieke samenvatting is
+        if (theme.heeft_samenvatting) {
+          console.log(`✅ Team ${team.naam} - Thema ${theme.titel} heeft al een samenvatting`)
+          continue
+        }
+        
+        // Controleer of er minimaal 4 teamleden klaar zijn
+        if (theme.voltooide_medewerkers < 4) {
+          console.log(`⏳ Team ${team.naam} - Thema ${theme.titel}: nog maar ${theme.voltooide_medewerkers}/4 teamleden klaar`)
+          continue
+        }
+        
+        // Controleer voorwaarden voor automatische generatie
+        const shouldGenerate = isLastDay || theme.voltooide_medewerkers === theme.totaal_medewerkers
+        
+        if (!shouldGenerate) {
+          console.log(`⏳ Team ${team.naam} - Thema ${theme.titel}: voorwaarden niet vervuld (laatste dag: ${isLastDay}, voortgang: ${theme.voltooide_medewerkers}/${theme.totaal_medewerkers})`)
+          continue
+        }
+        
+        console.log(`🚀 Genereer team-specifieke samenvatting voor team ${team.naam} - thema ${theme.titel} (reden: ${isLastDay ? 'laatste dag van maand' : '100% voortgang'})`)
+        
+        // Genereer team-specifieke samenvatting
+        await generateInsight(employer.id, theme.theme_id, team.id, `${team.naam} - ${theme.titel}`)
+        
+        // Wacht even tussen thema's om API rate limiting te voorkomen
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+      } catch (themeError) {
+        console.error(`❌ Fout bij verwerken team thema ${theme.titel} voor team ${team.naam}:`, themeError)
+      }
+    }
+  } catch (error) {
+    console.error(`❌ Fout bij verwerken team thema's voor team ${team.naam}:`, error)
+  }
+}
+
+// Functie om insights te genereren
+async function generateInsight(organisatie_id, theme_id, team_id, context) {
+  try {
+    const generateResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/generate-organisation-summary`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+      },
+      body: JSON.stringify({
+        organisatie_id: organisatie_id,
+        theme_id: theme_id,
+        team_id: team_id
+      })
+    })
+    
+    if (generateResponse.ok) {
+      const result = await generateResponse.json()
+      console.log(`✅ Samenvatting gegenereerd voor ${context}:`, result.samenvatting ? 'Succes' : 'Geen samenvatting')
+    } else {
+      const errorData = await generateResponse.json().catch(() => ({}))
+      console.error(`❌ Fout bij genereren samenvatting voor ${context}:`, errorData.error || `HTTP ${generateResponse.status}`)
+    }
+  } catch (error) {
+    console.error(`❌ Fout bij genereren samenvatting voor ${context}:`, error)
+  }
+}
+
+// Cron job: elke dag om 23:00 controleren of het de laatste dag van de maand is
+cron.schedule('0 23 * * *', () => {
+  console.log('🕐 Cron job gestart: controleer of samenvattingen gegenereerd moeten worden')
   autoGenerateSummaries()
-}, {
-  scheduled: true,
-  timezone: "Europe/Amsterdam"
 })
 
-// Endpoint om handmatig de automatische generatie te starten (voor testing)
+// Handmatige trigger voor testing
 router.post('/trigger', async (req, res) => {
   try {
-    console.log('🔧 Handmatige trigger van automatische generatie')
     await autoGenerateSummaries()
     res.json({ success: true, message: 'Automatische generatie gestart' })
   } catch (error) {
-    console.error('❌ Fout bij handmatige trigger:', error)
-    res.status(500).json({ error: 'Fout bij starten automatische generatie' })
+    console.error('Fout bij handmatige trigger:', error)
+    res.status(500).json({ error: 'Fout bij handmatige trigger' })
   }
-})
-
-// Endpoint om status van de cron job op te halen
-router.get('/status', (req, res) => {
-  res.json({ 
-    status: 'actief',
-    schedule: 'dagelijks om 02:00 (Europe/Amsterdam)',
-    nextRun: 'Berekend door node-cron',
-    description: 'Genereert automatisch samenvattingen wanneer: laatste dag van actieve maand OF 100% voortgang'
-  })
 })
 
 module.exports = router

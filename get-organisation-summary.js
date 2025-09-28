@@ -34,16 +34,18 @@ router.get('/:orgId/:themeId', async (req, res) => {
       await assertTeamInOrg(team_id, employerId)
     }
 
-    // Haal de organisatie insight op
+    // Haal de organisatie insight op (team-specifiek of organisatie-breed)
     let insightQuery = supabase
       .from('organization_theme_insights')
       .select('*')
       .eq('organisatie_id', employerId)  // Gebruik employerId uit context
       .eq('theme_id', themeId)
 
-    // Voeg team filtering toe als team_id is opgegeven
+    // Filter op team_id als opgegeven, anders organisatie-breed (team_id IS NULL)
     if (team_id) {
       insightQuery = insightQuery.eq('team_id', team_id)
+    } else {
+      insightQuery = insightQuery.is('team_id', null)
     }
 
     const { data: insight, error: insightError } = await insightQuery.single()

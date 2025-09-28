@@ -13,9 +13,9 @@ const supabase = createClient(
 router.use(authMiddleware)
 
 // POST /api/generate-organisation-summary
-// Genereert een nieuwe organisatie samenvatting en adviezen
+// Genereert een nieuwe organisatie samenvatting en adviezen (team-specifiek of organisatie-breed)
 router.post('/', async (req, res) => {
-  const { organisatie_id, theme_id } = req.body
+  const { organisatie_id, theme_id, team_id } = req.body
   const employerId = req.ctx.employerId
 
   // Valideer dat organisatie_id overeenkomt met employerId uit context
@@ -27,13 +27,42 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Organisatie ID en Thema ID zijn verplicht' })
   }
 
+  // Valideer team_id als opgegeven
+  if (team_id) {
+    await assertTeamInOrg(team_id, employerId)
+  }
+
   try {
-    // 1. Controleer of er minimaal 4 medewerkers het thema hebben afgerond
+    // 1. Haal werknemers op (team-specifiek of organisatie-breed)
+    let employeesQuery = supabase
+      .from('users')
+      .select('id')
+      .eq('employer_id', employerId)  // Gebruik employerId uit context
+      .eq('role', 'employee')
+
+    // Filter op team_id als opgegeven
+    if (team_id) {
+      employeesQuery = employeesQuery.eq('team_id', team_id)
+    }
+
+    const { data: employees, error: employeesError } = await employeesQuery
+
+    if (employeesError) throw employeesError
+
+    if (!employees || employees.length < 4) {
+      return res.status(400).json({ 
+        error: 'Minimaal 4 medewerkers moeten het thema hebben afgerond voordat een samenvatting kan worden gegenereerd' 
+      })
+    }
+
+    // 2. Haal gesprekresultaten op voor deze werknemers
+    const employeeIds = employees.map(emp => emp.id)
     const { data: results, error: resultsError } = await supabase
       .from('gesprekresultaten')
       .select('score, werknemer_id')
       .eq('werkgever_id', employerId)  // Gebruik employerId uit context
       .eq('theme_id', theme_id)
+      .in('werknemer_id', employeeIds)
 
     if (resultsError) throw resultsError
 
@@ -42,15 +71,6 @@ router.post('/', async (req, res) => {
         error: 'Minimaal 4 medewerkers moeten het thema hebben afgerond voordat een samenvatting kan worden gegenereerd' 
       })
     }
-
-    // 2. Haal alle complete gesprekken op voor dit thema en deze organisatie
-    const { data: employees, error: employeesError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('employer_id', employerId)  // Gebruik employerId uit context
-      .eq('role', 'employee')
-
-    if (employeesError) throw employeesError
 
     const employeeIds = employees?.map(emp => emp.id) || []
 
@@ -87,7 +107,22 @@ router.post('/', async (req, res) => {
       console.warn('Kon werkgever configuratie niet ophalen:', configError)
     }
 
-    // 4. Bouw prompt met alle gesprekken
+    // 4. Haal team informatie op als team_id is opgegeven
+    let teamInfo = null
+    if (team_id) {
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('naam, beschrijving')
+        .eq('id', team_id)
+        .eq('werkgever_id', employerId)
+        .single()
+      
+      if (!teamError && team) {
+        teamInfo = team
+      }
+    }
+
+    // 5. Bouw prompt met alle gesprekken
     const allConversations = conversations.map(conv => {
       const conversationText = conv.gespreksgeschiedenis
         .map(item => `Vraag: ${item.vraag_tekst}\nAntwoord: ${item.antwoord}`)
@@ -95,12 +130,16 @@ router.post('/', async (req, res) => {
       return `=== Gesprek Medewerker ===\n${conversationText}\n`
     }).join('\n')
 
-    const prompt = `Je bent een HR-expert die organisatie-brede inzichten analyseert.
+    const teamContext = teamInfo ? 
+      `\n\nTeam context: ${teamInfo.naam}${teamInfo.beschrijving ? ` - ${teamInfo.beschrijving}` : ''}\nAantal teamleden: ${employees.length}` : 
+      `\n\nOrganisatie context: ${employees.length} medewerkers`
+
+    const prompt = `Je bent een HR-expert die ${teamInfo ? 'team-specifieke' : 'organisatie-brede'} inzichten analyseert.
 
 Thema: ${theme.titel}
-Beschrijving: ${theme.beschrijving_werknemer}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}
+Beschrijving: ${theme.beschrijving_werknemer}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}${teamContext}
 
-Hieronder vind je alle gesprekken van medewerkers over dit thema:
+Hieronder vind je alle gesprekken van ${teamInfo ? 'teamleden' : 'medewerkers'} over dit thema:
 
 ${allConversations}
 
@@ -158,6 +197,7 @@ Antwoord in JSON-formaat:
     const insightData = {
       organisatie_id,
       theme_id,
+      team_id: team_id || null, // team_id voor team-specifieke insights
       samenvatting: parsed.samenvatting,
       verbeteradvies: parsed.verbeteradvies,
       signaalwoorden: parsed.signaalwoorden,
@@ -171,12 +211,20 @@ Antwoord in JSON-formaat:
     }
 
     // Update of insert
-    const { data: existingInsight, error: existingError } = await supabase
+    let existingQuery = supabase
       .from('organization_theme_insights')
       .select('id')
       .eq('organisatie_id', organisatie_id)
       .eq('theme_id', theme_id)
-      .single()
+
+    // Filter op team_id als opgegeven, anders organisatie-breed (team_id IS NULL)
+    if (team_id) {
+      existingQuery = existingQuery.eq('team_id', team_id)
+    } else {
+      existingQuery = existingQuery.is('team_id', null)
+    }
+
+    const { data: existingInsight, error: existingError } = await existingQuery.single()
 
     if (existingError && existingError.code !== 'PGRST116') {
       throw existingError
@@ -201,6 +249,11 @@ Antwoord in JSON-formaat:
 
     res.json({
       success: true,
+      team_context: teamInfo ? {
+        team_id: team_id,
+        team_naam: teamInfo.naam,
+        team_beschrijving: teamInfo.beschrijving
+      } : null,
       samenvatting: parsed.samenvatting,
       verbeteradvies: parsed.verbeteradvies,
       gpt_adviezen: parsed.gpt_adviezen,
