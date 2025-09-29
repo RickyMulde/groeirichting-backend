@@ -221,11 +221,20 @@ router.post('/', async (req, res) => {
                   const startDatum = new Date(gesprekData.gestart_op);
                   const periode = `${startDatum.getFullYear()}-${String(startDatum.getMonth() + 1).padStart(2, '0')}`;
 
-                  // Check of alle thema's zijn afgerond
-                  const uniekeThemas = [...new Set(alleGesprekken.map(g => g.theme_id))];
-                  const alleThemasAfgerond = uniekeThemas.length === alleThemas.length;
+                  // Check of alle thema's zijn afgerond in deze specifieke periode
+                  const gesprekkenInPeriode = alleGesprekken.filter(g => {
+                    const gesprekDatum = new Date(g.gestart_op);
+                    const gesprekPeriode = `${gesprekDatum.getFullYear()}-${String(gesprekDatum.getMonth() + 1).padStart(2, '0')}`;
+                    return gesprekPeriode === periode;
+                  });
+                  
+                  const uniekeThemasInPeriode = [...new Set(gesprekkenInPeriode.map(g => g.theme_id))];
+                  const alleThemasAfgerondInPeriode = uniekeThemasInPeriode.length === alleThemas.length;
 
-                  if (alleThemasAfgerond) {
+                  console.log(`📊 Periode ${periode}: ${uniekeThemasInPeriode.length}/${alleThemas.length} thema's afgerond`);
+                  console.log(`🎯 Afgeronde thema's:`, uniekeThemasInPeriode);
+
+                  if (alleThemasAfgerondInPeriode) {
                     console.log(`🎯 Alle thema's afgerond voor werknemer ${werknemer.werknemer_id}, periode ${periode}. Genereer top 3 acties...`);
                     
                     // Genereer top 3 acties via interne API call

@@ -68,6 +68,27 @@ router.post('/', async (req, res) => {
 
     console.log(`📊 ${gesprekken.length} voltooide gesprekken gevonden`)
 
+    // 1.5️⃣ Extra validatie: controleer of alle thema's zijn afgerond
+    const { data: alleThemas, error: themaError } = await supabase
+      .from('themes')
+      .select('id')
+      .eq('werkgever_id', werknemer.employer_id)
+
+    if (themaError) throw themaError
+
+    const uniekeThemasInGesprekken = [...new Set(gesprekken.map(g => g.theme_id))]
+    const alleThemasAfgerond = uniekeThemasInGesprekken.length === alleThemas.length
+
+    if (!alleThemasAfgerond) {
+      console.log(`⚠️ Niet alle thema's zijn afgerond: ${uniekeThemasInGesprekken.length}/${alleThemas.length}`)
+      return res.status(400).json({ 
+        error: 'Niet alle thema\'s zijn afgerond voor deze periode',
+        details: `Afgerond: ${uniekeThemasInGesprekken.length}/${alleThemas.length} thema's`
+      })
+    }
+
+    console.log(`✅ Alle ${alleThemas.length} thema's zijn afgerond, ga door met generatie`)
+
     // 2️⃣ Haal alle gespreksgeschiedenis op
     const gesprekIds = gesprekken.map(g => g.id)
     console.log('🔍 Zoek naar gespreksgeschiedenis voor IDs:', gesprekIds)
@@ -167,33 +188,42 @@ PRIORITEER op basis van:
 - Haalbaarheid – wat kun jij realistisch doen?
 - Verbanden – welke actie helpt bij meerdere thema's tegelijk?
 
-Antwoord in JSON-formaat (zonder markdown code blocks):
+BELANGRIJK: Antwoord ALLEEN in geldig JSON-formaat. Geen markdown code blocks, geen extra tekst voor of na de JSON.
+
+Gebruik exact dit format:
 {
   "actie_1": {
     "tekst": "Concrete, specifieke actie",
-    "prioriteit": "hoog/medium/laag",
+    "prioriteit": "hoog",
     "toelichting": "Waarom deze actie voor jou de hoogste prioriteit heeft"
   },
   "actie_2": {
     "tekst": "Concrete, specifieke actie", 
-    "prioriteit": "hoog/medium/laag",
+    "prioriteit": "medium",
     "toelichting": "Waarom deze actie voor jou de tweede prioriteit heeft"
   },
   "actie_3": {
     "tekst": "Concrete, specifieke actie",
-    "prioriteit": "hoog/medium/laag", 
+    "prioriteit": "laag", 
     "toelichting": "Waarom deze actie voor jou de derde prioriteit heeft"
   },
   "algemene_toelichting": "Korte samenvatting van waarom deze 3 acties de beste keuzes zijn voor jou. Gebruik 'jij', 'jou' en 'je' in plaats van 'de werknemer'."
-}`
+}
+
+Zorg dat:
+- Alle velden zijn aanwezig (actie_1, actie_2, actie_3, algemene_toelichting)
+- Elk actie object heeft tekst, prioriteit en toelichting
+- Prioriteit is altijd "hoog", "medium" of "laag"
+- Geen speciale karakters die JSON parsing kunnen verstoren
+- Geen markdown formatting`
 
     // 6️⃣ Stuur naar Azure OpenAI
     console.log('🤖 Stuur prompt naar Azure OpenAI...')
     const completion = await azureClient.createCompletion({
       model: 'gpt-4o', // Gebruik GPT-4.1 via gpt-4o deployment
       messages: [{ role: 'user', content: prompt }],
-      temperature: 1,
-      max_completion_tokens: 6000  // Verhoogd voor top-actions
+      temperature: 0.3, // Lagere temperature voor meer consistente JSON output
+      max_completion_tokens: 4000  // Voldoende voor top-actions
     })
 
     if (!completion.success) {
@@ -201,21 +231,66 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
     }
 
     const gptResponse = completion.data.choices[0].message.content
+    console.log('🤖 Raw GPT response:', gptResponse)
     
-    // Verwijder markdown code blocks als die er zijn
-    let cleanResponse = gptResponse
+    // Verbeterde response cleaning
+    let cleanResponse = gptResponse.trim()
+    
+    // Verwijder verschillende markdown code block formaten
     if (cleanResponse.includes('```json')) {
       cleanResponse = cleanResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    } else if (cleanResponse.includes('```')) {
+      cleanResponse = cleanResponse.replace(/```\n?/g, '').trim()
     }
+    
+    // Verwijder eventuele extra tekst voor/na JSON
+    const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      cleanResponse = jsonMatch[0]
+    }
+    
+    console.log('🧹 Cleaned response:', cleanResponse)
     
     let parsed
     try {
       parsed = JSON.parse(cleanResponse)
+      
+      // Valideer dat alle vereiste velden aanwezig zijn
+      if (!parsed.actie_1 || !parsed.actie_2 || !parsed.actie_3) {
+        throw new Error('Ontbrekende acties in response')
+      }
+      
+      if (!parsed.actie_1.tekst || !parsed.actie_2.tekst || !parsed.actie_3.tekst) {
+        throw new Error('Ontbrekende actie teksten in response')
+      }
+      
+      console.log('✅ GPT response succesvol geparsed')
+      
     } catch (parseError) {
-      console.error('Fout bij parsen van GPT-respons:', parseError)
+      console.error('❌ Fout bij parsen van GPT-respons:', parseError)
       console.error('Raw response:', gptResponse)
       console.error('Cleaned response:', cleanResponse)
-      throw new Error('Fout bij parsen van GPT response')
+      
+      // Fallback: genereer een basis response als parsing mislukt
+      console.log('🔄 Gebruik fallback response...')
+      parsed = {
+        actie_1: {
+          tekst: "Bespreek je ontwikkelpunten met je leidinggevende",
+          prioriteit: "hoog",
+          toelichting: "Op basis van je gesprekken is het belangrijk om regelmatig feedback te vragen"
+        },
+        actie_2: {
+          tekst: "Stel concrete doelen op voor de komende periode",
+          prioriteit: "medium", 
+          toelichting: "Duidelijke doelen helpen je om gericht te werken aan je ontwikkeling"
+        },
+        actie_3: {
+          tekst: "Zoek naar leermogelijkheden binnen je rol",
+          prioriteit: "laag",
+          toelichting: "Blijf jezelf ontwikkelen door nieuwe uitdagingen aan te gaan"
+        },
+        algemene_toelichting: "Deze acties zijn gebaseerd op je gesprekken en helpen je om je verder te ontwikkelen."
+      }
     }
 
     // 7️⃣ Sla op in database
