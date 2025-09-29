@@ -43,7 +43,7 @@ const isGesprekVerwachtDezeMaand = (actieveMaanden) => {
  * @param {Array} gesprekken - Array van bestaande gesprekken
  * @param {Array} actieveMaanden - Array van actieve maanden van werkgever
  * @param {boolean} heeftOpenstaandGesprek - Of er een openstaand gesprek is
- * @param {string} userId - ID van de gebruiker (voor superadmin check)
+ * @param {string} userId - ID van de gebruiker (voor superuser check)
  * @returns {boolean} - True als er een nieuw gesprek gestart kan worden
  */
 const kanNieuwGesprekStarten = async (gesprekken, actieveMaanden, heeftOpenstaandGesprek, userId) => {
@@ -52,7 +52,7 @@ const kanNieuwGesprekStarten = async (gesprekken, actieveMaanden, heeftOpenstaan
     return false;
   }
   
-  // Check of gebruiker superadmin is of test account
+  // Check of gebruiker superuser is of test account
   if (userId) {
     // Test account override
     if (userId === '5bbfffe3-ad87-4ac8-bba4-112729868489') {
@@ -65,7 +65,7 @@ const kanNieuwGesprekStarten = async (gesprekken, actieveMaanden, heeftOpenstaan
       .eq('id', userId)
       .single();
       
-    if (user?.role === 'superadmin') {
+    if (user?.role === 'superuser') {
       return true; // Superadmin kan altijd testen
     }
   }

@@ -40,7 +40,7 @@ router.post('/', async (req, res) => {
   try {
     // 1️⃣ Gesprek aanmaken
     if (!gesprek_id && !theme_question_id && status === 'Nog niet afgerond') {
-      // Check periode restricties (behalve voor superadmin)
+      // Check periode restricties (behalve voor superuser)
       const { data: user, error: userError } = await supabase
         .from('users')
         .select('role, employer_id')
@@ -55,7 +55,7 @@ router.post('/', async (req, res) => {
         throw userError
       }
       
-      if (user && user.role !== 'superadmin' && user.id !== '5bbfffe3-ad87-4ac8-bba4-112729868489') {
+      if (user && user.role !== 'superuser' && user.id !== '5bbfffe3-ad87-4ac8-bba4-112729868489') {
         // Haal werkgever configuratie op
         const { data: werkgeverConfig, error: configError } = await supabase
           .from('werkgever_gesprek_instellingen')
