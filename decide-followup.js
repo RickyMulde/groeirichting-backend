@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
   // 2. Azure OpenAI call met de volledige prompt
   try {
         const completion = await azureClient.createCompletion({
-          model: 'gpt-4o', // Gebruik GPT-4o voor snellere responses
+          model: 'gpt-4.1', // Gebruik GPT-4.1 voor betere instructie-naleving
           temperature: 1,
           max_completion_tokens: 4000,
       messages: [
