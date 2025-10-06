@@ -10,7 +10,7 @@ if (!process.env.RENDER) {
 }
 
 const registerEmployee = require('./register-employee');
-// const registerEmployer = require('./register-employer'); // Uitgeschakeld - registratie nu volledig via Supabase Auth
+const registerEmployer = require('./register-employer'); // Hergeactiveerd voor database-driven flow
 const checkVerification = require('./check-verification');
 const createThemeWithQuestions = require('./create-theme-with-questions');
 const saveConversation = require('./save-conversation');
@@ -88,7 +88,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// app.use('/api/register-employer', registerEmployer); // Uitgeschakeld - registratie nu volledig via Supabase Auth
+app.use('/api/register-employer', registerEmployer); // Hergeactiveerd voor database-driven flow
 // app.use('/api/auth', auth); // Uitgeschakeld - frontend gebruikt direct Supabase Auth
 app.use('/api/register-employee', registerEmployee);
 app.use('/api/check-verification', checkVerification);
