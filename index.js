@@ -139,11 +139,6 @@ app.post('/api/provision-employer', async (req, res) => {
     }
 
     const userId = userData.user.id;
-    const { company_name, contact_phone, first_name, middle_name, last_name } = req.body;
-
-    if (!company_name || !first_name || !last_name) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
 
     // Insert employer via service role
     const supabase = createClient(
@@ -163,6 +158,20 @@ app.post('/api/provision-employer', async (req, res) => {
       return res.status(200).json({ success: true, employerId: existingUser.employer_id, alreadyProvisioned: true });
     }
 
+    // Haal pending employer data op uit database
+    const { data: pendingEmployer, error: pendingError } = await supabase
+      .from('pending_employers')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'pending_verification')
+      .single();
+
+    if (pendingError || !pendingEmployer) {
+      return res.status(400).json({ 
+        error: 'Geen pending employer data gevonden. Probeer opnieuw te registreren.' 
+      });
+    }
+
     // Check if employer already exists for this email
     const { data: existingEmployer } = await supabase
       .from('employers')
@@ -178,9 +187,9 @@ app.post('/api/provision-employer', async (req, res) => {
       const { data: emp, error: empErr } = await supabase
         .from('employers')
         .insert({
-          company_name,
+          company_name: pendingEmployer.company_name,
           contact_email: userData.user.email,
-          contact_phone: contact_phone || null,
+          contact_phone: pendingEmployer.contact_phone || null,
           kvk_number: null
         })
         .select('id')
@@ -198,13 +207,24 @@ app.post('/api/provision-employer', async (req, res) => {
       email: userData.user.email,
       role: 'employer',
       employer_id: employerId,
-      first_name,
-      middle_name: middle_name || null,
-      last_name
+      first_name: pendingEmployer.first_name,
+      middle_name: pendingEmployer.middle_name || null,
+      last_name: pendingEmployer.last_name
     });
     
     if (userInsErr) {
       return res.status(400).json({ error: 'User insert failed', detail: userInsErr.message });
+    }
+
+    // Mark pending employer as completed
+    const { error: updateError } = await supabase
+      .from('pending_employers')
+      .update({ status: 'completed' })
+      .eq('id', pendingEmployer.id);
+
+    if (updateError) {
+      console.error('Failed to update pending employer status:', updateError);
+      // Don't fail the request, just log the error
     }
 
     return res.status(200).json({ success: true, employerId });

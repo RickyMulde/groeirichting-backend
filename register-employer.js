@@ -105,41 +105,28 @@ router.post('/', async (req, res) => {
 
   const userId = authUser.user.id;
 
-  // 4. Voeg eerst bedrijf toe (employers tabel)
-  const { data: employer, error: employerError } = await supabaseAnon
-    .from('employers')
+  // 4. Sla pending employer data op in database (niet in localStorage)
+  const { data: pendingEmployer, error: pendingError } = await supabaseAnon
+    .from('pending_employers')
     .insert({
+      user_id: userId,
       company_name,
-      contact_email: email,
       contact_phone,
-      kvk_number: null // Expliciet null instellen voor KVK nummer
+      first_name,
+      middle_name,
+      last_name,
+      status: 'pending_verification'
     })
     .select()
     .single();
 
-  if (employerError) {
-    return res.status(500).json({ error: employerError.message });
+  if (pendingError) {
+    return res.status(500).json({ error: pendingError.message });
   }
 
-  // 5. Voeg gebruiker toe aan users-tabel (met employer_id)
-  const { error: userError } = await supabaseAnon.from('users').insert({
-    id: userId,
-    email,
-    role: 'employer',
-    employer_id: employer.id, // Direct de employer_id toewijzen
-    first_name,
-    middle_name,
-    last_name
-  });
+  // 5. Supabase verstuurt automatisch verificatie-e-mail bij email_confirm: true
 
-  if (userError) {
-    return res.status(500).json({ error: userError.message });
-  }
-
-  // 6. Supabase verstuurt automatisch verificatie-e-mail bij email_confirm: true
-
-  // 7. Registratie voltooid - return direct success
-
+  // 6. Registratie voltooid - return direct success
   // Welkomstmail wordt nu automatisch verstuurd via email triggers na verificatie
 
   return res.status(200).json({ 
