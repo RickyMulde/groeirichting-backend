@@ -92,7 +92,7 @@ router.post('/', async (req, res) => {
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.FRONTEND_URL}/werkgever-portaal`
+      emailRedirectTo: `${process.env.FRONTEND_URL}/na-verificatie`
     }
   });
 
