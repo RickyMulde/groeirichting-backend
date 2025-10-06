@@ -106,7 +106,7 @@ router.post('/', async (req, res) => {
   const userId = authUser.user.id;
 
   // 4. Sla pending employer data op in database (niet in localStorage)
-  const { data: pendingEmployer, error: pendingError } = await supabaseAnon
+  const { data: pendingEmployer, error: pendingError } = await supabase
     .from('pending_employers')
     .insert({
       user_id: userId,
