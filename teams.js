@@ -98,6 +98,10 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'naam is verplicht' })
   }
 
+  if (!teams_beschrijving || !teams_beschrijving.trim()) {
+    return res.status(400).json({ error: 'teams_beschrijving is verplicht' })
+  }
+
   try {
     // Controleer max 50 teams per werkgever
     const { count: teamCount, error: countError } = await supabase
@@ -135,7 +139,7 @@ router.post('/', async (req, res) => {
       .insert({
         werkgever_id: employerId,
         naam: naam.trim(),
-        teams_beschrijving: teams_beschrijving ? teams_beschrijving.trim() : null,
+        teams_beschrijving: teams_beschrijving.trim(),
         aangemaakt_op: new Date().toISOString(),
         bijgewerkt_op: new Date().toISOString()
       })
@@ -171,6 +175,10 @@ router.put('/:id', async (req, res) => {
 
   if (!naam) {
     return res.status(400).json({ error: 'naam is verplicht' })
+  }
+
+  if (!teams_beschrijving || !teams_beschrijving.trim()) {
+    return res.status(400).json({ error: 'teams_beschrijving is verplicht' })
   }
 
   try {
@@ -217,7 +225,7 @@ router.put('/:id', async (req, res) => {
       .from('teams')
       .update({
         naam: naam.trim(),
-        teams_beschrijving: teams_beschrijving ? teams_beschrijving.trim() : null,
+        teams_beschrijving: teams_beschrijving.trim(),
         bijgewerkt_op: new Date().toISOString()
       })
       .eq('id', id)
