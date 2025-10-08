@@ -110,7 +110,7 @@ router.post('/', async (req, res) => {
     if (team_id) {
       const { data: team, error: teamError } = await supabase
         .from('teams')
-        .select('naam, beschrijving')
+        .select('naam, teams_beschrijving')
         .eq('id', team_id)
         .eq('werkgever_id', employerId)
         .single()
@@ -129,7 +129,7 @@ router.post('/', async (req, res) => {
     }).join('\n')
 
     const teamContext = teamInfo ? 
-      `\n\nTeam context: ${teamInfo.naam}${teamInfo.beschrijving ? ` - ${teamInfo.beschrijving}` : ''}\nAantal teamleden: ${employees.length}` : 
+      `\n\nTeam context: ${teamInfo.naam}${teamInfo.teams_beschrijving ? ` - ${teamInfo.teams_beschrijving}` : ''}\nAantal teamleden: ${employees.length}` : 
       `\n\nOrganisatie context: ${employees.length} medewerkers`
 
     const prompt = `Je bent een HR-expert die ${teamInfo ? 'team-specifieke' : 'organisatie-brede'} inzichten analyseert.
@@ -250,7 +250,7 @@ Antwoord in JSON-formaat:
       team_context: teamInfo ? {
         team_id: team_id,
         team_naam: teamInfo.naam,
-        team_beschrijving: teamInfo.beschrijving
+        team_beschrijving: teamInfo.teams_beschrijving
       } : null,
       samenvatting: parsed.samenvatting,
       verbeteradvies: parsed.verbeteradvies,

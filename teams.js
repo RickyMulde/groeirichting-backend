@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
       .select(`
         id,
         naam,
-        beschrijving,
+        teams_beschrijving,
         aangemaakt_op,
         bijgewerkt_op,
         werkgever_id,
@@ -91,7 +91,7 @@ router.get('/', async (req, res) => {
 // POST /api/teams
 // Maakt een nieuw team aan
 router.post('/', async (req, res) => {
-  const { naam, beschrijving } = req.body
+  const { naam, teams_beschrijving } = req.body
   const employerId = req.ctx.employerId
 
   if (!naam) {
@@ -135,7 +135,7 @@ router.post('/', async (req, res) => {
       .insert({
         werkgever_id: employerId,
         naam: naam.trim(),
-        beschrijving: beschrijving ? beschrijving.trim() : null,
+        teams_beschrijving: teams_beschrijving ? teams_beschrijving.trim() : null,
         aangemaakt_op: new Date().toISOString(),
         bijgewerkt_op: new Date().toISOString()
       })
@@ -166,7 +166,7 @@ router.post('/', async (req, res) => {
 // Werkt een team bij
 router.put('/:id', async (req, res) => {
   const { id } = req.params
-  const { naam, beschrijving } = req.body
+  const { naam, teams_beschrijving } = req.body
   const employerId = req.ctx.employerId
 
   if (!naam) {
@@ -217,7 +217,7 @@ router.put('/:id', async (req, res) => {
       .from('teams')
       .update({
         naam: naam.trim(),
-        beschrijving: beschrijving ? beschrijving.trim() : null,
+        teams_beschrijving: teams_beschrijving ? teams_beschrijving.trim() : null,
         bijgewerkt_op: new Date().toISOString()
       })
       .eq('id', id)
