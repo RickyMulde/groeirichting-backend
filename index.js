@@ -2,6 +2,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const { sendEmail } = require('./services/mailer/mailer');
 
 // 🚨 BELANGRIJK: Laad omgevingsvariabelen VOORDAT je ze gebruikt!
@@ -76,6 +77,54 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// 🛡️ Rate Limiting Middleware
+// Algemene rate limiter voor alle requests
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minuten
+  max: 100, // 100 requests per 15 minuten per IP
+  message: {
+    error: 'Te veel requests van dit IP-adres, probeer het over 15 minuten opnieuw.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Strenge limiter voor registratie endpoints
+const registrationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 uur
+  max: 5, // 5 registraties per uur per IP
+  message: {
+    error: 'Te veel registratiepogingen, probeer het over een uur opnieuw.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Matige limiter voor verificatie en uitnodigingen
+const verificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 uur
+  max: 20, // 20 requests per uur per IP
+  message: {
+    error: 'Te veel verificatiepogingen, probeer het over een uur opnieuw.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Lichte limiter voor health checks en debug
+const healthLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuut
+  max: 30, // 30 requests per minuut per IP
+  message: {
+    error: 'Te veel health check requests, probeer het over een minuut opnieuw.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Pas algemene rate limiting toe op alle routes
+app.use(generalLimiter);
+
 // 📊 Request Logging Middleware
 app.use((req, res, next) => {
   const start = Date.now();
@@ -88,10 +137,10 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use('/api/register-employer', registerEmployer); // Hergeactiveerd voor database-driven flow
+app.use('/api/register-employer', registrationLimiter, registerEmployer); // Hergeactiveerd voor database-driven flow
 // app.use('/api/auth', auth); // Uitgeschakeld - frontend gebruikt direct Supabase Auth
-app.use('/api/register-employee', registerEmployee);
-app.use('/api/check-verification', checkVerification);
+app.use('/api/register-employee', registrationLimiter, registerEmployee);
+app.use('/api/check-verification', verificationLimiter, checkVerification);
 app.use('/api/create-theme-with-questions', createThemeWithQuestions);
 app.use('/api/save-conversation', saveConversation);
 app.use('/api/get-conversation-answers', getConversationAnswers);
@@ -235,7 +284,7 @@ app.post('/api/provision-employer', async (req, res) => {
 });
 
 // 🏥 Healthcheck endpoint voor Render
-app.get('/health', (req, res) => {
+app.get('/health', healthLimiter, (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -247,7 +296,7 @@ app.get('/health', (req, res) => {
 });
 
 // 🔍 Debug endpoint voor CORS
-app.get('/api/debug', (req, res) => {
+app.get('/api/debug', healthLimiter, (req, res) => {
   res.json({
     message: 'Backend is bereikbaar!',
     timestamp: new Date().toISOString(),
@@ -260,7 +309,7 @@ app.get('/api/debug', (req, res) => {
 });
 
 // Debug endpoint voor triggers
-app.post('/api/debug/process-triggers', async (req, res) => {
+app.post('/api/debug/process-triggers', healthLimiter, async (req, res) => {
   try {
     await processEmailTriggers();
     res.json({ success: true, message: 'Triggers processed successfully' });
@@ -271,7 +320,7 @@ app.post('/api/debug/process-triggers', async (req, res) => {
 
 // Resend is nu vervangen door de mailer service
 
-app.post('/api/send-invite', async (req, res) => {
+app.post('/api/send-invite', verificationLimiter, async (req, res) => {
   const { to, name, employerId, token, functieOmschrijving, teamId } = req.body;
 
 
