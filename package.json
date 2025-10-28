@@ -7,6 +7,7 @@
     "test:azure": "node test-azure-utility.js",
     "env:test": "node switch-env.js test",
     "env:production": "node switch-env.js production",
+    "start": "npm run start:production",
     "start:test": "npm run env:test && node index.js",
     "start:production": "npm run env:production && node index.js",
     "build": "echo \"Build completed - no build step required for Node.js backend\""
