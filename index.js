@@ -54,6 +54,7 @@ const app = express();
 
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com',
+  'https://productie-frontend-groeirichting.onrender.com', // Nieuwe productie frontend URL
   'https://groeirichting.nl',
   'http://localhost:5173', // Voor lokale ontwikkeling
   'http://localhost:3000'  // Voor lokale ontwikkeling
