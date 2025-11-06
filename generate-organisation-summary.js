@@ -179,7 +179,7 @@ Antwoord in JSON-formaat:
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.4, // 0.35-0.45 range, rustige, consistente analyses
       top_p: 0.9,
-      max_tokens: 1500, // 1200-1800 range, genoeg voor lange samenvatting + adviezen
+      max_completion_tokens: 1500, // 1200-1800 range, genoeg voor lange samenvatting + adviezen
       frequency_penalty: 0.15, // 0.1-0.2 range
       presence_penalty: 0.15, // 0.1-0.2 range
       response_format: { type: 'json_object' }, // Garandeert geldige JSON

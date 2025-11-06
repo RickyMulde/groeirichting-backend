@@ -47,8 +47,8 @@ class DirectOpenAIClient {
    * @param {string} options.model - Model naam (bijv. 'gpt-5', 'gpt-5-mini', 'gpt-4o', default: OPENAI_MODEL of 'gpt-5')
    * @param {Array} options.messages - Chat messages
    * @param {number} options.temperature - Temperature (0-1)
-   * @param {number} options.max_completion_tokens - Max completion tokens
-   * @param {number} options.max_tokens - Max tokens (wordt gebruikt als max_completion_tokens niet is ingesteld)
+   * @param {number} options.max_completion_tokens - Max completion tokens (vereist voor GPT-5)
+   * @param {number} options.max_tokens - Max tokens (wordt geconverteerd naar max_completion_tokens voor backward compatibility)
    * @returns {Promise<Object>} Completion response
    */
   async createCompletion(options) {
@@ -56,16 +56,16 @@ class DirectOpenAIClient {
       // Gebruik model uit options, anders default model
       const model = options.model || this.defaultModel
       
-      // Converteer max_completion_tokens naar max_tokens voor OpenAI API
-      // OpenAI gebruikt max_tokens, niet max_completion_tokens
-      const maxTokens = options.max_completion_tokens || options.max_tokens
+      // GPT-5 gebruikt max_completion_tokens, niet max_tokens
+      // Converteer max_tokens naar max_completion_tokens voor backward compatibility
+      const maxCompletionTokens = options.max_completion_tokens || options.max_tokens
       
       // Bouw OpenAI API options
       const openaiOptions = {
         model: model,
         messages: options.messages,
         temperature: options.temperature !== undefined ? options.temperature : 1,
-        ...(maxTokens && { max_tokens: maxTokens })
+        ...(maxCompletionTokens && { max_completion_tokens: maxCompletionTokens })
       }
 
       // Voeg response_format toe als het is opgegeven
@@ -109,7 +109,7 @@ class DirectOpenAIClient {
     try {
       const result = await this.createCompletion({
         messages: [{ role: 'user', content: 'Test verbinding' }],
-        max_tokens: 10
+        max_completion_tokens: 10
       })
 
       if (result.success) {

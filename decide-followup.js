@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
           model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
           temperature: 0.5, // Geoptimaliseerd voor stabiele JSON + consistente gesprekslogica
           top_p: 0.9,
-          max_tokens: 500, // 400-600 range, 500 is goede middenweg
+          max_completion_tokens: 500, // 400-600 range, 500 is goede middenweg
           frequency_penalty: 0.2,
           presence_penalty: 0.3,
           response_format: { type: 'json_object' }, // Garandeert geldige JSON

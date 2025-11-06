@@ -226,7 +226,7 @@ Zorg dat:
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.5, // Betere balans dan 0.3 voor coachende adviezen
       top_p: 0.9,
-      max_tokens: 1050, // 900-1200 range, 3 acties + uitgebreide toelichting
+      max_completion_tokens: 1050, // 900-1200 range, 3 acties + uitgebreide toelichting
       frequency_penalty: 0.25, // 0.2-0.3 range
       presence_penalty: 0.4, // 0.3-0.5 range, stimuleert dat elke actie echt iets anders raakt
       response_format: { type: 'json_object' }, // Garandeert geldige JSON

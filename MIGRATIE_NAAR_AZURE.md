@@ -9,18 +9,18 @@ Dit document beschrijft precies wat er per bestand aangepast moet worden om teru
 ### Algemene wijzigingen:
 1. **Client import:** Blijft `azureClient` (geen wijziging nodig, alle bestanden gebruiken dit al)
 2. **Model parameter:** Aanpassen naar Azure-compatibele deployment namen
-3. **Token parameter:** `max_tokens` → `max_completion_tokens` (of laat zoals het is, wordt automatisch geconverteerd)
+3. **Token parameter:** `max_completion_tokens` blijft hetzelfde (Azure gebruikt ook `max_completion_tokens`)
 4. **Environment variables:** Zorgen dat alle Azure environment variables zijn ingesteld
 
 ### ⚠️ BELANGRIJK: Azure behoudt huidige instellingen
 
-**Bij Azure gebruiken we de huidige instellingen (temperature, max_tokens, etc.) zoals ze nu zijn.**
+**Bij Azure gebruiken we de huidige instellingen (temperature, max_completion_tokens, etc.) zoals ze nu zijn.**
 
 De nieuwe geoptimaliseerde presets (temperature 0.5, response_format, etc.) zijn alleen voor **OpenAI Direct**. 
 
 Azure blijft werken met:
 - Huidige temperature waarden (1, 0.3, etc.)
-- Huidige max_completion_tokens waarden
+- Huidige max_completion_tokens waarden (blijft hetzelfde)
 - Geen response_format (niet altijd ondersteund door Azure)
 - Geen frequency_penalty / presence_penalty (tenzij al aanwezig)
 
@@ -303,8 +303,8 @@ AZURE_OPENAI_API_VERSION_GPT4O=2024-12-01-preview
    - `generate-organisation-summary.js`: Geen wijziging nodig ✅
 
 3. **Controleer token parameters:**
-   - `max_tokens` wordt automatisch geconverteerd naar `max_completion_tokens` door `azureClient`
-   - Je kunt `max_completion_tokens` gebruiken of `max_tokens` (beide werken)
+   - Azure gebruikt `max_completion_tokens` (net als OpenAI Direct voor GPT-5)
+   - Je kunt `max_completion_tokens` gebruiken (zowel Azure als OpenAI Direct ondersteunen dit)
 
 4. **Test de migratie:**
    - Test elk bestand individueel
@@ -334,7 +334,7 @@ AZURE_OPENAI_API_VERSION_GPT4O=2024-12-01-preview
    - **Behoud huidige instellingen** - Azure gebruikt de huidige temperature, max_completion_tokens, etc.
    - De nieuwe geoptimaliseerde presets (temperature 0.5, response_format, frequency_penalty, etc.) zijn alleen voor OpenAI Direct
    - Azure ondersteunt niet altijd `response_format` - controleer per deployment
-   - Azure gebruikt `max_completion_tokens` in plaats van `max_tokens`
+   - Azure gebruikt `max_completion_tokens` (net als OpenAI Direct voor GPT-5)
 
 ---
 
@@ -342,14 +342,14 @@ AZURE_OPENAI_API_VERSION_GPT4O=2024-12-01-preview
 
 ### Azure (behoud huidige instellingen):
 - Temperature: Huidige waarden (1, 0.3, etc.)
-- Max tokens: Huidige waarden (2000, 4000, 15000, etc.)
+- Max completion tokens: Huidige waarden (2000, 4000, 15000, etc.)
 - Response format: Meestal niet gebruikt (niet altijd ondersteund)
 - Frequency/presence penalty: Meestal niet gebruikt
 - Top_p: Meestal niet gebruikt
 
 ### OpenAI Direct (nieuwe geoptimaliseerde presets):
 - Temperature: Geoptimaliseerd per taaktype (0.35-0.55)
-- Max tokens: Geoptimaliseerd per taaktype (500-1500)
+- Max completion tokens: Geoptimaliseerd per taaktype (500-1500)
 - Response format: `{ type: "json_object" }` (aanbevolen)
 - Frequency/presence penalty: Geoptimaliseerd per taaktype
 - Top_p: 0.9 (standaard)

@@ -168,7 +168,7 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.55, // 0.5-0.6 range, iets warmer dan samenvatting voor creatieve acties
       top_p: 0.9,
-      max_tokens: 700, // 600-800 range, 3 acties + toelichting in JSON
+      max_completion_tokens: 700, // 600-800 range, 3 acties + toelichting in JSON
       frequency_penalty: 0.25, // 0.2-0.3 range, voorkomt dat alle acties hetzelfde klinken
       presence_penalty: 0.35, // 0.3-0.4 range, stimuleert nét andere invalshoeken
       response_format: { type: 'json_object' }, // Garandeert geldige JSON

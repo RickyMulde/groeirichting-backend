@@ -116,7 +116,7 @@ OPENAI_MODEL=gpt-5  (standaard)
 - `model`: `"gpt-5"` - Nieuwste stabiele versie
 - `temperature`: `0.4–0.6` - Licht creatief, maar voorspelbaar; voorkomt overdrijving in empathie
 - `top_p`: `0.9` - Standaard voor iets natuurlijke variatie
-- `max_tokens`: `700–1000` - Ruim genoeg voor reflectie + JSON-output
+- `max_completion_tokens`: `700–1000` - Ruim genoeg voor reflectie + JSON-output
 - `frequency_penalty`: `0.2–0.3` - Voorkomt herhaling van zinnen zoals "Dat klinkt als..."
 - `presence_penalty`: `0.3–0.4` - Stimuleert nieuwe invalshoeken en nuance
 - `response_format`: `{ "type": "json_object" }` - Nieuw aanbevolen (garandeert geldige JSON)
@@ -130,8 +130,8 @@ OPENAI_MODEL=gpt-5  (standaard)
   - Je kunt ook een specifieke versie gebruiken zoals `'gpt-5-2025-08-07'` (als beschikbaar)
 - `messages`: Array van message objects met `role` ('system', 'user', 'assistant') en `content`
 - `temperature`: 0-2 (standaard: 1) - Hoe creatief/random het antwoord is
-- `max_tokens`: Maximum aantal tokens voor completion (OpenAI gebruikt `max_tokens`, niet `max_completion_tokens`)
-- `max_completion_tokens`: Wordt geconverteerd naar `max_tokens` (voor backward compatibility)
+- `max_completion_tokens`: Maximum aantal tokens voor completion (vereist voor GPT-5)
+- `max_tokens`: Wordt geconverteerd naar `max_completion_tokens` (voor backward compatibility)
 - `response_format`: Optioneel (bijv. `{ type: 'json_object' }` voor gestructureerde JSON output)
 - `top_p`: Optioneel (0-1) - Nucleus sampling parameter
 - `frequency_penalty`: Optioneel (-2.0 tot 2.0) - Penalty voor frequent gebruikte tokens
@@ -156,7 +156,7 @@ OPENAI_MODEL=gpt-5  (standaard)
 **⚠️ BELANGRIJK:**
 - Bij directe OpenAI API gebruik je de echte model naam
 - Je kunt model versies specificeren met datum (bijv. `'gpt-5-2025-08-07'`)
-- `max_tokens` is de juiste parameter (niet `max_completion_tokens`)
+- `max_completion_tokens` is de juiste parameter voor GPT-5 (niet `max_tokens`)
 
 ---
 
@@ -172,7 +172,7 @@ OPENAI_MODEL=gpt-5  (standaard)
   model: "gpt-5",  // Of "gpt-5-2025-08-07" voor specifieke versie
   temperature: 0.5,
   top_p: 0.9,
-  max_tokens: 500,  // 400-600 range, 500 is goede middenweg
+  max_completion_tokens: 500,  // 400-600 range, 500 is goede middenweg
   frequency_penalty: 0.2,
   presence_penalty: 0.3,
   response_format: { type: "json_object" },
@@ -203,7 +203,7 @@ OPENAI_MODEL=gpt-5  (standaard)
   model: "gpt-5",  // Of "gpt-5-2025-08-07" voor specifieke versie
   temperature: 0.35,  // 0.3-0.4 range, lager dan bij gesprekken
   top_p: 0.9,
-  max_tokens: 500,  // 400-600 range, 6 zinnen + JSON is ruimschoots genoeg
+  max_completion_tokens: 500,  // 400-600 range, 6 zinnen + JSON is ruimschoots genoeg
   frequency_penalty: 0.15,  // 0.1-0.2 range
   presence_penalty: 0.15,  // 0.1-0.2 range
   response_format: { type: "json_object" },
@@ -232,7 +232,7 @@ OPENAI_MODEL=gpt-5  (standaard)
   model: "gpt-5",  // Of "gpt-5-2025-08-07" voor specifieke versie
   temperature: 0.55,  // 0.5-0.6 range, iets warmer dan samenvatting
   top_p: 0.9,
-  max_tokens: 700,  // 600-800 range, 3 acties + toelichting in JSON
+  max_completion_tokens: 700,  // 600-800 range, 3 acties + toelichting in JSON
   frequency_penalty: 0.25,  // 0.2-0.3 range, voorkomt dat alle acties hetzelfde klinken
   presence_penalty: 0.35,  // 0.3-0.4 range, stimuleert nét andere invalshoeken
   response_format: { type: "json_object" },
@@ -261,7 +261,7 @@ OPENAI_MODEL=gpt-5  (standaard)
   model: "gpt-5",  // Of "gpt-5-2025-08-07" voor specifieke versie
   temperature: 0.5,  // Betere balans dan 0.3 voor coachende adviezen
   top_p: 0.9,
-  max_tokens: 1050,  // 900-1200 range, 3 acties + uitgebreide toelichting
+  max_completion_tokens: 1050,  // 900-1200 range, 3 acties + uitgebreide toelichting
   frequency_penalty: 0.25,  // 0.2-0.3 range
   presence_penalty: 0.4,  // 0.3-0.5 range, stimuleert dat elke actie echt iets anders raakt
   response_format: { type: "json_object" },
@@ -291,7 +291,7 @@ OPENAI_MODEL=gpt-5  (standaard)
   // Of "gpt-5-mini-2025-08-07" voor specifieke versie
   temperature: 0.4,  // 0.35-0.45 range, rustige, consistente analyses
   top_p: 0.9,
-  max_tokens: 1500,  // 1200-1800 range, genoeg voor lange samenvatting + adviezen
+  max_completion_tokens: 1500,  // 1200-1800 range, genoeg voor lange samenvatting + adviezen
   frequency_penalty: 0.15,  // 0.1-0.2 range
   presence_penalty: 0.15,  // 0.1-0.2 range
   response_format: { type: "json_object" },
@@ -317,27 +317,27 @@ OPENAI_MODEL=gpt-5  (standaard)
 
 ### decide-followup.js
 - **Azure (origineel):** `model: 'gpt-4.1'`, `temperature: 1`, `max_completion_tokens: 4000`
-- **OpenAI Direct (nieuw):** Zie preset hierboven (temperature: 0.5, max_tokens: 500)
+- **OpenAI Direct (nieuw):** Zie preset hierboven (temperature: 0.5, max_completion_tokens: 500)
 
 ### genereer-samenvatting.js
 - **Azure (origineel):** `model: 'gpt-4o'`, `temperature: 1`, `max_completion_tokens: 2000`
-- **OpenAI Direct (nieuw):** Zie preset hierboven (temperature: 0.35, max_tokens: 500)
+- **OpenAI Direct (nieuw):** Zie preset hierboven (temperature: 0.35, max_completion_tokens: 500)
 
 ### genereer-vervolgacties.js
 - **Azure (origineel):** `model: 'gpt-4o'`, `temperature: 1`, `max_completion_tokens: 4000`
-- **OpenAI Direct (nieuw):** Zie preset hierboven (temperature: 0.55, max_tokens: 700)
+- **OpenAI Direct (nieuw):** Zie preset hierboven (temperature: 0.55, max_completion_tokens: 700)
 
 ### generate-top-actions.js
 - **Azure (origineel):** `model: 'gpt-4o'`, `temperature: 0.3`, `max_completion_tokens: 4000`
-- **OpenAI Direct (nieuw):** Zie preset hierboven (temperature: 0.5, max_tokens: 1050)
+- **OpenAI Direct (nieuw):** Zie preset hierboven (temperature: 0.5, max_completion_tokens: 1050)
 
 ### generate-organisation-summary.js
 - **Azure (origineel):** `model: 'gpt-5-mini'`, `temperature: 1`, `max_completion_tokens: 15000`
-- **OpenAI Direct (nieuw):** Zie preset hierboven (temperature: 0.4, max_tokens: 1500)
+- **OpenAI Direct (nieuw):** Zie preset hierboven (temperature: 0.4, max_completion_tokens: 1500)
 
 ### get-gespreksresultaten-bulk.js
 - **Azure (origineel):** `model: 'gpt-4o'`, `temperature: 1`, `max_completion_tokens: 4000`
-- **OpenAI Direct (nieuw):** Zelfde preset als `genereer-samenvatting.js` (temperature: 0.35, max_tokens: 500)
+- **OpenAI Direct (nieuw):** Zelfde preset als `genereer-samenvatting.js` (temperature: 0.35, max_completion_tokens: 500)
 
 ---
 
@@ -382,7 +382,7 @@ OPENAI_MODEL=gpt-5  (standaard)
 ### Directe OpenAI API:
 1. **Model parameter:** Echte model naam zoals `'gpt-5'`, `'gpt-4o'`, etc.
 2. **Base URL:** Standaard `https://api.openai.com/v1`
-3. **max_tokens:** Gebruikt deze parameter (niet `max_completion_tokens`)
+3. **max_completion_tokens:** Gebruikt deze parameter (vereist voor GPT-5, niet `max_tokens`)
 4. **Alle modellen:** Toegang tot alle beschikbare OpenAI modellen
 
 ---
@@ -396,7 +396,7 @@ OPENAI_MODEL=gpt-5  (standaard)
    - `'gpt-4o'` (Azure deployment) → `'gpt-4o'` (OpenAI model) ✅
    - `'gpt-4.1'` (Azure deployment) → `'gpt-4.1'` (OpenAI model) ✅
    - `'gpt-5'` (Azure deployment) → `'gpt-5'` (OpenAI model) ✅ (maar Azure heeft dit niet!)
-3. Vervang `max_completion_tokens` door `max_tokens` (of laat het zoals het is, wordt automatisch geconverteerd)
+3. `max_completion_tokens` blijft hetzelfde (zowel Azure als OpenAI Direct gebruiken dit)
 4. Zorg dat `OPENAI_API_KEY` is ingesteld
 
 **⚠️ WAARSCHUWING:**

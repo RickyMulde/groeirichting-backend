@@ -154,7 +154,7 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.35, // 0.3-0.4 range, lager dan bij gesprekken voor stabiele samenvatting
       top_p: 0.9,
-      max_tokens: 500, // 400-600 range, 6 zinnen + JSON is ruimschoots genoeg
+      max_completion_tokens: 500, // 400-600 range, 6 zinnen + JSON is ruimschoots genoeg
       frequency_penalty: 0.15, // 0.1-0.2 range
       presence_penalty: 0.15, // 0.1-0.2 range
       response_format: { type: 'json_object' }, // Garandeert geldige JSON
