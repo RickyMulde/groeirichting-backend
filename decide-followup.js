@@ -90,35 +90,57 @@ router.post('/', async (req, res) => {
     });
 
     if (!completion.success) {
+      console.error('[decide-followup] OpenAI completion failed:', completion.error);
+      console.error('[decide-followup] Completion details:', JSON.stringify(completion.details, null, 2));
       throw new Error(`OpenAI Direct fout: ${completion.error}`)
     }
 
+    // Check of response data bestaat
+    if (!completion.data || !completion.data.choices || !completion.data.choices[0]) {
+      console.error('[decide-followup] Invalid completion structure:', JSON.stringify(completion, null, 2));
+      throw new Error('OpenAI Direct gaf een ongeldige response structuur terug');
+    }
 
-    const raw = completion.data.choices[0].message.content?.trim() || '';
+    const raw = completion.data.choices[0].message?.content?.trim() || '';
     
     // Check voor lege response
     if (!raw || raw.length === 0) {
+        console.error('[decide-followup] Empty content received');
+        console.error('[decide-followup] Full completion:', JSON.stringify(completion.data, null, 2));
         throw new Error('OpenAI Direct gaf een lege response terug');
     }
+    
+    console.log('[decide-followup] ✅ Received response, length:', raw.length);
     
     // Robuuster maken voor het geval de API geen JSON teruggeeft
     let parsed;
     try {
         const clean = raw.startsWith('```') ? raw.replace(/```(?:json)?/g, '').replace(/```/g, '').trim() : raw;
         parsed = JSON.parse(clean);
+        console.log('[decide-followup] ✅ JSON parsed successfully');
     } catch (parseError) {
+        console.error('[decide-followup] ❌ JSON parsing failed:', parseError.message);
+        console.error('[decide-followup] Raw response (first 500 chars):', raw.substring(0, 500));
         // Geen fallback - laat de echte error door
         throw new Error(`JSON parsing failed: ${parseError.message}. Raw response: ${raw.substring(0, 200)}...`);
     }
     
     // Na JSON parsing, valideer verplichte velden
     if (!parsed.hasOwnProperty('doorgaan') || typeof parsed.doorgaan !== 'boolean') {
+        console.error('[decide-followup] ❌ Invalid response format - missing or invalid doorgaan field');
+        console.error('[decide-followup] Parsed response:', JSON.stringify(parsed, null, 2));
         throw new Error(`Invalid response format: missing or invalid 'doorgaan' field. Response: ${JSON.stringify(parsed)}`);
     }
     
+    console.log('[decide-followup] ✅ Successfully processed, returning response');
     return res.json(parsed);
 
   } catch (err) {
+    console.error('[decide-followup] ❌ Error:', err.message);
+    console.error('[decide-followup] Stack:', err.stack);
+    if (err.details) {
+      console.error('[decide-followup] Details:', JSON.stringify(err.details, null, 2));
+    }
     return res.status(500).json({ error: 'GPT-verwerking mislukt', details: err.message });
   }
 });
