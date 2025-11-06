@@ -1,6 +1,8 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
-const azureClient = require('./utils/azureOpenAI')
+// 🔄 MIGRATIE: Azure → OpenAI Direct
+// Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-5-mini', temperature 1, max_completion_tokens 15000
+const openaiClient = require('./utils/openaiClient')
 const { authMiddleware, assertTeamInOrg } = require('./middleware/auth')
 
 const router = express.Router()
@@ -171,16 +173,21 @@ Antwoord in JSON-formaat:
   }
 }`
 
-    // 5. Stuur naar Azure OpenAI
-    const completion = await azureClient.createCompletion({
-      model: 'gpt-5-mini', // Expliciet GPT-5-mini gebruiken
+    // 5. Stuur naar OpenAI Direct
+    const completion = await openaiClient.createCompletion({
+      model: 'gpt-5-mini', // Kostenbewust: zware prompts (veel gesprekken)
       messages: [{ role: 'user', content: prompt }],
-      temperature: 1,
-      max_completion_tokens: 15000  // Verhoogd voor organisatie samenvatting
+      temperature: 0.4, // 0.35-0.45 range, rustige, consistente analyses
+      top_p: 0.9,
+      max_tokens: 1500, // 1200-1800 range, genoeg voor lange samenvatting + adviezen
+      frequency_penalty: 0.15, // 0.1-0.2 range
+      presence_penalty: 0.15, // 0.1-0.2 range
+      response_format: { type: 'json_object' }, // Garandeert geldige JSON
+      stream: false
     })
 
     if (!completion.success) {
-      throw new Error(`Azure OpenAI fout: ${completion.error}`)
+      throw new Error(`OpenAI Direct fout: ${completion.error}`)
     }
 
     const gptResponse = completion.data.choices[0].message.content

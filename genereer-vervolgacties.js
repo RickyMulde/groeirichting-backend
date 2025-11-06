@@ -1,6 +1,8 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
-const azureClient = require('./utils/azureOpenAI')
+// 🔄 MIGRATIE: Azure → OpenAI Direct
+// Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4o', temperature 1, max_completion_tokens 4000
+const openaiClient = require('./utils/openaiClient')
 const { authMiddleware } = require('./middleware/auth')
 
 const router = express.Router()
@@ -160,16 +162,21 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
   "vervolgacties_toelichting": "Korte uitleg waarom deze acties passend zijn voor de werknemer"
 }`
 
-    // ✅ 4. Stuur prompt naar Azure OpenAI
-    const completion = await azureClient.createCompletion({
-      model: 'gpt-4o', // Gebruik GPT-4.1 via gpt-4o deployment
+    // ✅ 4. Stuur prompt naar OpenAI Direct
+    const completion = await openaiClient.createCompletion({
+      model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
       messages: [{ role: 'user', content: prompt }],
-      temperature: 1,
-      max_completion_tokens: 4000  // Minder tokens nodig voor alleen vervolgacties
+      temperature: 0.55, // 0.5-0.6 range, iets warmer dan samenvatting voor creatieve acties
+      top_p: 0.9,
+      max_tokens: 700, // 600-800 range, 3 acties + toelichting in JSON
+      frequency_penalty: 0.25, // 0.2-0.3 range, voorkomt dat alle acties hetzelfde klinken
+      presence_penalty: 0.35, // 0.3-0.4 range, stimuleert nét andere invalshoeken
+      response_format: { type: 'json_object' }, // Garandeert geldige JSON
+      stream: false
     })
 
     if (!completion.success) {
-      throw new Error(`Azure OpenAI fout: ${completion.error}`)
+      throw new Error(`OpenAI Direct fout: ${completion.error}`)
     }
 
     const gptResponse = completion.data.choices[0].message.content

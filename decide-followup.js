@@ -1,7 +1,9 @@
 // 📁 routes/decide-followup.js
 const express = require('express');
 const router = express.Router();
-const azureClient = require('./utils/azureOpenAI');
+// 🔄 MIGRATIE: Azure → OpenAI Direct
+// Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4.1', temperature 1, max_completion_tokens 4000
+const openaiClient = require('./utils/openaiClient');
 const dotenv = require('dotenv');
 
 dotenv.config({ path: '.env.test' });
@@ -35,12 +37,17 @@ router.post('/', async (req, res) => {
   ).join('\n\n');
 
 
-  // 2. Azure OpenAI call met de volledige prompt
+  // 2. OpenAI Direct call met de volledige prompt
   try {
-        const completion = await azureClient.createCompletion({
-          model: 'gpt-4.1', // Gebruik GPT-4.1 voor betere instructie-naleving
-          temperature: 1,
-          max_completion_tokens: 4000,
+        const completion = await openaiClient.createCompletion({
+          model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
+          temperature: 0.5, // Geoptimaliseerd voor stabiele JSON + consistente gesprekslogica
+          top_p: 0.9,
+          max_tokens: 500, // 400-600 range, 500 is goede middenweg
+          frequency_penalty: 0.2,
+          presence_penalty: 0.3,
+          response_format: { type: 'json_object' }, // Garandeert geldige JSON
+          stream: false,
       messages: [
         {
           role: 'system',
@@ -84,7 +91,7 @@ router.post('/', async (req, res) => {
     });
 
     if (!completion.success) {
-      throw new Error(`Azure OpenAI fout: ${completion.error}`)
+      throw new Error(`OpenAI Direct fout: ${completion.error}`)
     }
 
 
@@ -92,7 +99,7 @@ router.post('/', async (req, res) => {
     
     // Check voor lege response
     if (!raw || raw.length === 0) {
-        throw new Error('Azure OpenAI gaf een lege response terug');
+        throw new Error('OpenAI Direct gaf een lege response terug');
     }
     
     // Robuuster maken voor het geval de API geen JSON teruggeeft

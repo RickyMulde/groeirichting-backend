@@ -1,6 +1,8 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
-const azureClient = require('./utils/azureOpenAI')
+// 🔄 MIGRATIE: Azure → OpenAI Direct
+// Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4o', temperature 0.3, max_completion_tokens 4000
+const openaiClient = require('./utils/openaiClient')
 const { authMiddleware } = require('./middleware/auth')
 
 const router = express.Router()
@@ -72,7 +74,7 @@ router.post('/', async (req, res) => {
     const { data: alleThemas, error: themaError } = await supabase
       .from('themes')
       .select('id')
-      .eq('werkgever_id', werknemer.employer_id)
+      .eq('werkgever_id', employerId)
 
     if (themaError) throw themaError
 
@@ -217,17 +219,22 @@ Zorg dat:
 - Geen speciale karakters die JSON parsing kunnen verstoren
 - Geen markdown formatting`
 
-    // 6️⃣ Stuur naar Azure OpenAI
-    console.log('🤖 Stuur prompt naar Azure OpenAI...')
-    const completion = await azureClient.createCompletion({
-      model: 'gpt-4o', // Gebruik GPT-4.1 via gpt-4o deployment
+    // 6️⃣ Stuur naar OpenAI Direct
+    console.log('🤖 Stuur prompt naar OpenAI Direct...')
+    const completion = await openaiClient.createCompletion({
+      model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3, // Lagere temperature voor meer consistente JSON output
-      max_completion_tokens: 4000  // Voldoende voor top-actions
+      temperature: 0.5, // Betere balans dan 0.3 voor coachende adviezen
+      top_p: 0.9,
+      max_tokens: 1050, // 900-1200 range, 3 acties + uitgebreide toelichting
+      frequency_penalty: 0.25, // 0.2-0.3 range
+      presence_penalty: 0.4, // 0.3-0.5 range, stimuleert dat elke actie echt iets anders raakt
+      response_format: { type: 'json_object' }, // Garandeert geldige JSON
+      stream: false
     })
 
     if (!completion.success) {
-      throw new Error(`Azure OpenAI fout: ${completion.error}`)
+      throw new Error(`OpenAI Direct fout: ${completion.error}`)
     }
 
     const gptResponse = completion.data.choices[0].message.content
