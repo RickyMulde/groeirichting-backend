@@ -31,24 +31,25 @@ Azure blijft werken met:
 ### 1. decide-followup.js
 
 **Huidige situatie:**
-- Client: `azureClient` ✅ (al correct)
-- Model: `'gpt-5'` ❌ (werkt niet met Azure)
+- Client: `openaiClient` ✅ (gebruikt OpenAI Direct)
+- Model: `'gpt-5-mini'` ✅ (OpenAI Direct)
 
 **Aan te passen:**
 ```javascript
-// VERVANG:
-const completion = await azureClient.createCompletion({
-  model: 'gpt-5', // ❌ Werkt niet met Azure
-  temperature: 1,
-  max_completion_tokens: 4000,
+// VERVANG (OpenAI Direct):
+const completion = await openaiClient.createCompletion({
+  model: 'gpt-5-mini', // OpenAI Direct
+  max_completion_tokens: 2500,
+  service_tier: 'default',
+  response_format: { type: 'json_object' },
   messages: [...]
 })
 
-// DOOR:
+// DOOR (Azure):
 const completion = await azureClient.createCompletion({
   model: 'gpt-4.1', // ✅ Azure deployment naam
   temperature: 1,
-  max_completion_tokens: 4000,
+  max_completion_tokens: 2500,
   messages: [...]
 })
 ```
@@ -61,8 +62,9 @@ const completion = await azureClient.createCompletion({
 
 **Parameters:**
 - Model: `'gpt-4.1'`
-- Temperature: `1`
-- Max tokens: `4000` (als `max_completion_tokens`)
+- Temperature: `1` (Azure gebruikt huidige instellingen)
+- Max tokens: `2500` (als `max_completion_tokens`, behouden van OpenAI Direct)
+- **Let op:** Azure ondersteunt mogelijk geen `response_format` of `service_tier` - deze worden weggelaten bij migratie naar Azure
 
 ---
 
@@ -279,7 +281,7 @@ AZURE_OPENAI_API_VERSION_GPT4O=2024-12-01-preview
 
 | Bestand | Huidig Model | Azure Model | Deployment | Endpoint Config |
 |---------|--------------|-------------|------------|-----------------|
-| `decide-followup.js` | `'gpt-5'` ❌ | `'gpt-4.1'` ✅ | `gpt-4.1` | `AZURE_OPENAI_ENDPOINT_GPT4O` (Sweden) |
+| `decide-followup.js` | `'gpt-5-mini'` ✅ (OpenAI Direct) | `'gpt-4.1'` ✅ | `gpt-4.1` | `AZURE_OPENAI_ENDPOINT_GPT4O` (Sweden) |
 | `genereer-samenvatting.js` | `'gpt-5'` ❌ | `'gpt-4o'` ✅ | `gpt-4o` | `AZURE_OPENAI_ENDPOINT_GPT4O` |
 | `genereer-vervolgacties.js` | `'gpt-5'` ❌ | `'gpt-4o'` ✅ | `gpt-4o` | `AZURE_OPENAI_ENDPOINT_GPT4O` |
 | `generate-top-actions.js` | `'gpt-5'` ❌ | `'gpt-4o'` ✅ | `gpt-4o` | `AZURE_OPENAI_ENDPOINT_GPT4O` |
@@ -295,7 +297,7 @@ AZURE_OPENAI_API_VERSION_GPT4O=2024-12-01-preview
    - Let op: GPT-4o en GPT-4.1 delen dezelfde variable namen (`_GPT4O`)
 
 2. **Pas bestanden aan:**
-   - `decide-followup.js`: `'gpt-5'` → `'gpt-4.1'`
+   - `decide-followup.js`: Vervang `openaiClient` door `azureClient`, `'gpt-5-mini'` → `'gpt-4.1'`, voeg `temperature: 1` toe, verwijder `service_tier` en `response_format`
    - `genereer-samenvatting.js`: `'gpt-5'` → `'gpt-4o'`
    - `genereer-vervolgacties.js`: `'gpt-5'` → `'gpt-4o'`
    - `generate-top-actions.js`: `'gpt-5'` → `'gpt-4o'`

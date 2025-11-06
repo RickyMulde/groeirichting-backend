@@ -40,13 +40,9 @@ router.post('/', async (req, res) => {
   // 2. OpenAI Direct call met de volledige prompt
   try {
         const completion = await openaiClient.createCompletion({
-          model: 'gpt-4o', // Gebruik GPT-4o (rechtstreeks naar OpenAI)
-          temperature: 0.45,
-          top_p: 0.9,
+          model: 'gpt-5-mini', // Gebruik GPT-5-mini (rechtstreeks naar OpenAI)
           max_completion_tokens: 2500,
-          frequency_penalty: 0.2,
-          presence_penalty: 0.3,
-          service_tier: 'priority',
+          service_tier: 'default',
           response_format: { type: 'json_object' }, // Garandeert geldige JSON
           stream: false,
       messages: [

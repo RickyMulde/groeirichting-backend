@@ -85,8 +85,9 @@ AZURE_OPENAI_API_VERSION_GPT4O=2024-12-01-preview
 - `presence_penalty`: Optioneel (-2.0 tot 2.0) - Penalty voor nieuwe tokens
 - `stop`: Optioneel - Array van strings waar het model moet stoppen
 
-**Huidig gebruik:**
-- `decide-followup.js`: `model: 'gpt-4.1'`, `temperature: 1`, `max_completion_tokens: 4000`
+**Huidig gebruik (alleen bij Azure):**
+- `decide-followup.js`: `model: 'gpt-4.1'`, `temperature: 1`, `max_completion_tokens: 4000` (alleen bij migratie naar Azure)
+- **Let op:** Momenteel gebruikt `decide-followup.js` OpenAI Direct met `gpt-5-mini` (zie preset hieronder)
 
 **⚠️ BELANGRIJK:** 
 - Bij Azure wordt de `model` parameter gebruikt om te bepalen welke deployment/client te gebruiken
@@ -196,15 +197,27 @@ OPENAI_MODEL=gpt-5  (standaard)
 }
 ```
 
+**Aanbevolen preset (GPT-5-mini - HUIDIG):**
+```javascript
+{
+  model: "gpt-5-mini",  // Kostenbewust en snel
+  max_completion_tokens: 2500,  // Verhoogd voor lange gespreksgeschiedenis
+  service_tier: "default",
+  response_format: { type: "json_object" },
+  stream: false
+}
+```
+
 **Aanbevolen preset (GPT-4o - voor volledige controle):**
 ```javascript
 {
   model: "gpt-4o",  // Volledige parameter ondersteuning
-  temperature: 0.5,  // Geoptimaliseerd voor stabiele JSON + consistente gesprekslogica
+  temperature: 0.45,  // Geoptimaliseerd voor stabiele JSON + consistente gesprekslogica
   top_p: 0.9,
-  max_completion_tokens: 500,  // 400-600 range, 500 is goede middenweg
+  max_completion_tokens: 2500,  // Verhoogd voor lange gespreksgeschiedenis
   frequency_penalty: 0.2,
   presence_penalty: 0.3,
+  service_tier: "priority",  // Voor snellere response tijden
   response_format: { type: "json_object" },
   stream: false
 }
@@ -215,7 +228,7 @@ OPENAI_MODEL=gpt-5  (standaard)
 - `temperature: 1`
 - `max_completion_tokens: 4000`
 
-**Belangrijk:** GPT-5 ondersteunt alleen `temperature: 1`. Voor meer controle, gebruik `gpt-4o` met `temperature: 0.5`.
+**Belangrijk:** GPT-5-mini ondersteunt alleen `temperature: 1` (automatisch geforceerd door openaiClient) en ondersteunt geen `top_p`, `frequency_penalty`, of `presence_penalty`. Huidige configuratie gebruikt `gpt-5-mini` met `service_tier: 'default'` voor kostenbewuste en snelle responses.
 
 ---
 
@@ -395,7 +408,7 @@ OPENAI_MODEL=gpt-5  (standaard)
 
 ### decide-followup.js
 - **Azure (origineel):** `model: 'gpt-4.1'`, `temperature: 1`, `max_completion_tokens: 4000`
-- **OpenAI Direct (nieuw):** Zie preset hierboven (temperature: 0.5, max_completion_tokens: 500)
+- **OpenAI Direct (huidig):** `model: 'gpt-5-mini'`, `max_completion_tokens: 2500`, `service_tier: 'default'`, `response_format: { type: 'json_object' }`
 
 ### genereer-samenvatting.js
 - **Azure (origineel):** `model: 'gpt-4o'`, `temperature: 1`, `max_completion_tokens: 2000`
