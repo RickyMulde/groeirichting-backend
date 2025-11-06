@@ -347,7 +347,13 @@ AZURE_OPENAI_API_VERSION_GPT4O=2024-12-01-preview
 - Frequency/presence penalty: Meestal niet gebruikt
 - Top_p: Meestal niet gebruikt
 
-### OpenAI Direct (nieuwe geoptimaliseerde presets):
+### OpenAI Direct (GPT-5 - huidig):
+- Temperature: **Alleen 1** (GPT-5 preview ondersteunt geen andere waarden)
+- Max completion tokens: Geoptimaliseerd per taaktype (500-1500)
+- Response format: `{ type: "json_object" }` (aanbevolen)
+- ❌ **Niet ondersteund door GPT-5:** `top_p`, `frequency_penalty`, `presence_penalty`
+
+### OpenAI Direct (GPT-4o - voor volledige controle):
 - Temperature: Geoptimaliseerd per taaktype (0.35-0.55)
 - Max completion tokens: Geoptimaliseerd per taaktype (500-1500)
 - Response format: `{ type: "json_object" }` (aanbevolen)

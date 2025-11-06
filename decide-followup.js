@@ -41,11 +41,10 @@ router.post('/', async (req, res) => {
   try {
         const completion = await openaiClient.createCompletion({
           model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
-          temperature: 1, // TEST: tijdelijk op 1 om te testen of model werkt
-          top_p: 0.9,
+          // GPT-5 ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
+          // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
+          // Voor gpt-4o zouden we gebruiken: temperature: 0.5, top_p: 0.9, frequency_penalty: 0.2, presence_penalty: 0.3
           max_completion_tokens: 500, // 400-600 range, 500 is goede middenweg
-          frequency_penalty: 0.2,
-          presence_penalty: 0.3,
           response_format: { type: 'json_object' }, // Garandeert geldige JSON
           stream: false,
       messages: [

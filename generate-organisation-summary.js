@@ -177,11 +177,10 @@ Antwoord in JSON-formaat:
     const completion = await openaiClient.createCompletion({
       model: 'gpt-5-mini', // Kostenbewust: zware prompts (veel gesprekken)
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.4, // 0.35-0.45 range, rustige, consistente analyses
-      top_p: 0.9,
+      // GPT-5-mini ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
+      // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
+      // Voor gpt-4o zouden we gebruiken: temperature: 0.4, top_p: 0.9, frequency_penalty: 0.15, presence_penalty: 0.15
       max_completion_tokens: 1500, // 1200-1800 range, genoeg voor lange samenvatting + adviezen
-      frequency_penalty: 0.15, // 0.1-0.2 range
-      presence_penalty: 0.15, // 0.1-0.2 range
       response_format: { type: 'json_object' }, // Garandeert geldige JSON
       stream: false
     })

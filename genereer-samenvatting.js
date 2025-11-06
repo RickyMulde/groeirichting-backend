@@ -155,11 +155,10 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
     const completion = await openaiClient.createCompletion({
       model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.35, // 0.3-0.4 range, lager dan bij gesprekken voor stabiele samenvatting
-      top_p: 0.9,
+      // GPT-5 ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
+      // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
+      // Voor gpt-4o zouden we gebruiken: temperature: 0.35, top_p: 0.9, frequency_penalty: 0.15, presence_penalty: 0.15
       max_completion_tokens: 500, // 400-600 range, 6 zinnen + JSON is ruimschoots genoeg
-      frequency_penalty: 0.15, // 0.1-0.2 range
-      presence_penalty: 0.15, // 0.1-0.2 range
       response_format: { type: 'json_object' }, // Garandeert geldige JSON
       stream: false
     })

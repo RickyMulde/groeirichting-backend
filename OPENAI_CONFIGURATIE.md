@@ -112,8 +112,16 @@ OPENAI_MODEL=gpt-5  (standaard)
 
 ### Algemene Aanbevolen Instellingen (OpenAI Direct)
 
-**Standaard preset voor OpenAI Direct:**
-- `model`: `"gpt-5"` - Nieuwste stabiele versie
+**Standaard preset voor OpenAI Direct (GPT-5):**
+- `model`: `"gpt-5"` - Nieuwste preview versie
+- `temperature`: `1` - **Alleen 1 ondersteund** (geen andere waarden mogelijk)
+- `max_completion_tokens`: `700–1000` - Ruim genoeg voor reflectie + JSON-output
+- `response_format`: `{ "type": "json_object" }` - Nieuw aanbevolen (garandeert geldige JSON)
+- `stream`: `false` - Tenzij je tokens real-time wilt tonen
+- ❌ **Niet ondersteund door GPT-5:** `top_p`, `frequency_penalty`, `presence_penalty`, `temperature` andere waarden dan 1
+
+**Standaard preset voor OpenAI Direct (GPT-4o - voor volledige controle):**
+- `model`: `"gpt-4o"` - Volledige parameter ondersteuning
 - `temperature`: `0.4–0.6` - Licht creatief, maar voorspelbaar; voorkomt overdrijving in empathie
 - `top_p`: `0.9` - Standaard voor iets natuurlijke variatie
 - `max_completion_tokens`: `700–1000` - Ruim genoeg voor reflectie + JSON-output
@@ -162,15 +170,37 @@ OPENAI_MODEL=gpt-5  (standaard)
 
 ## 📊 TAAKTYPE-SPECIFIEKE PRESETS (OPENAI DIRECT)
 
+### ⚠️ BELANGRIJK: GPT-5 BEperkingen
+
+**GPT-5 is een preview model met beperkte parameter ondersteuning:**
+- ✅ Ondersteunt: `temperature: 1` (alleen 1, geen andere waarden), `max_completion_tokens`, `response_format`, `stream`
+- ❌ Ondersteunt NIET: `temperature: 0.5` of andere waarden, `top_p`, `frequency_penalty`, `presence_penalty`
+
+**Voor volledige parameter controle, gebruik `gpt-4o` in plaats van `gpt-5`.**
+
+---
+
 ### 1️⃣ Gesprekken voeren: decide-followup.js
 
 **Doel:** Natuurlijke coachende reactie + 0 of 1 vervolgvraag, in strikt JSON.
 
-**Aanbevolen preset (OpenAI Direct):**
+**Aanbevolen preset (GPT-5 - huidig):**
 ```javascript
 {
   model: "gpt-5",  // Of "gpt-5-2025-08-07" voor specifieke versie
-  temperature: 0.5,
+  // temperature wordt automatisch geforceerd naar 1 door openaiClient
+  // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten
+  max_completion_tokens: 500,  // 400-600 range, 500 is goede middenweg
+  response_format: { type: "json_object" },
+  stream: false
+}
+```
+
+**Aanbevolen preset (GPT-4o - voor volledige controle):**
+```javascript
+{
+  model: "gpt-4o",  // Volledige parameter ondersteuning
+  temperature: 0.5,  // Geoptimaliseerd voor stabiele JSON + consistente gesprekslogica
   top_p: 0.9,
   max_completion_tokens: 500,  // 400-600 range, 500 is goede middenweg
   frequency_penalty: 0.2,
@@ -185,7 +215,7 @@ OPENAI_MODEL=gpt-5  (standaard)
 - `temperature: 1`
 - `max_completion_tokens: 4000`
 
-**Belangrijk:** Temperature 1 is te hoog voor stabiele JSON + consistente gesprekslogica. Bij OpenAI Direct gebruiken we 0.5.
+**Belangrijk:** GPT-5 ondersteunt alleen `temperature: 1`. Voor meer controle, gebruik `gpt-4o` met `temperature: 0.5`.
 
 ---
 
@@ -197,11 +227,23 @@ OPENAI_MODEL=gpt-5  (standaard)
 
 **Doel:** Korte samenvatting in 2e persoon + score 1–10 → stabiel en voorspelbaar, weinig creatief.
 
-**Aanbevolen preset (OpenAI Direct):**
+**Aanbevolen preset (GPT-5 - huidig):**
 ```javascript
 {
   model: "gpt-5",  // Of "gpt-5-2025-08-07" voor specifieke versie
-  temperature: 0.35,  // 0.3-0.4 range, lager dan bij gesprekken
+  // temperature wordt automatisch geforceerd naar 1 door openaiClient
+  // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten
+  max_completion_tokens: 500,  // 400-600 range, 6 zinnen + JSON is ruimschoots genoeg
+  response_format: { type: "json_object" },
+  stream: false
+}
+```
+
+**Aanbevolen preset (GPT-4o - voor volledige controle):**
+```javascript
+{
+  model: "gpt-4o",  // Volledige parameter ondersteuning
+  temperature: 0.35,  // 0.3-0.4 range, lager dan bij gesprekken voor stabiele samenvatting
   top_p: 0.9,
   max_completion_tokens: 500,  // 400-600 range, 6 zinnen + JSON is ruimschoots genoeg
   frequency_penalty: 0.15,  // 0.1-0.2 range
@@ -226,11 +268,23 @@ OPENAI_MODEL=gpt-5  (standaard)
 
 **Doel:** 3 concrete acties + toelichting, gericht op de werknemer, nog steeds in JSON. Iets meer creativiteit dan bij samenvatting, maar nog steeds betrouwbare structuur.
 
-**Aanbevolen preset (OpenAI Direct):**
+**Aanbevolen preset (GPT-5 - huidig):**
 ```javascript
 {
   model: "gpt-5",  // Of "gpt-5-2025-08-07" voor specifieke versie
-  temperature: 0.55,  // 0.5-0.6 range, iets warmer dan samenvatting
+  // temperature wordt automatisch geforceerd naar 1 door openaiClient
+  // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten
+  max_completion_tokens: 700,  // 600-800 range, 3 acties + toelichting in JSON
+  response_format: { type: "json_object" },
+  stream: false
+}
+```
+
+**Aanbevolen preset (GPT-4o - voor volledige controle):**
+```javascript
+{
+  model: "gpt-4o",  // Volledige parameter ondersteuning
+  temperature: 0.55,  // 0.5-0.6 range, iets warmer dan samenvatting voor creatieve acties
   top_p: 0.9,
   max_completion_tokens: 700,  // 600-800 range, 3 acties + toelichting in JSON
   frequency_penalty: 0.25,  // 0.2-0.3 range, voorkomt dat alle acties hetzelfde klinken
@@ -245,7 +299,7 @@ OPENAI_MODEL=gpt-5  (standaard)
 - `temperature: 1`
 - `max_completion_tokens: 4000`
 
-**Verschil:** Samenvatting is kouder (0.35), vervolgacties zijn warmer (0.55).
+**Verschil:** Met GPT-4o: samenvatting is kouder (0.35), vervolgacties zijn warmer (0.55).
 
 ---
 
@@ -255,10 +309,22 @@ OPENAI_MODEL=gpt-5  (standaard)
 
 **Doel:** Top 3 vervolgacties over alle thema's van één periode, met prioriteit en toelichting → strategische, samenhangende set acties.
 
-**Aanbevolen preset (OpenAI Direct):**
+**Aanbevolen preset (GPT-5 - huidig):**
 ```javascript
 {
   model: "gpt-5",  // Of "gpt-5-2025-08-07" voor specifieke versie
+  // temperature wordt automatisch geforceerd naar 1 door openaiClient
+  // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten
+  max_completion_tokens: 1050,  // 900-1200 range, 3 acties + uitgebreide toelichting
+  response_format: { type: "json_object" },
+  stream: false
+}
+```
+
+**Aanbevolen preset (GPT-4o - voor volledige controle):**
+```javascript
+{
+  model: "gpt-4o",  // Volledige parameter ondersteuning
   temperature: 0.5,  // Betere balans dan 0.3 voor coachende adviezen
   top_p: 0.9,
   max_completion_tokens: 1050,  // 900-1200 range, 3 acties + uitgebreide toelichting
@@ -274,7 +340,7 @@ OPENAI_MODEL=gpt-5  (standaard)
 - `temperature: 0.3`
 - `max_completion_tokens: 4000`
 
-**Belangrijk:** Temperature 0.3 kan acties wat "vlak" maken. 0.5 is vaak een betere balans voor coachende adviezen.
+**Belangrijk:** Met GPT-4o: temperature 0.3 kan acties wat "vlak" maken. 0.5 is vaak een betere balans voor coachende adviezen.
 
 ---
 
@@ -284,11 +350,23 @@ OPENAI_MODEL=gpt-5  (standaard)
 
 **Doel:** Op basis van alle gesprekken binnen organisatie of team: samenvatting, verbeteradvies, signaalwoorden, gpt_adviezen (prioriteiten). Dit is zwaarder qua context, maar de output moet concreet én AVG-proof veralgemeniseerd zijn.
 
-**Aanbevolen preset (OpenAI Direct):**
+**Aanbevolen preset (GPT-5-mini - huidig):**
 ```javascript
 {
   model: "gpt-5-mini",  // Kostenbewust: zware prompts (veel gesprekken)
   // Of "gpt-5-mini-2025-08-07" voor specifieke versie
+  // temperature wordt automatisch geforceerd naar 1 door openaiClient
+  // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten
+  max_completion_tokens: 1500,  // 1200-1800 range, genoeg voor lange samenvatting + adviezen
+  response_format: { type: "json_object" },
+  stream: false
+}
+```
+
+**Aanbevolen preset (GPT-4o - voor volledige controle):**
+```javascript
+{
+  model: "gpt-4o",  // Volledige parameter ondersteuning (of gpt-4o-mini voor kostenbesparing)
   temperature: 0.4,  // 0.35-0.45 range, rustige, consistente analyses
   top_p: 0.9,
   max_completion_tokens: 1500,  // 1200-1800 range, genoeg voor lange samenvatting + adviezen

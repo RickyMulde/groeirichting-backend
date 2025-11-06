@@ -127,24 +127,14 @@ ${scoreInstructiesTekst}
 
 Opdracht:
 1. Vat het gesprek samen in maximaal 6 zinnen
+   - Schrijf de samenvatting in de TWEEDE PERSOON (jij, je, jouw) in plaats van de derde persoon (de werknemer, hij/zij)
+   - Bijvoorbeeld: "Jij bent pas begonnen..." in plaats van "De werknemer is pas begonnen..."
+   - Maak het persoonlijk en direct gericht aan de werknemer
 2. Geef een score van 1-10 op basis van de score instructies
-3. Stel 3-5 concrete, uitvoerbare vervolgacties voor die:
-   - Specifiek voor de WERKNEMER zijn (niet voor de werkgever)
-   - Acties zijn die de werknemer ZELF kan ondernemen
-   - Passen bij het thema en de gespreksinhoud
-   - Specifiek en praktisch zijn
-   - Vermijd algemene adviezen
-   - NIET gericht op wat de werkgever moet doen
-
-Voorbeelden van goede vervolgacties voor werknemers:
-- "Plan een gesprek met je leidinggevende over..."
-- "Zoek een workshop over..."
-- "Maak een actieplan voor..."
-- "Stel jezelf een doel om..."
 
 Antwoord in JSON-formaat (zonder markdown code blocks):
 {
-  "samenvatting": "Vat het gesprek samen in maximaal 6 zinnen",
+  "samenvatting": "Vat het gesprek samen in maximaal 6 zinnen in de tweede persoon (jij, je, jouw)",
   "score": 7
 }`
 
@@ -152,11 +142,10 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
     const completion = await openaiClient.createCompletion({
       model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.35, // 0.3-0.4 range, lager dan bij gesprekken voor stabiele samenvatting
-      top_p: 0.9,
-      max_completion_tokens: 500, // 400-600 range, 6 zinnen + JSON is ruimschoots genoeg
-      frequency_penalty: 0.15, // 0.1-0.2 range
-      presence_penalty: 0.15, // 0.1-0.2 range
+      // GPT-5 ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
+      // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
+      // Voor gpt-4o zouden we gebruiken: temperature: 0.35, top_p: 0.9, frequency_penalty: 0.15, presence_penalty: 0.15
+      max_completion_tokens: 500, // 400-600 range, 6 zinnen + score in JSON is ruimschoots genoeg (geen vervolgacties nodig)
       response_format: { type: 'json_object' }, // Garandeert geldige JSON
       stream: false
     })
