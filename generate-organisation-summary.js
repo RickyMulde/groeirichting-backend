@@ -180,7 +180,10 @@ Antwoord in JSON-formaat:
       // GPT-5-mini ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
       // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
       // Voor gpt-4o zouden we gebruiken: temperature: 0.4, top_p: 0.9, frequency_penalty: 0.15, presence_penalty: 0.15
-      max_completion_tokens: 1500, // 1200-1800 range, genoeg voor lange samenvatting + adviezen
+      // BELANGRIJK: GPT-5 gebruikt "reasoning tokens" die meetellen in max_completion_tokens
+      // Bij veel gesprekken (organisatie/team analyse) gebruikt GPT-5 veel reasoning tokens
+      // Verhoogd naar 4000 om ruimte te geven voor reasoning (2000-2500) + uitgebreide output (1000-1500)
+      max_completion_tokens: 4000, // Verhoogd van 1500 naar 4000 voor GPT-5 reasoning tokens bij veel gesprekken
       response_format: { type: 'json_object' }, // Garandeert geldige JSON
       stream: false
     })

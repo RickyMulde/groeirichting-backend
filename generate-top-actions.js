@@ -227,7 +227,10 @@ Zorg dat:
       // GPT-5 ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
       // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
       // Voor gpt-4o zouden we gebruiken: temperature: 0.5, top_p: 0.9, frequency_penalty: 0.25, presence_penalty: 0.4
-      max_completion_tokens: 1050, // 900-1200 range, 3 acties + uitgebreide toelichting
+      // BELANGRIJK: GPT-5 gebruikt "reasoning tokens" die meetellen in max_completion_tokens
+      // Bij meerdere gesprekken/thema's gebruikt GPT-5 veel reasoning tokens voor analyse
+      // Verhoogd naar 3000 om ruimte te geven voor reasoning (1500-2000) + uitgebreide output (800-1200)
+      max_completion_tokens: 3000, // Verhoogd van 1050 naar 3000 voor GPT-5 reasoning tokens bij meerdere gesprekken
       response_format: { type: 'json_object' }, // Garandeert geldige JSON
       stream: false
     })
