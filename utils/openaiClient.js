@@ -68,7 +68,19 @@ class DirectOpenAIClient {
         ...(maxCompletionTokens && { max_completion_tokens: maxCompletionTokens })
       }
 
-      // Voeg response_format toe als het is opgegeven
+      // Voeg optionele parameters toe als ze zijn opgegeven
+      if (options.top_p !== undefined) {
+        openaiOptions.top_p = options.top_p
+      }
+      if (options.frequency_penalty !== undefined) {
+        openaiOptions.frequency_penalty = options.frequency_penalty
+      }
+      if (options.presence_penalty !== undefined) {
+        openaiOptions.presence_penalty = options.presence_penalty
+      }
+      if (options.stream !== undefined) {
+        openaiOptions.stream = options.stream
+      }
       if (options.response_format) {
         openaiOptions.response_format = options.response_format
       }
