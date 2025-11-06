@@ -87,7 +87,9 @@ class DirectOpenAIClient {
       const openaiOptions = {
         model: model,
         messages: options.messages,
-        ...(maxCompletionTokens && { max_completion_tokens: maxCompletionTokens })
+        ...(maxCompletionTokens && { max_completion_tokens: maxCompletionTokens }),
+        // Priority tier voor snellere verwerking (2x duurder dan Standard)
+        service_tier: 'priority'
       }
 
       // Temperature: GPT-5 ondersteunt alleen temperature: 1
