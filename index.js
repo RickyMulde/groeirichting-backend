@@ -92,7 +92,7 @@ const generalLimiter = rateLimit({
 // Strenge limiter voor registratie endpoints
 const registrationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 uur
-  max: 5, // 5 registraties per uur per IP
+  max: 20, // 20 registraties per uur per IP
   message: {
     error: 'Te veel registratiepogingen, probeer het over een uur opnieuw.'
   },
