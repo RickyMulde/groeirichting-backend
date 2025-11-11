@@ -143,14 +143,17 @@ De acties moeten voldoen aan deze regels:
 - Specifiek en praktisch, geen algemene adviezen
 - Geen suggesties die primair bij de werkgever horen
 - Als het gesprek positief en in balans is: formuleer acties die helpen om dit vast te houden of te versterken
+- BELANGRIJK: Verwijs NIET naar specifieke organisatie-onderdelen zoals "HR-afdeling", "interne workshops" of andere resources, tenzij deze expliciet in de organisatie context worden genoemd. Gebruik generieke termen zoals "je leidinggevende" of "beschikbare ondersteuning" als dat relevant is.
 
 Voorbeelden van passende vervolgacties:
 - "Plan een gesprek met je leidinggevende over…"
-- "Zoek een workshop of training over…"
+- "Zoek online naar workshops of trainingen over…" (niet "interne workshops")
 - "Maak een concreet actieplan voor…"
 - "Stel jezelf als doel om in de komende weken…"
 - "Blijf de gezamenlijke takenlijst gebruiken om overzicht te behouden."
 - "Blijf na werktijd bewust offline, dat zorgt voor een goede balans."
+- "Onderzoek welke ondersteuning beschikbaar is binnen je organisatie voor…"
+- "Reflecteer wekelijks op je voortgang met…"
 
 Antwoord in JSON-formaat (zonder markdown code blocks):
 {
@@ -171,8 +174,8 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
       // Voor gpt-4o zouden we gebruiken: temperature: 0.55, top_p: 0.9, frequency_penalty: 0.25, presence_penalty: 0.35
       // BELANGRIJK: GPT-5 gebruikt "reasoning tokens" die meetellen in max_completion_tokens
       // Bij lange gespreksgeschiedenis gebruikt GPT-5 meer reasoning tokens
-      // Verhoogd naar 2500 om ruimte te geven voor reasoning (1000-1500) + output (500-1000)
-      max_completion_tokens: 2500, // Verhoogd van 700 naar 2500 voor GPT-5 reasoning tokens
+      // Verhoogd naar 5000 om ruimte te geven voor reasoning (2000-3000) + output (500-1000) bij lange prompts
+      max_completion_tokens: 5000, // Verhoogd van 2500 naar 5000 voor lange gespreksgeschiedenis
       response_format: { type: 'json_object' }, // Garandeert geldige JSON
       stream: false
     })

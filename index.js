@@ -81,7 +81,7 @@ app.use(express.json());
 // Algemene rate limiter voor alle requests
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minuten
-  max: 100, // 100 requests per 15 minuten per IP
+  max: 1000, // 1000 requests per 15 minuten per IP (verhoogd voor testen met meerdere werknemers)
   message: {
     error: 'Te veel requests van dit IP-adres, probeer het over 15 minuten opnieuw.'
   },

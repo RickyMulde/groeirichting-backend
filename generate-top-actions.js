@@ -183,6 +183,7 @@ Analyseer alle gesprekken en bepaal de TOP 3 vervolgacties die:
 - Zijn specifiek en praktisch (geen algemene adviezen)
 - Schrijf altijd in de tweede persoon ("jij/je/jouw")
 - Als de gesprekken positief en in balans zijn: formuleer acties die helpen om dit te behouden of verder te versterken (bijv. "Blijf…" of "Blijf ontwikkelen door…")
+- BELANGRIJK: Verwijs NIET naar specifieke organisatie-onderdelen zoals "HR-afdeling", "interne workshops" of andere resources, tenzij deze expliciet in de organisatie context worden genoemd. Gebruik generieke termen zoals "je leidinggevende" of "beschikbare ondersteuning" als dat relevant is.
 
 PRIORITEER op basis van:
 - Urgentie – wat moet jij als eerste oppakken?
