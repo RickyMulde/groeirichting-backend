@@ -182,92 +182,190 @@ router.post('/', async (req, res) => {
 
       // Check of alle thema's zijn afgerond voor deze werknemer
       try {
+        console.log(`🔍 [DEBUG] Start check alle thema's afgerond voor gesprek_id: ${gesprek_id}`);
+        
+        // Haal eerst werknemer_id op
+        const { data: gesprekVoorWerknemer, error: gesprekWerknemerError } = await supabase
+          .from('gesprek')
+          .select('werknemer_id')
+          .eq('id', gesprek_id)
+          .single();
+        
+        if (gesprekWerknemerError || !gesprekVoorWerknemer) {
+          console.error(`❌ [DEBUG] Kon gesprek niet vinden:`, gesprekWerknemerError);
+          throw gesprekWerknemerError || new Error('Gesprek niet gevonden');
+        }
+        
+        const werknemerId = gesprekVoorWerknemer.werknemer_id;
+        console.log(`👤 [DEBUG] Werknemer ID: ${werknemerId}`);
+        
         const { data: alleGesprekken, error: gesprekError } = await supabase
           .from('gesprek')
-          .select('id, theme_id, status')
-          .eq('werknemer_id', (await supabase.from('gesprek').select('werknemer_id').eq('id', gesprek_id).single()).data?.werknemer_id)
+          .select('id, theme_id, status, gestart_op')
+          .eq('werknemer_id', werknemerId)
           .eq('status', 'Afgerond');
 
+        if (gesprekError) {
+          console.error(`❌ [DEBUG] Fout bij ophalen alle gesprekken:`, gesprekError);
+          throw gesprekError;
+        }
+        
+        if (!alleGesprekken || alleGesprekken.length === 0) {
+          console.log(`ℹ️ [DEBUG] Geen afgeronde gesprekken gevonden voor werknemer ${werknemerId}`);
+        } else {
+          console.log(`📋 [DEBUG] ${alleGesprekken.length} afgeronde gesprekken gevonden voor werknemer ${werknemerId}`);
+        }
+
         if (!gesprekError && alleGesprekken) {
-          // Haal alle beschikbare thema's op voor deze werkgever
-          const { data: werknemer, error: werknemerError } = await supabase
-            .from('gesprek')
-            .select('werknemer_id')
-            .eq('id', gesprek_id)
+          // Haal werkgever op (gebruik werknemerId die we al hebben)
+          const { data: werkgever, error: werkgeverError } = await supabase
+            .from('users')
+            .select('employer_id')
+            .eq('id', werknemerId)
             .single();
 
-          if (!werknemerError && werknemer) {
-            const { data: werkgever, error: werkgeverError } = await supabase
-              .from('users')
-              .select('employer_id')
-              .eq('id', werknemer.werknemer_id)
-              .single();
+          if (werkgeverError) {
+            console.error(`❌ [DEBUG] Fout bij ophalen werkgever:`, werkgeverError);
+          }
 
-            if (!werkgeverError && werkgever) {
-              const { data: alleThemas, error: themaError } = await supabase
-                .from('themes')
-                .select('id')
-                .eq('werkgever_id', werkgever.employer_id);
+          if (!werkgeverError && werkgever) {
+            console.log(`🏢 [DEBUG] Werkgever ID: ${werkgever.employer_id}`);
+            
+            const { data: alleThemas, error: themaError } = await supabase
+              .from('themes')
+              .select('id')
+              .eq('werkgever_id', werkgever.employer_id);
 
-              if (!themaError && alleThemas) {
-                // Bepaal periode van het afgeronde gesprek
-                const { data: gesprekData, error: gesprekDataError } = await supabase
-                  .from('gesprek')
-                  .select('gestart_op')
-                  .eq('id', gesprek_id)
-                  .single();
+            if (themaError) {
+              console.error(`❌ [DEBUG] Fout bij ophalen thema's:`, themaError);
+            } else if (!alleThemas || alleThemas.length === 0) {
+              console.log(`ℹ️ [DEBUG] Geen thema's gevonden voor werkgever ${werkgever.employer_id}`);
+            } else {
+              console.log(`📚 [DEBUG] ${alleThemas.length} thema's gevonden voor werkgever ${werkgever.employer_id}`);
+            }
 
-                if (!gesprekDataError && gesprekData) {
-                  const startDatum = new Date(gesprekData.gestart_op);
-                  const periode = `${startDatum.getFullYear()}-${String(startDatum.getMonth() + 1).padStart(2, '0')}`;
+            if (!themaError && alleThemas) {
+              // Bepaal periode van het afgeronde gesprek
+              const { data: gesprekData, error: gesprekDataError } = await supabase
+                .from('gesprek')
+                .select('gestart_op')
+                .eq('id', gesprek_id)
+                .single();
 
-                  // Check of alle thema's zijn afgerond in deze specifieke periode
-                  const gesprekkenInPeriode = alleGesprekken.filter(g => {
-                    const gesprekDatum = new Date(g.gestart_op);
-                    const gesprekPeriode = `${gesprekDatum.getFullYear()}-${String(gesprekDatum.getMonth() + 1).padStart(2, '0')}`;
-                    return gesprekPeriode === periode;
-                  });
-                  
-                  const uniekeThemasInPeriode = [...new Set(gesprekkenInPeriode.map(g => g.theme_id))];
-                  const alleThemasAfgerondInPeriode = uniekeThemasInPeriode.length === alleThemas.length;
+              if (gesprekDataError) {
+                console.error(`❌ [DEBUG] Fout bij ophalen gesprek data:`, gesprekDataError);
+              }
 
-                  console.log(`📊 Periode ${periode}: ${uniekeThemasInPeriode.length}/${alleThemas.length} thema's afgerond`);
-                  console.log(`🎯 Afgeronde thema's:`, uniekeThemasInPeriode);
+              if (!gesprekDataError && gesprekData) {
+                const startDatum = new Date(gesprekData.gestart_op);
+                const periode = `${startDatum.getFullYear()}-${String(startDatum.getMonth() + 1).padStart(2, '0')}`;
+                console.log(`📅 [DEBUG] Periode bepaald: ${periode} (van gestart_op: ${gesprekData.gestart_op})`);
 
-                  if (alleThemasAfgerondInPeriode) {
-                    console.log(`🎯 Alle thema's afgerond voor werknemer ${werknemer.werknemer_id}, periode ${periode}. Genereer top 3 acties...`);
-                    
-                    // Genereer top 3 acties via interne API call
-                    try {
-                      const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/generate-top-actions`, {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-                        },
-                        body: JSON.stringify({
-                          werknemer_id: werknemer.werknemer_id,
-                          periode: periode
-                        })
-                      });
-
-                      if (response.ok) {
-                        const result = await response.json();
-                        console.log('✅ Top 3 acties succesvol gegenereerd:', result);
-                      } else {
-                        console.warn('⚠️ Top 3 acties genereren mislukt:', response.status);
-                      }
-                    } catch (topActieError) {
-                      console.warn('⚠️ Fout bij genereren top 3 acties:', topActieError);
-                    }
+                // Check of alle thema's zijn afgerond in deze specifieke periode
+                const gesprekkenInPeriode = alleGesprekken.filter(g => {
+                  if (!g.gestart_op) {
+                    console.warn(`⚠️ [DEBUG] Gesprek ${g.id} heeft geen gestart_op`);
+                    return false;
                   }
+                  const gesprekDatum = new Date(g.gestart_op);
+                  const gesprekPeriode = `${gesprekDatum.getFullYear()}-${String(gesprekDatum.getMonth() + 1).padStart(2, '0')}`;
+                  return gesprekPeriode === periode;
+                });
+                
+                console.log(`📊 [DEBUG] ${gesprekkenInPeriode.length} gesprekken gevonden in periode ${periode} (van ${alleGesprekken.length} totaal)`);
+                
+                const uniekeThemasInPeriode = [...new Set(gesprekkenInPeriode.map(g => g.theme_id))];
+                const alleThemasAfgerondInPeriode = uniekeThemasInPeriode.length === alleThemas.length;
+
+                console.log(`📊 [DEBUG] Periode ${periode}: ${uniekeThemasInPeriode.length}/${alleThemas.length} thema's afgerond`);
+                console.log(`🎯 [DEBUG] Afgeronde thema IDs:`, uniekeThemasInPeriode);
+                console.log(`📚 [DEBUG] Alle thema IDs:`, alleThemas.map(t => t.id));
+
+                if (alleThemasAfgerondInPeriode) {
+                  console.log(`🎯 [DEBUG] ✅ Alle thema's afgerond voor werknemer ${werknemerId}, periode ${periode}. Genereer top 3 acties...`);
+                  
+                  // Genereer top 3 acties via interne API call
+                  try {
+                    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+                    const url = `${backendUrl}/api/generate-top-actions`;
+                    console.log(`🌐 [DEBUG] Roep generatie aan: POST ${url}`);
+                    console.log(`📤 [DEBUG] Request body:`, { werknemer_id: werknemerId, periode });
+                    console.log(`🔑 [DEBUG] BACKEND_URL:`, backendUrl);
+                    console.log(`🔑 [DEBUG] SUPABASE_SERVICE_ROLE_KEY aanwezig:`, !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+                    console.log(`🔑 [DEBUG] Token lengte:`, process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0);
+                    console.log(`🔑 [DEBUG] Token preview:`, process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) + '...' || 'GEEN TOKEN');
+                    
+                    const response = await fetch(url, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+                      },
+                      body: JSON.stringify({
+                        werknemer_id: werknemerId,
+                        periode: periode
+                      })
+                    });
+
+                    console.log(`📡 [DEBUG] Response ontvangen: ${response.status} ${response.statusText}`);
+
+                    if (response.ok) {
+                      const result = await response.json();
+                      console.log('✅ [DEBUG] Top 3 acties succesvol gegenereerd:', result);
+                    } else {
+                      let errorBody = 'Kon error body niet lezen';
+                      try {
+                        errorBody = await response.text();
+                        // Probeer ook als JSON te parsen voor betere leesbaarheid
+                        try {
+                          const errorJson = JSON.parse(errorBody);
+                          errorBody = errorJson;
+                        } catch {
+                          // Blijf als string als het geen JSON is
+                        }
+                      } catch (e) {
+                        console.error('❌ [DEBUG] Kon error body niet lezen:', e);
+                      }
+                      
+                      console.error('❌ [DEBUG] Top 3 acties genereren mislukt:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        error: errorBody,
+                        url: url,
+                        is401: response.status === 401,
+                        is403: response.status === 403,
+                        is404: response.status === 404,
+                        is500: response.status === 500,
+                        headers: Object.fromEntries(response.headers.entries())
+                      });
+                      
+                      // Specifieke melding voor authenticatie fouten
+                      if (response.status === 401) {
+                        console.error('🔒 [DEBUG] AUTHENTICATIE GEFAALD! Dit betekent dat de SUPABASE_SERVICE_ROLE_KEY niet wordt geaccepteerd als gebruiker JWT token.');
+                        console.error('🔒 [DEBUG] Oplossing: Gebruik een echte gebruiker JWT token of pas authMiddleware aan voor service role keys.');
+                      }
+                    }
+                  } catch (topActieError) {
+                    console.error('❌ [DEBUG] Fout bij genereren top 3 acties (catch):', {
+                      message: topActieError.message,
+                      stack: topActieError.stack,
+                      name: topActieError.name
+                    });
+                  }
+                } else {
+                  console.log(`⏳ [DEBUG] Nog niet alle thema's afgerond: ${uniekeThemasInPeriode.length}/${alleThemas.length}`);
                 }
               }
             }
           }
         }
       } catch (checkError) {
-        console.warn('⚠️ Fout bij controleren of alle thema\'s zijn afgerond:', checkError);
+        console.error('❌ [DEBUG] Fout bij controleren of alle thema\'s zijn afgerond:', {
+          message: checkError.message,
+          stack: checkError.stack,
+          name: checkError.name,
+          error: checkError
+        });
       }
 
       return res.status(200).json({ success: true, message: 'Gesprek afgerond' });

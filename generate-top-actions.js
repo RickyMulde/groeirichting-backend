@@ -30,17 +30,30 @@ function getNextMonth(periode) {
 
 // POST endpoint om top 3 vervolgacties te genereren
 router.post('/', async (req, res) => {
+  console.log(`🎯 [GENERATE] POST /api/generate-top-actions ontvangen`)
+  console.log(`🎯 [GENERATE] Request body:`, req.body)
+  console.log(`🎯 [GENERATE] Auth context:`, req.ctx ? { userId: req.ctx.userId, employerId: req.ctx.employerId } : 'GEEN CONTEXT (auth gefaald!)')
+  
   const { werknemer_id, periode } = req.body
-  const employerId = req.ctx.employerId
+  const employerId = req.ctx?.employerId
   
   if (!werknemer_id || !periode) {
+    console.error('❌ [GENERATE] Ontbrekende parameters:', { werknemer_id: !!werknemer_id, periode: !!periode })
     return res.status(400).json({ 
       error: 'werknemer_id en periode zijn verplicht'
     })
   }
+  
+  if (!req.ctx || !employerId) {
+    console.error('❌ [GENERATE] Geen auth context - authenticatie is gefaald!')
+    return res.status(401).json({ 
+      error: 'Authenticatie vereist',
+      details: 'Request heeft geen geldige authenticatie context'
+    })
+  }
 
   try {
-    console.log(`🔄 Start generatie top 3 acties voor werknemer ${werknemer_id}, periode ${periode}`)
+    console.log(`🔄 [GENERATE] Start generatie top 3 acties voor werknemer ${werknemer_id}, periode ${periode}, employer ${employerId}`)
 
     // 1️⃣ Haal alle gesprekken op van alle thema's voor deze werknemer in deze periode
     const { data: gesprekken, error: gesprekError } = await supabase

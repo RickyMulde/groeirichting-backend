@@ -11,17 +11,32 @@ const authMiddleware = async (req, res, next) => {
     // Haal Authorization header op
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('🔒 [AUTH] Geen geldige autorisatie header voor:', req.path)
       return res.status(401).json({ error: 'Geen geldige autorisatie header' })
     }
 
     const token = authHeader.substring(7) // Verwijder 'Bearer '
+    const tokenPreview = token.substring(0, 20) + '...' // Log alleen eerste 20 karakters
+    console.log(`🔒 [AUTH] Verifieer token voor: ${req.path} (token preview: ${tokenPreview})`)
 
     // Verifieer JWT token
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
     
-    if (authError || !user) {
+    if (authError) {
+      console.error('🔒 [AUTH] Token verificatie gefaald:', {
+        path: req.path,
+        error: authError.message,
+        code: authError.status
+      })
+      return res.status(401).json({ error: 'Ongeldig token', details: authError.message })
+    }
+    
+    if (!user) {
+      console.error('🔒 [AUTH] Geen user gevonden na token verificatie voor:', req.path)
       return res.status(401).json({ error: 'Ongeldig token' })
     }
+    
+    console.log(`🔒 [AUTH] Token succesvol geverifieerd voor user: ${user.id} op path: ${req.path}`)
 
     // Haal user data op uit database
     const { data: userData, error: userError } = await supabase
@@ -30,7 +45,16 @@ const authMiddleware = async (req, res, next) => {
       .eq('id', user.id)
       .single()
 
-    if (userError || !userData) {
+    if (userError) {
+      console.error('🔒 [AUTH] Fout bij ophalen user data:', {
+        userId: user.id,
+        error: userError.message
+      })
+      return res.status(401).json({ error: 'Gebruiker niet gevonden', details: userError.message })
+    }
+    
+    if (!userData) {
+      console.error('🔒 [AUTH] User data niet gevonden voor user:', user.id)
       return res.status(401).json({ error: 'Gebruiker niet gevonden' })
     }
 

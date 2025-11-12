@@ -5,15 +5,15 @@ echo ========================================
 echo.
 
 echo [0/5] Controleren of je op dev branch zit...
-git branch --show-current | findstr /C:"dev" >nul
-if %errorlevel% neq 0 (
-    echo ERROR: Je moet op dev branch zitten om te promoten
+for /f "delims=" %%i in ('git branch --show-current') do set CURRENT_BRANCH=%%i
+if not "%CURRENT_BRANCH%"=="dev" (
+    echo ERROR: Je moet op de dev branch zitten om dit script uit te voeren!
+    echo Huidige branch: %CURRENT_BRANCH%
     pause
     exit /b 1
 )
 echo OK: Je zit op dev branch
 
-echo.
 echo [1/5] Switchen naar master branch...
 git checkout master
 if %errorlevel% neq 0 (
@@ -26,7 +26,7 @@ echo.
 echo [2/5] Mergen van dev in master...
 git merge dev
 if %errorlevel% neq 0 (
-    echo ERROR: Merge gefaald. Los conflicten op en probeer opnieuw.
+    echo ERROR: Merge gefaald. Los merge conflicten op en probeer opnieuw.
     pause
     exit /b 1
 )
@@ -50,7 +50,16 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [5/5] Klaar!
+echo [5/5] Controleren dat je weer op dev zit...
+for /f "delims=" %%i in ('git branch --show-current') do set CURRENT_BRANCH=%%i
+if not "%CURRENT_BRANCH%"=="dev" (
+    echo WAARSCHUWING: Je bent niet terug op dev branch!
+    echo Huidige branch: %CURRENT_BRANCH%
+) else (
+    echo OK: Je bent weer op dev branch
+)
+
+echo.
 echo ========================================
 echo SUCCES! Code is gepromoveerd naar master
 echo Je bent nu weer op dev branch

@@ -60,7 +60,7 @@ router.post('/', async (req, res) => {
             `\n\nContext: Deze gesprekken zijn bedoeld om medewerkers te ondersteunen, signalen op te halen en werkplezier te vergroten.${organisatie_omschrijving ? `\n\nOrganisatie context: ${organisatie_omschrijving}` : ''}${functie_omschrijving ? `\n\nFunctie context: ${functie_omschrijving}` : ''}${gender ? `\n\nGeslacht: ${gender}` : ''}` +
             `${laatste_samenvatting ? '\n\nBelangrijk: Dit is een vervolg gesprek. Je hebt toegang tot een samenvatting van eerdere gesprekken. Gebruik deze informatie om gerichte vragen te stellen die aansluiten op wat er eerder is besproken. Vergelijk de huidige antwoorden met eerdere inzichten waar mogelijk.' : ''}` +
 
-            `\n\n📌 KRITIEKE RICHTLIJNEN VOOR GESPREKSVOERING:` +
+            `\n\nKRITIEKE RICHTLIJNEN VOOR GESPREKSVOERING:` +
             `\n1. Voer een natuurlijk gesprek, geen interview. Reageer eerst kort op het antwoord van de medewerker voordat je een vervolgvraag stelt.` +
             `\n2. Je mag empathisch reageren, nuanceren of kort bevestigen. Voorbeelden:` +
             `\n   - "Dat klinkt als een uitdagende situatie..."` +
