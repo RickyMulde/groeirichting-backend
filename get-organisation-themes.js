@@ -110,6 +110,11 @@ router.get('/:orgId', async (req, res) => {
     return res.status(400).json({ error: 'Organisatie ID is verplicht' })
   }
 
+  // Periode (maand en jaar) is verplicht - geen gegevens zonder periode selectie
+  if (!maand || !jaar) {
+    return res.status(400).json({ error: 'Maand en jaar zijn verplicht. Selecteer een periode om de resultaten te bekijken.' })
+  }
+
   try {
     console.log('🔍 Start ophalen organisatie thema\'s voor:', { orgId, maand, jaar, team_id })
 
