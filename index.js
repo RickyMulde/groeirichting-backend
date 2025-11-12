@@ -28,7 +28,7 @@ const getThemaDataWerknemer = require('./get-thema-data-werknemer'); // ✅ Nieu
 const verwijderOudeGesprekken = require('./verwijder-oude-gesprekken'); // ✅ Nieuw toegevoegd
 const getGespreksresultatenBulk = require('./get-gespreksresultaten-bulk'); // ✅ Nieuw toegevoegd
 const autoGenerateSummaries = require('./auto-generate-summaries'); // ✅ Nieuw toegevoegd
-const generateTopActions = require('./generate-top-actions'); // ✅ Nieuw toegevoegd
+const { router: generateTopActionsRouter } = require('./generate-top-actions'); // ✅ Nieuw toegevoegd
 const saveThemaEvaluatie = require('./save-thema-evaluatie'); // ✅ Nieuw toegevoegd
 const checkThemaEvaluatie = require('./check-thema-evaluatie'); // ✅ Nieuw toegevoegd
 const contact = require('./contact'); // ✅ Nieuw toegevoegd
@@ -156,7 +156,7 @@ app.use('/api/werkgever-gesprek-instellingen', werkgeverGesprekInstellingen); //
 app.use('/api/get-thema-data-werknemer', getThemaDataWerknemer); // ✅ Nieuwe route toegevoegd
 app.use('/api/verwijder-oude-gesprekken', verwijderOudeGesprekken); // ✅ Nieuwe route toegevoegd
 app.use('/api/auto-generate-summaries', autoGenerateSummaries); // ✅ Nieuwe route toegevoegd
-app.use('/api/generate-top-actions', generateTopActions); // ✅ Nieuwe route toegevoegd
+app.use('/api/generate-top-actions', generateTopActionsRouter); // ✅ Nieuwe route toegevoegd
 app.use('/api/save-thema-evaluatie', saveThemaEvaluatie); // ✅ Nieuwe route toegevoegd
 app.use('/api/check-thema-evaluatie', checkThemaEvaluatie); // ✅ Nieuwe route toegevoegd
 app.use('/api/contact', contact); // ✅ Nieuwe route toegevoegd

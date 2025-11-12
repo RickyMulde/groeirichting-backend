@@ -16,7 +16,18 @@ router.use(authMiddleware)
 
 // Helper functie om de volgende maand te berekenen
 function getNextMonth(periode) {
+  // Valideer periode formaat (YYYY-MM)
+  if (!periode || typeof periode !== 'string' || !/^\d{4}-\d{2}$/.test(periode)) {
+    throw new Error(`Ongeldig periode formaat: ${periode}. Verwacht formaat: YYYY-MM`)
+  }
+  
   const [year, month] = periode.split('-').map(Number)
+  
+  // Valideer dat jaar en maand geldig zijn
+  if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+    throw new Error(`Ongeldige periode waarden: jaar=${year}, maand=${month}`)
+  }
+  
   let nextMonth = month + 1
   let nextYear = year
   
@@ -28,32 +39,17 @@ function getNextMonth(periode) {
   return `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`
 }
 
-// POST endpoint om top 3 vervolgacties te genereren
-router.post('/', async (req, res) => {
-  console.log(`🎯 [GENERATE] POST /api/generate-top-actions ontvangen`)
-  console.log(`🎯 [GENERATE] Request body:`, req.body)
-  console.log(`🎯 [GENERATE] Auth context:`, req.ctx ? { userId: req.ctx.userId, employerId: req.ctx.employerId } : 'GEEN CONTEXT (auth gefaald!)')
-  
-  const { werknemer_id, periode } = req.body
-  const employerId = req.ctx?.employerId
-  
+// Functie om top 3 acties te genereren (kan direct worden aangeroepen of via HTTP)
+async function generateTopActions(werknemer_id, periode, employerId) {
   if (!werknemer_id || !periode) {
-    console.error('❌ [GENERATE] Ontbrekende parameters:', { werknemer_id: !!werknemer_id, periode: !!periode })
-    return res.status(400).json({ 
-      error: 'werknemer_id en periode zijn verplicht'
-    })
+    throw new Error('werknemer_id en periode zijn verplicht')
   }
   
-  if (!req.ctx || !employerId) {
-    console.error('❌ [GENERATE] Geen auth context - authenticatie is gefaald!')
-    return res.status(401).json({ 
-      error: 'Authenticatie vereist',
-      details: 'Request heeft geen geldige authenticatie context'
-    })
+  if (!employerId) {
+    throw new Error('employerId is verplicht')
   }
 
-  try {
-    console.log(`🔄 [GENERATE] Start generatie top 3 acties voor werknemer ${werknemer_id}, periode ${periode}, employer ${employerId}`)
+  console.log(`🔄 [GENERATE] Start generatie top 3 acties voor werknemer ${werknemer_id}, periode ${periode}, employer ${employerId}`)
 
     // 1️⃣ Haal alle gesprekken op van alle thema's voor deze werknemer in deze periode
     const { data: gesprekken, error: gesprekError } = await supabase
@@ -62,6 +58,7 @@ router.post('/', async (req, res) => {
         id,
         theme_id,
         gestart_op,
+        team_id,
         themes!inner(
           id,
           titel,
@@ -76,12 +73,18 @@ router.post('/', async (req, res) => {
 
     if (gesprekError) throw gesprekError
     if (!gesprekken || gesprekken.length === 0) {
-      return res.status(404).json({ 
-        error: 'Geen voltooide gesprekken gevonden voor deze periode' 
-      })
+      throw new Error('Geen voltooide gesprekken gevonden voor deze periode')
     }
 
     console.log(`📊 ${gesprekken.length} voltooide gesprekken gevonden`)
+
+    // Extra: haal team_id op uit gesprekken
+    const teamId = gesprekken.find(g => g.team_id)?.team_id || null
+    if (teamId) {
+      console.log(`👥 Team ID gevonden: ${teamId}`)
+    } else {
+      console.log('⚠️ Geen team_id gevonden in gesprekken')
+    }
 
     // 1.5️⃣ Extra validatie: controleer of alle thema's zijn afgerond
     const { data: alleThemas, error: themaError } = await supabase
@@ -96,10 +99,7 @@ router.post('/', async (req, res) => {
 
     if (!alleThemasAfgerond) {
       console.log(`⚠️ Niet alle thema's zijn afgerond: ${uniekeThemasInGesprekken.length}/${alleThemas.length}`)
-      return res.status(400).json({ 
-        error: 'Niet alle thema\'s zijn afgerond voor deze periode',
-        details: `Afgerond: ${uniekeThemasInGesprekken.length}/${alleThemas.length} thema's`
-      })
+      throw new Error(`Niet alle thema's zijn afgerond voor deze periode. Afgerond: ${uniekeThemasInGesprekken.length}/${alleThemas.length} thema's`)
     }
 
     console.log(`✅ Alle ${alleThemas.length} thema's zijn afgerond, ga door met generatie`)
@@ -121,10 +121,7 @@ router.post('/', async (req, res) => {
     console.log('📚 Gespreksgeschiedenis gevonden:', gespreksgeschiedenis?.length || 0)
     
     if (!gespreksgeschiedenis || gespreksgeschiedenis.length === 0) {
-      return res.status(404).json({ 
-        error: 'Geen gespreksgeschiedenis gevonden',
-        details: `Gezocht naar ${gesprekIds.length} gesprek IDs in gesprekken_compleet tabel`
-      })
+      throw new Error(`Geen gespreksgeschiedenis gevonden. Gezocht naar ${gesprekIds.length} gesprek IDs in gesprekken_compleet tabel`)
     }
 
     // 3️⃣ Haal werkgever en werknemer context op
@@ -137,7 +134,7 @@ router.post('/', async (req, res) => {
 
     if (werknemerError) {
       if (werknemerError.code === 'PGRST116') {
-        return res.status(404).json({ error: 'Werknemer niet gevonden' })
+        throw new Error('Werknemer niet gevonden')
       }
       throw werknemerError
     }
@@ -320,6 +317,7 @@ Zorg dat:
     const topActiesData = {
       werknemer_id,
       werkgever_id: werknemer.employer_id,
+      team_id: teamId,
       periode,
       actie_1: parsed.actie_1.tekst,
       actie_2: parsed.actie_2.tekst,
@@ -365,7 +363,7 @@ Zorg dat:
     console.log('✅ Top 3 vervolgacties succesvol gegenereerd en opgeslagen')
 
     // 8️⃣ Return resultaat
-    return res.json({
+    return {
       success: true,
       top_acties: {
         actie_1: {
@@ -387,11 +385,48 @@ Zorg dat:
       algemene_toelichting: parsed.algemene_toelichting,
       periode,
       gegenereerd_op: new Date().toISOString()
-    })
+    }
+}
 
+// POST endpoint om top 3 vervolgacties te genereren (via HTTP)
+router.post('/', async (req, res) => {
+  console.log(`🎯 [GENERATE] POST /api/generate-top-actions ontvangen`)
+  console.log(`🎯 [GENERATE] Request body:`, req.body)
+  console.log(`🎯 [GENERATE] Auth context:`, req.ctx ? { userId: req.ctx.userId, employerId: req.ctx.employerId } : 'GEEN CONTEXT (auth gefaald!)')
+  
+  const { werknemer_id, periode } = req.body
+  const employerId = req.ctx?.employerId
+  
+  if (!werknemer_id || !periode) {
+    console.error('❌ [GENERATE] Ontbrekende parameters:', { werknemer_id: !!werknemer_id, periode: !!periode })
+    return res.status(400).json({ 
+      error: 'werknemer_id en periode zijn verplicht'
+    })
+  }
+  
+  if (!req.ctx || !employerId) {
+    console.error('❌ [GENERATE] Geen auth context - authenticatie is gefaald!')
+    return res.status(401).json({ 
+      error: 'Authenticatie vereist',
+      details: 'Request heeft geen geldige authenticatie context'
+    })
+  }
+
+  try {
+    const result = await generateTopActions(werknemer_id, periode, employerId)
+    return res.json(result)
   } catch (err) {
     console.error('❌ Fout bij genereren top 3 acties:', err)
-    return res.status(500).json({ 
+    
+    // Bepaal juiste status code op basis van error type
+    let statusCode = 500
+    if (err.message.includes('niet gevonden')) {
+      statusCode = 404
+    } else if (err.message.includes('niet alle thema')) {
+      statusCode = 400
+    }
+    
+    return res.status(statusCode).json({ 
       error: 'Fout bij genereren top 3 acties',
       details: err.message 
     })
@@ -425,4 +460,7 @@ router.get('/:werknemer_id/:periode', async (req, res) => {
   }
 })
 
-module.exports = router
+module.exports = {
+  router,
+  generateTopActions // Exporteer functie voor direct gebruik
+}
