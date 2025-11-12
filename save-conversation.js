@@ -235,7 +235,9 @@ router.post('/', async (req, res) => {
             const { data: alleThemas, error: themaError } = await supabase
               .from('themes')
               .select('id')
-              .eq('werkgever_id', werkgever.employer_id);
+              .eq('werkgever_id', werkgever.employer_id)
+              .eq('klaar_voor_gebruik', true)
+              .eq('standaard_zichtbaar', true);
 
             if (themaError) {
               console.error(`❌ [DEBUG] Fout bij ophalen thema's:`, themaError);
