@@ -4,6 +4,7 @@ const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const { containsSensitiveInfo } = require('./utils/filterInput.js');
 const { authMiddleware } = require('./middleware/auth');
+const { generateTopActions } = require('./generate-top-actions'); // Importeer functie voor direct gebruik
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -284,73 +285,24 @@ router.post('/', async (req, res) => {
                 if (alleThemasAfgerondInPeriode) {
                   console.log(`🎯 [DEBUG] ✅ Alle thema's afgerond voor werknemer ${werknemerId}, periode ${periode}. Genereer top 3 acties...`);
                   
-                  // Genereer top 3 acties via interne API call
-                  try {
-                    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
-                    const url = `${backendUrl}/api/generate-top-actions`;
-                    console.log(`🌐 [DEBUG] Roep generatie aan: POST ${url}`);
-                    console.log(`📤 [DEBUG] Request body:`, { werknemer_id: werknemerId, periode });
-                    console.log(`🔑 [DEBUG] BACKEND_URL:`, backendUrl);
-                    console.log(`🔑 [DEBUG] SUPABASE_SERVICE_ROLE_KEY aanwezig:`, !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-                    console.log(`🔑 [DEBUG] Token lengte:`, process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0);
-                    console.log(`🔑 [DEBUG] Token preview:`, process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) + '...' || 'GEEN TOKEN');
-                    
-                    const response = await fetch(url, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-                      },
-                      body: JSON.stringify({
-                        werknemer_id: werknemerId,
-                        periode: periode
-                      })
-                    });
-
-                    console.log(`📡 [DEBUG] Response ontvangen: ${response.status} ${response.statusText}`);
-
-                    if (response.ok) {
-                      const result = await response.json();
+                  // Valideer dat employer_id aanwezig is voordat we genereren
+                  if (!werkgever.employer_id) {
+                    console.error('❌ [DEBUG] Werkgever heeft geen employer_id, kan top 3 acties niet genereren');
+                  } else {
+                    // Genereer top 3 acties via directe functie aanroep (geen HTTP, geen auth nodig)
+                    try {
+                      console.log(`🔧 [DEBUG] Roep generateTopActions functie direct aan`);
+                      console.log(`📤 [DEBUG] Parameters:`, { werknemer_id: werknemerId, periode, employer_id: werkgever.employer_id });
+                      
+                      const result = await generateTopActions(werknemerId, periode, werkgever.employer_id);
                       console.log('✅ [DEBUG] Top 3 acties succesvol gegenereerd:', result);
-                    } else {
-                      let errorBody = 'Kon error body niet lezen';
-                      try {
-                        errorBody = await response.text();
-                        // Probeer ook als JSON te parsen voor betere leesbaarheid
-                        try {
-                          const errorJson = JSON.parse(errorBody);
-                          errorBody = errorJson;
-                        } catch {
-                          // Blijf als string als het geen JSON is
-                        }
-                      } catch (e) {
-                        console.error('❌ [DEBUG] Kon error body niet lezen:', e);
-                      }
-                      
-                      console.error('❌ [DEBUG] Top 3 acties genereren mislukt:', {
-                        status: response.status,
-                        statusText: response.statusText,
-                        error: errorBody,
-                        url: url,
-                        is401: response.status === 401,
-                        is403: response.status === 403,
-                        is404: response.status === 404,
-                        is500: response.status === 500,
-                        headers: Object.fromEntries(response.headers.entries())
+                    } catch (topActieError) {
+                      console.error('❌ [DEBUG] Fout bij genereren top 3 acties:', {
+                        message: topActieError.message,
+                        stack: topActieError.stack,
+                        name: topActieError.name
                       });
-                      
-                      // Specifieke melding voor authenticatie fouten
-                      if (response.status === 401) {
-                        console.error('🔒 [DEBUG] AUTHENTICATIE GEFAALD! Dit betekent dat de SUPABASE_SERVICE_ROLE_KEY niet wordt geaccepteerd als gebruiker JWT token.');
-                        console.error('🔒 [DEBUG] Oplossing: Gebruik een echte gebruiker JWT token of pas authMiddleware aan voor service role keys.');
-                      }
                     }
-                  } catch (topActieError) {
-                    console.error('❌ [DEBUG] Fout bij genereren top 3 acties (catch):', {
-                      message: topActieError.message,
-                      stack: topActieError.stack,
-                      name: topActieError.name
-                    });
                   }
                 } else {
                   console.log(`⏳ [DEBUG] Nog niet alle thema's afgerond: ${uniekeThemasInPeriode.length}/${alleThemas.length}`);

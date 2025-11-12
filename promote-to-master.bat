@@ -27,6 +27,16 @@ echo [2/5] Mergen van dev in master...
 git merge dev
 if %errorlevel% neq 0 (
     echo ERROR: Merge gefaald. Los merge conflicten op en probeer opnieuw.
+    echo.
+    echo Merge afbreken en terugswitchen naar dev branch...
+    git merge --abort
+    git checkout dev
+    if %errorlevel% neq 0 (
+        echo WAARSCHUWING: Kon niet terugswitchen naar dev. Je zit nu op master branch.
+        echo Los de merge conflicten handmatig op en commit, of gebruik: git merge --abort
+    ) else (
+        echo OK: Merge afgebroken en terug op dev branch
+    )
     pause
     exit /b 1
 )
