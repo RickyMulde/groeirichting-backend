@@ -87,11 +87,10 @@ async function generateTopActions(werknemer_id, periode, employerId) {
     }
 
     // 1.5️⃣ Extra validatie: controleer of alle thema's zijn afgerond
-    // Alleen actieve thema's tellen mee (zoals in get-gespreksresultaten-bulk)
+    // Thema's zijn globaal, niet per werkgever - filter alleen op actieve thema's
     const { data: alleThemas, error: themaError } = await supabase
       .from('themes')
       .select('id')
-      .eq('werkgever_id', employerId)
       .eq('klaar_voor_gebruik', true)
       .eq('standaard_zichtbaar', true)
 

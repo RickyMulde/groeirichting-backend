@@ -232,10 +232,10 @@ router.post('/', async (req, res) => {
           if (!werkgeverError && werkgever) {
             console.log(`🏢 [DEBUG] Werkgever ID: ${werkgever.employer_id}`);
             
+            // Thema's zijn globaal, niet per werkgever - filter alleen op actieve thema's
             const { data: alleThemas, error: themaError } = await supabase
               .from('themes')
               .select('id')
-              .eq('werkgever_id', werkgever.employer_id)
               .eq('klaar_voor_gebruik', true)
               .eq('standaard_zichtbaar', true);
 
