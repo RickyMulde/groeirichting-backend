@@ -66,7 +66,7 @@ git merge --abort >nul 2>&1
 git checkout dev >nul 2>&1
 if errorlevel 1 (
     echo WAARSCHUWING: Kon niet terugswitchen naar dev. Je zit nu op master branch.
-    echo Probeer handmatig: git merge --abort (als merge nog actief is) en dan git checkout dev
+    echo Probeer handmatig: git merge --abort als merge nog actief is, en dan git checkout dev
     echo.
     echo Huidige status:
     git status --short
