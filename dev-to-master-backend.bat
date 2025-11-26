@@ -59,7 +59,7 @@ pause
 exit /b 1
 
 :error_merge
-echo ERROR: Merge gefaald. Los merge conflicten op en probeer opnieuw.
+echo ERROR: Merge gefaald. Los merge conflicten op, probeer opnieuw.
 echo.
 echo Merge afbreken...
 git merge --abort >nul 2>&1
