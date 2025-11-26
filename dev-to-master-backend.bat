@@ -59,19 +59,21 @@ pause
 exit /b 1
 
 :error_merge
-echo ERROR: Merge gefaald. Los merge conflicten op en probeer opnieuw.
+echo ERROR: Merge gefaald. Los merge conflicten op, probeer opnieuw.
 echo.
-echo Merge afbreken en terugswitchen naar dev branch...
+echo Merge afbreken...
 git merge --abort >nul 2>&1
+echo Terugswitchen naar dev branch...
 git checkout dev >nul 2>&1
 if errorlevel 1 (
     echo WAARSCHUWING: Kon niet terugswitchen naar dev. Je zit nu op master branch.
-    echo Probeer handmatig: git merge --abort (als merge nog actief is) en dan git checkout dev
+    echo Probeer handmatig: git merge --abort als merge nog actief is
+    echo Daarna: git checkout dev
     echo.
     echo Huidige status:
     git status --short
 ) else (
-    echo OK: Merge afgebroken en terug op dev branch
+    echo OK: Merge afgebroken, terug op dev branch
 )
 pause
 exit /b 1
@@ -85,4 +87,3 @@ exit /b 1
 echo ERROR: Kon niet terugswitchen naar dev branch
 pause
 exit /b 1
-
