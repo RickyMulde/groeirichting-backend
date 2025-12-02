@@ -47,50 +47,67 @@ async function processAccountVerificatieTriggers() {
         continue;
       }
       
-      // Check of er al een welkomstmail is verstuurd
-      const { data: existingEmail } = await supabase
+      // Check of er al een welkomstmail is verstuurd (status = 'sent')
+      const { data: existingEmails, error: checkError } = await supabase
         .from('email_queue')
-        .select('id')
+        .select('id, status')
         .eq('ontvanger_email', werkgever.email)
-        .eq('template_trigger', 'account_verificatie')
+        .eq('template_trigger', 'account_verificatie');
+      
+      // Als er een error is bij het checken, log en sla over (veiligheid)
+      if (checkError) {
+        console.error(`Error checking existing emails for ${werkgever.email}:`, checkError);
+        continue;
+      }
+      
+      // Als er al een email is met status 'sent', sla over (email is al verstuurd)
+      const hasSentEmail = existingEmails?.some(email => email.status === 'sent');
+      if (hasSentEmail) {
+        continue;
+      }
+      
+      // Als er een 'pending' email is, wacht tot die wordt verwerkt (voorkom dubbele emails)
+      const hasPendingEmail = existingEmails?.some(email => email.status === 'pending' || email.status === 'sending');
+      if (hasPendingEmail) {
+        continue;
+      }
+      
+      // Alleen toevoegen als er geen emails zijn (geen 'sent', 'pending', of 'sending')
+      // Als er alleen 'failed' emails zijn, voegen we ook geen nieuwe toe (welkomstmail is eenmalig)
+      // Haal welkomstmail template op
+      const { data: template, error: templateError } = await supabase
+        .from('email_templates')
+        .select('id, naam, onderwerp')
+        .eq('trigger_event', 'account_verificatie')
+        .eq('doelgroep', 'werkgever')
+        .eq('is_active', true)
         .single();
       
-      if (!existingEmail) {
-        // Haal welkomstmail template op
-        const { data: template, error: templateError } = await supabase
-          .from('email_templates')
-          .select('id, naam, onderwerp')
-          .eq('trigger_event', 'account_verificatie')
-          .eq('doelgroep', 'werkgever')
-          .eq('is_active', true)
-          .single();
-        
-        if (templateError) {
-          console.error('Template not found for account_verificatie:', templateError);
-          continue;
-        }
-        
-        // Voeg welkomstmail toe aan queue
-        const { error: queueError } = await supabase
-          .from('email_queue')
-          .insert({
-            template_id: template.id,
-            template_naam: template.naam,
-            template_onderwerp: template.onderwerp,
-            template_trigger: 'account_verificatie',
-            ontvanger_email: werkgever.email,
-            organisatie_id: werkgever.employer_id,
-            variabelen: {
-              voornaam: werkgever.first_name || 'Er',
-              login_url: `${process.env.FRONTEND_URL}/login`
-            }
-          });
-        
-        if (queueError) {
-          console.error('Error adding welcome email to queue:', queueError);
-        } else {
-          console.log(`Welkomstmail toegevoegd voor werkgever: ${werkgever.email}`);
-        }
+      if (templateError) {
+        console.error('Template not found for account_verificatie:', templateError);
+        continue;
+      }
+      
+      // Voeg welkomstmail toe aan queue
+      const { error: queueError } = await supabase
+        .from('email_queue')
+        .insert({
+          template_id: template.id,
+          template_naam: template.naam,
+          template_onderwerp: template.onderwerp,
+          template_trigger: 'account_verificatie',
+          ontvanger_email: werkgever.email,
+          organisatie_id: werkgever.employer_id,
+          variabelen: {
+            voornaam: werkgever.first_name || 'Er',
+            login_url: `${process.env.FRONTEND_URL}/login`
+          }
+        });
+      
+      if (queueError) {
+        console.error('Error adding welcome email to queue:', queueError);
+      } else {
+        console.log(`Welkomstmail toegevoegd voor werkgever: ${werkgever.email}`);
       }
     }
     
@@ -114,50 +131,67 @@ async function processAccountVerificatieTriggers() {
         continue;
       }
       
-      // Check of er al een welkomstmail is verstuurd
-      const { data: existingEmail } = await supabase
+      // Check of er al een welkomstmail is verstuurd (status = 'sent')
+      const { data: existingEmails, error: checkError } = await supabase
         .from('email_queue')
-        .select('id')
+        .select('id, status')
         .eq('ontvanger_email', werknemer.email)
-        .eq('template_trigger', 'werknemer_registratie')
+        .eq('template_trigger', 'werknemer_registratie');
+      
+      // Als er een error is bij het checken, log en sla over (veiligheid)
+      if (checkError) {
+        console.error(`Error checking existing emails for ${werknemer.email}:`, checkError);
+        continue;
+      }
+      
+      // Als er al een email is met status 'sent', sla over (email is al verstuurd)
+      const hasSentEmail = existingEmails?.some(email => email.status === 'sent');
+      if (hasSentEmail) {
+        continue;
+      }
+      
+      // Als er een 'pending' email is, wacht tot die wordt verwerkt (voorkom dubbele emails)
+      const hasPendingEmail = existingEmails?.some(email => email.status === 'pending' || email.status === 'sending');
+      if (hasPendingEmail) {
+        continue;
+      }
+      
+      // Alleen toevoegen als er geen emails zijn (geen 'sent', 'pending', of 'sending')
+      // Als er alleen 'failed' emails zijn, voegen we ook geen nieuwe toe (welkomstmail is eenmalig)
+      // Haal welkomstmail template op
+      const { data: template, error: templateError } = await supabase
+        .from('email_templates')
+        .select('id, naam, onderwerp')
+        .eq('trigger_event', 'werknemer_registratie')
+        .eq('doelgroep', 'werknemer')
+        .eq('is_active', true)
         .single();
       
-      if (!existingEmail) {
-        // Haal welkomstmail template op
-        const { data: template, error: templateError } = await supabase
-          .from('email_templates')
-          .select('id, naam, onderwerp')
-          .eq('trigger_event', 'werknemer_registratie')
-          .eq('doelgroep', 'werknemer')
-          .eq('is_active', true)
-          .single();
-        
-        if (templateError) {
-          console.error('Template not found for werknemer_registratie:', templateError);
-          continue;
-        }
-        
-        // Voeg welkomstmail toe aan queue
-        const { error: queueError } = await supabase
-          .from('email_queue')
-          .insert({
-            template_id: template.id,
-            template_naam: template.naam,
-            template_onderwerp: template.onderwerp,
-            template_trigger: 'werknemer_registratie',
-            ontvanger_email: werknemer.email,
-            organisatie_id: werknemer.employer_id,
-            variabelen: {
-              voornaam: werknemer.first_name || 'Er',
-              login_url: `${process.env.FRONTEND_URL}/login`
-            }
-          });
-        
-        if (queueError) {
-          console.error('Error adding welcome email to queue:', queueError);
-        } else {
-          console.log(`Welkomstmail toegevoegd voor werknemer: ${werknemer.email}`);
-        }
+      if (templateError) {
+        console.error('Template not found for werknemer_registratie:', templateError);
+        continue;
+      }
+      
+      // Voeg welkomstmail toe aan queue
+      const { error: queueError } = await supabase
+        .from('email_queue')
+        .insert({
+          template_id: template.id,
+          template_naam: template.naam,
+          template_onderwerp: template.onderwerp,
+          template_trigger: 'werknemer_registratie',
+          ontvanger_email: werknemer.email,
+          organisatie_id: werknemer.employer_id,
+          variabelen: {
+            voornaam: werknemer.first_name || 'Er',
+            login_url: `${process.env.FRONTEND_URL}/login`
+          }
+        });
+      
+      if (queueError) {
+        console.error('Error adding welcome email to queue:', queueError);
+      } else {
+        console.log(`Welkomstmail toegevoegd voor werknemer: ${werknemer.email}`);
       }
     }
   } catch (error) {
@@ -875,49 +909,65 @@ async function processGesprekAfgerondTriggers() {
     console.log(`Found ${recentGesprekken?.length || 0} recently completed gesprekken`);
     
     for (const gesprek of recentGesprekken || []) {
-      // Check of er al een gesprek afgerond mail is verstuurd
-      const { data: existingEmail } = await supabase
+      // Check of er al een gesprek afgerond mail is verstuurd voor dit specifieke gesprek
+      const { data: existingEmails, error: checkError } = await supabase
         .from('email_queue')
-        .select('id')
+        .select('id, status')
         .eq('ontvanger_email', gesprek.users.email)
         .eq('template_trigger', 'gesprek_afgerond')
-        .eq('metadata->>gesprek_id', gesprek.id.toString())
-        .single();
+        .eq('metadata->>gesprek_id', gesprek.id.toString());
       
-      if (!existingEmail) {
-        // Haal template op
-        const { data: template, error: templateError } = await supabase
-          .from('email_templates')
-          .select('id')
-          .eq('trigger_event', 'gesprek_afgerond')
-          .eq('doelgroep', 'werknemer')
-          .eq('is_active', true)
-          .single();
-        
-        if (templateError) {
-          console.error('Template not found for gesprek_afgerond:', templateError);
-          continue;
-        }
-        
-        // Voeg email toe aan queue
-        await supabase
-          .from('email_queue')
-          .insert({
-            template_id: template.id,
-            ontvanger_email: gesprek.users.email,
-            organisatie_id: gesprek.users.employer_id,
-            variabelen: {
-              voornaam: gesprek.users.first_name || 'Er',
-              thema_titel: gesprek.themes.titel,
-              dashboard_url: `${process.env.FRONTEND_URL}/werknemer-dashboard`
-            },
-            metadata: {
-              gesprek_id: gesprek.id
-            }
-          });
-        
-        console.log(`Gesprek afgerond mail toegevoegd voor: ${gesprek.users.email}`);
+      // Als er een error is bij het checken, log en sla over (veiligheid)
+      if (checkError) {
+        console.error(`Error checking existing emails for gesprek ${gesprek.id}:`, checkError);
+        continue;
       }
+      
+      // Als er al een email is met status 'sent' voor dit gesprek, sla over
+      const hasSentEmail = existingEmails?.some(email => email.status === 'sent');
+      if (hasSentEmail) {
+        continue;
+      }
+      
+      // Als er een 'pending' email is voor dit gesprek, wacht tot die wordt verwerkt
+      const hasPendingEmail = existingEmails?.some(email => email.status === 'pending' || email.status === 'sending');
+      if (hasPendingEmail) {
+        continue;
+      }
+      
+      // Alleen toevoegen als er geen emails zijn voor dit gesprek (geen 'sent', 'pending', of 'sending')
+      // Haal template op
+      const { data: template, error: templateError } = await supabase
+        .from('email_templates')
+        .select('id')
+        .eq('trigger_event', 'gesprek_afgerond')
+        .eq('doelgroep', 'werknemer')
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      // Als template niet bestaat, sla over zonder error te loggen (template is optioneel)
+      if (templateError || !template) {
+        continue;
+      }
+      
+      // Voeg email toe aan queue
+      await supabase
+        .from('email_queue')
+        .insert({
+          template_id: template.id,
+          ontvanger_email: gesprek.users.email,
+          organisatie_id: gesprek.users.employer_id,
+          variabelen: {
+            voornaam: gesprek.users.first_name || 'Er',
+            thema_titel: gesprek.themes.titel,
+            dashboard_url: `${process.env.FRONTEND_URL}/werknemer-dashboard`
+          },
+          metadata: {
+            gesprek_id: gesprek.id
+          }
+        });
+      
+      console.log(`Gesprek afgerond mail toegevoegd voor: ${gesprek.users.email}`);
     }
   } catch (error) {
     console.error('Error processing gesprek afgerond triggers:', error);
