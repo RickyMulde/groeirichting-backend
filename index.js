@@ -36,6 +36,7 @@ const teams = require('./teams'); // ✅ Nieuw toegevoegd voor team management
 const emailTemplates = require('./email-templates'); // ✅ Nieuw toegevoegd voor email templates
 const emailQueue = require('./email-queue'); // ✅ Nieuw toegevoegd voor email queue
 const testEmail = require('./test-email'); // ✅ Nieuw toegevoegd voor test emails
+const adminUsers = require('./admin-users'); // ✅ Nieuw toegevoegd voor admin gebruikersbeheer
 const { processEmailQueue, processEmailTriggers } = require('./cron-jobs'); // ✅ Nieuw toegevoegd voor queue processing
 // const auth = require('./auth'); // Uitgeschakeld - frontend gebruikt direct Supabase Auth
 
@@ -164,6 +165,7 @@ app.use('/api/teams', teams); // ✅ Nieuwe route toegevoegd voor team managemen
 app.use('/api/email-templates', emailTemplates); // ✅ Nieuwe route toegevoegd voor email templates
 app.use('/api/email-queue', emailQueue); // ✅ Nieuwe route toegevoegd voor email queue
 app.use('/api/test-email', testEmail); // ✅ Nieuwe route toegevoegd voor test emails
+app.use('/api/admin', adminUsers); // ✅ Nieuwe route toegevoegd voor admin gebruikersbeheer
 
 // 🔧 Provision employer endpoint - wordt aangeroepen na email verificatie
 app.post('/api/provision-employer', async (req, res) => {
