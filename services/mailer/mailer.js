@@ -66,6 +66,9 @@ function maybeRedirectAll(to) {
  * @param {boolean} [opts.trackOpens=true]
  * @param {boolean} [opts.trackClicks=true]
  * @param {Object} [opts.headers] - extra headers
+ * @param {Array} [opts.attachments] - attachments array [{content: Buffer, filename: string, contentType?: string}]
+ * @param {string|string[]} [opts.bcc] - BCC recipient(s)
+ * @param {string|string[]} [opts.cc] - CC recipient(s)
  * @returns {Promise<{messageId?: string, provider: 'resend'}>}
  */
 async function sendEmail(opts = {}) {
@@ -76,6 +79,9 @@ async function sendEmail(opts = {}) {
     trackOpens = true,
     trackClicks = true,
     headers = {},
+    attachments,
+    bcc,
+    cc,
   } = opts;
 
   if (!to) throw new Error('sendEmail: "to" is verplicht');
@@ -99,7 +105,8 @@ async function sendEmail(opts = {}) {
   }
 
   try {
-    const res = await resend.emails.send({
+    // Build Resend email object (alleen velden toevoegen als ze aanwezig zijn)
+    const emailData = {
       from: fromAddr,
       to: finalTo,
       subject,
@@ -111,7 +118,20 @@ async function sendEmail(opts = {}) {
       track_clicks: !!trackClicks,
       // Reply-To (Resend ondersteunt 'reply_to')
       reply_to: reply,
-    });
+    };
+
+    // Voeg optionele velden toe (alleen als aanwezig)
+    if (attachments && attachments.length > 0) {
+      emailData.attachments = attachments;
+    }
+    if (bcc) {
+      emailData.bcc = bcc;
+    }
+    if (cc) {
+      emailData.cc = cc;
+    }
+
+    const res = await resend.emails.send(emailData);
 
     const messageId = res && res.data && res.data.id ? res.data.id : undefined;
     return { messageId, provider: 'resend' };
