@@ -32,6 +32,7 @@ const { router: generateTopActionsRouter } = require('./generate-top-actions'); 
 const saveThemaEvaluatie = require('./save-thema-evaluatie'); // ✅ Nieuw toegevoegd
 const checkThemaEvaluatie = require('./check-thema-evaluatie'); // ✅ Nieuw toegevoegd
 const contact = require('./contact'); // ✅ Nieuw toegevoegd
+const brochureRequest = require('./brochure-request'); // ✅ Nieuw toegevoegd voor brochure downloads
 const teams = require('./teams'); // ✅ Nieuw toegevoegd voor team management
 const emailTemplates = require('./email-templates'); // ✅ Nieuw toegevoegd voor email templates
 const emailQueue = require('./email-queue'); // ✅ Nieuw toegevoegd voor email queue
@@ -161,6 +162,7 @@ app.use('/api/generate-top-actions', generateTopActionsRouter); // ✅ Nieuwe ro
 app.use('/api/save-thema-evaluatie', saveThemaEvaluatie); // ✅ Nieuwe route toegevoegd
 app.use('/api/check-thema-evaluatie', checkThemaEvaluatie); // ✅ Nieuwe route toegevoegd
 app.use('/api/contact', contact); // ✅ Nieuwe route toegevoegd
+app.use('/api/brochure-request', brochureRequest); // ✅ Nieuwe route toegevoegd voor brochure downloads
 app.use('/api/teams', teams); // ✅ Nieuwe route toegevoegd voor team management
 app.use('/api/email-templates', emailTemplates); // ✅ Nieuwe route toegevoegd voor email templates
 app.use('/api/email-queue', emailQueue); // ✅ Nieuwe route toegevoegd voor email queue
