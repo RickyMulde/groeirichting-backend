@@ -393,19 +393,19 @@ router.get('/:werkgever_id/themas', async (req, res) => {
 
     // 5. Haal alle employer_themes records op om zichtbaarheid status te bepalen
     // (zowel actieve als inactieve koppelingen voor volledige status)
-    let employerThemesQuery = supabase
+    let employerThemesStatusQuery = supabase
       .from('employer_themes')
       .select('theme_id, zichtbaar, team_id')
       .eq('employer_id', employerId);
 
     // Als team_id is opgegeven, haal zowel team-specifieke als organisatie-brede instellingen op
     if (team_id) {
-      employerThemesQuery = employerThemesQuery.or(`team_id.eq.${team_id},team_id.is.null`);
+      employerThemesStatusQuery = employerThemesStatusQuery.or(`team_id.eq.${team_id},team_id.is.null`);
     } else {
-      employerThemesQuery = employerThemesQuery.is('team_id', null);
+      employerThemesStatusQuery = employerThemesStatusQuery.is('team_id', null);
     }
 
-    const { data: employerThemes, error: employerThemesError2 } = await employerThemesQuery;
+    const { data: employerThemes, error: employerThemesError2 } = await employerThemesStatusQuery;
 
     if (employerThemesError2) {
       console.warn('Fout bij ophalen employer_themes:', employerThemesError2);
