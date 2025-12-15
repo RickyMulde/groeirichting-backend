@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js')
 // Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4o', temperature 1, max_completion_tokens 4000
 const openaiClient = require('./utils/openaiClient')
 const { authMiddleware } = require('./middleware/auth')
+const { hasThemeAccess } = require('./utils/themeAccessService')
 
 const router = express.Router()
 const supabase = createClient(
@@ -23,6 +24,33 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    // ✅ VALIDATIE: Haal werknemer op om team_id te krijgen en check toegang tot thema
+    const { data: werknemer, error: werknemerError } = await supabase
+      .from('users')
+      .select('employer_id, team_id')
+      .eq('id', werknemer_id)
+      .eq('employer_id', employerId)
+      .single()
+
+    if (werknemerError) {
+      if (werknemerError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Werknemer niet gevonden' })
+      }
+      throw werknemerError
+    }
+
+    if (!werknemer || werknemer.employer_id !== employerId) {
+      return res.status(403).json({ error: 'Geen toegang tot deze werknemer' })
+    }
+
+    // Check toegang tot thema
+    const hasAccess = await hasThemeAccess(employerId, theme_id, werknemer.team_id || null)
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
+      })
+    }
+
     // 0️⃣ Haal het thema op uit de themes-tabel
     const { data: thema, error: themaError } = await supabase
       .from('themes')
@@ -95,19 +123,23 @@ router.post('/', async (req, res) => {
       console.warn('Kon werkgever configuratie niet ophalen:', configError)
     }
 
-    // 2c. Haal werknemer context op voor functie-omschrijving en gender
-    const { data: werknemerContext, error: contextError } = await supabase
+    // 2c. Haal werknemer context op voor functie-omschrijving en gender (werknemer is al opgehaald, gebruik die data)
+    const werknemerContext = {
+      functie_omschrijving: werknemer.functie_omschrijving,
+      gender: werknemer.gender,
+      employer_id: werknemer.employer_id
+    }
+    
+    // Haal extra velden op die we nog nodig hebben
+    const { data: werknemerExtra, error: contextError } = await supabase
       .from('users')
-      .select('functie_omschrijving, gender, employer_id')
+      .select('functie_omschrijving, gender')
       .eq('id', werknemer_id)
-      .eq('employer_id', employerId)  // Voeg org-scope toe
       .single()
 
-    if (contextError) {
-      if (contextError.code === 'PGRST116') {
-        return res.status(404).json({ error: 'Werknemer niet gevonden' })
-      }
-      console.warn('Kon werknemer context niet ophalen:', contextError)
+    if (!contextError && werknemerExtra) {
+      werknemerContext.functie_omschrijving = werknemerExtra.functie_omschrijving
+      werknemerContext.gender = werknemerExtra.gender
     }
 
     const hoofdvraag = vasteVragenData.find(v => v.type === 'hoofd')?.tekst || ''
@@ -202,17 +234,7 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
       throw new Error('Fout bij parsen van GPT response')
     }
 
-    // ✅ 5. Haal werkgever op via werknemer
-    const { data: werknemer, error: werknemerError } = await supabase
-      .from('users')
-      .select('employer_id')
-      .eq('id', werknemer_id)
-      .single()
-
-    if (werknemerError) throw werknemerError
-    if (!werknemer) {
-      return res.status(404).json({ error: 'Werknemer niet gevonden' })
-    }
+    // ✅ 5. Werkgever is al opgehaald bij validatie (werknemer.employer_id)
 
     // ✅ 6. Bepaal gespreksronde en periode
     let gespreksronde = 1

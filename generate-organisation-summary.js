@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js')
 // Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-5-mini', temperature 1, max_completion_tokens 15000
 const openaiClient = require('./utils/openaiClient')
 const { authMiddleware, assertTeamInOrg } = require('./middleware/auth')
+const { hasThemeAccess } = require('./utils/themeAccessService')
 
 const router = express.Router()
 const supabase = createClient(
@@ -32,6 +33,14 @@ router.post('/', async (req, res) => {
   // Valideer team_id als opgegeven
   if (team_id) {
     await assertTeamInOrg(team_id, employerId)
+  }
+
+  // ✅ VALIDATIE: Check toegang tot thema
+  const hasAccess = await hasThemeAccess(employerId, theme_id, team_id || null)
+  if (!hasAccess) {
+    return res.status(403).json({ 
+      error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
+    })
   }
 
   try {

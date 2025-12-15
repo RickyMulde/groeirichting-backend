@@ -24,6 +24,7 @@ const getOrganisationThemes = require('./get-organisation-themes'); // ✅ Nieuw
 const getOrganisationSummary = require('./get-organisation-summary'); // ✅ Nieuw toegevoegd
 const generateOrganisationSummary = require('./generate-organisation-summary'); // ✅ Nieuw toegevoegd
 const werkgeverGesprekInstellingen = require('./werkgever-gesprek-instellingen'); // ✅ Nieuw toegevoegd
+const employerThemes = require('./employer-themes'); // ✅ Nieuw toegevoegd
 const getThemaDataWerknemer = require('./get-thema-data-werknemer'); // ✅ Nieuw toegevoegd
 const verwijderOudeGesprekken = require('./verwijder-oude-gesprekken'); // ✅ Nieuw toegevoegd
 const getGespreksresultatenBulk = require('./get-gespreksresultaten-bulk'); // ✅ Nieuw toegevoegd
@@ -155,6 +156,7 @@ app.use('/api/organisation-themes', getOrganisationThemes); // ✅ Nieuwe route 
 app.use('/api/organisation-summary', getOrganisationSummary); // ✅ Nieuwe route toegevoegd
 app.use('/api/generate-organisation-summary', generateOrganisationSummary); // ✅ Nieuwe route toegevoegd
 app.use('/api/werkgever-gesprek-instellingen', werkgeverGesprekInstellingen); // ✅ Nieuwe route toegevoegd
+app.use('/api/employer-themes', employerThemes); // ✅ Nieuwe route toegevoegd
 app.use('/api/get-thema-data-werknemer', getThemaDataWerknemer); // ✅ Nieuwe route toegevoegd
 app.use('/api/verwijder-oude-gesprekken', verwijderOudeGesprekken); // ✅ Nieuwe route toegevoegd
 app.use('/api/auto-generate-summaries', autoGenerateSummaries); // ✅ Nieuwe route toegevoegd

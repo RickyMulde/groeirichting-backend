@@ -1,6 +1,7 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
 const { authMiddleware, assertTeamInOrg } = require('./middleware/auth')
+const { hasThemeAccess } = require('./utils/themeAccessService')
 
 const router = express.Router()
 const supabase = createClient(
@@ -32,6 +33,14 @@ router.get('/:orgId/:themeId', async (req, res) => {
     // Valideer team_id als opgegeven
     if (team_id) {
       await assertTeamInOrg(team_id, employerId)
+    }
+
+    // ✅ VALIDATIE: Check toegang tot thema
+    const hasAccess = await hasThemeAccess(employerId, themeId, team_id || null)
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
+      })
     }
 
     // Haal de organisatie insight op (team-specifiek of organisatie-breed)

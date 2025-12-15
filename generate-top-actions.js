@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js')
 // Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4o', temperature 0.3, max_completion_tokens 4000
 const openaiClient = require('./utils/openaiClient')
 const { authMiddleware } = require('./middleware/auth')
+const { getAllowedThemeIds } = require('./utils/themeAccessService')
 
 const router = express.Router()
 const supabase = createClient(
@@ -87,24 +88,28 @@ async function generateTopActions(werknemer_id, periode, employerId) {
     }
 
     // 1.5️⃣ Extra validatie: controleer of alle thema's zijn afgerond
-    // Thema's zijn globaal, niet per werkgever - filter alleen op actieve thema's
-    const { data: alleThemas, error: themaError } = await supabase
-      .from('themes')
-      .select('id')
-      .eq('klaar_voor_gebruik', true)
-      .eq('standaard_zichtbaar', true)
-
-    if (themaError) throw themaError
-
-    const uniekeThemasInGesprekken = [...new Set(gesprekken.map(g => g.theme_id))]
-    const alleThemasAfgerond = uniekeThemasInGesprekken.length === alleThemas.length
-
-    if (!alleThemasAfgerond) {
-      console.log(`⚠️ Niet alle thema's zijn afgerond: ${uniekeThemasInGesprekken.length}/${alleThemas.length}`)
-      throw new Error(`Niet alle thema's zijn afgerond voor deze periode. Afgerond: ${uniekeThemasInGesprekken.length}/${alleThemas.length} thema's`)
+    // Haal toegestane thema's op voor deze werkgever (gebruik nieuwe filtering)
+    const toegestaneThemeIds = await getAllowedThemeIds(employerId, teamId || null)
+    
+    if (!toegestaneThemeIds || toegestaneThemeIds.length === 0) {
+      throw new Error('Geen toegestane thema\'s gevonden voor deze werkgever')
     }
 
-    console.log(`✅ Alle ${alleThemas.length} thema's zijn afgerond, ga door met generatie`)
+    const uniekeThemasInGesprekken = [...new Set(gesprekken.map(g => g.theme_id))]
+    const alleThemasAfgerond = uniekeThemasInGesprekken.length === toegestaneThemeIds.length
+    
+    // Extra check: alle gesprekken moeten van toegestane thema's zijn
+    const ongeldigeThemas = uniekeThemasInGesprekken.filter(themeId => !toegestaneThemeIds.includes(themeId))
+    if (ongeldigeThemas.length > 0) {
+      throw new Error(`Gesprekken gevonden voor niet-toegestane thema's: ${ongeldigeThemas.join(', ')}`)
+    }
+
+    if (!alleThemasAfgerond) {
+      console.log(`⚠️ Niet alle thema's zijn afgerond: ${uniekeThemasInGesprekken.length}/${toegestaneThemeIds.length}`)
+      throw new Error(`Niet alle thema's zijn afgerond voor deze periode. Afgerond: ${uniekeThemasInGesprekken.length}/${toegestaneThemeIds.length} thema's`)
+    }
+
+    console.log(`✅ Alle ${toegestaneThemeIds.length} thema's zijn afgerond, ga door met generatie`)
 
     // 2️⃣ Haal alle gespreksgeschiedenis op
     const gesprekIds = gesprekken.map(g => g.id)

@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js')
 // Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4o', temperature 1, max_completion_tokens 2000
 const openaiClient = require('./utils/openaiClient')
 const { authMiddleware } = require('./middleware/auth')
+const { hasThemeAccess } = require('./utils/themeAccessService')
 
 const router = express.Router()
 const supabase = createClient(
@@ -23,6 +24,33 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    // ✅ VALIDATIE: Haal werknemer op om team_id te krijgen en check toegang tot thema
+    const { data: werknemer, error: werknemerError } = await supabase
+      .from('users')
+      .select('employer_id, team_id')
+      .eq('id', werknemer_id)
+      .eq('employer_id', employerId)
+      .single()
+
+    if (werknemerError) {
+      if (werknemerError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Werknemer niet gevonden' })
+      }
+      throw werknemerError
+    }
+
+    if (!werknemer || werknemer.employer_id !== employerId) {
+      return res.status(403).json({ error: 'Geen toegang tot deze werknemer' })
+    }
+
+    // Check toegang tot thema
+    const hasAccess = await hasThemeAccess(employerId, theme_id, werknemer.team_id || null)
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
+      })
+    }
+
     // 0️⃣ Haal het thema op uit de themes-tabel
     const { data: thema, error: themaError } = await supabase
       .from('themes')

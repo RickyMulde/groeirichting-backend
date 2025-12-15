@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js')
 // Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4o', temperature 1, max_completion_tokens 4000
 const openaiClient = require('./utils/openaiClient')
 const { authMiddleware, assertTeamInOrg } = require('./middleware/auth')
+const { getAllowedThemeIds } = require('./utils/themeAccessService')
 
 const router = express.Router()
 const supabase = createClient(
@@ -324,12 +325,27 @@ router.get('/', async (req, res) => {
       actieveMaanden = configData.actieve_maanden || actieveMaanden
     }
 
-    // Haal alle actieve thema's op
+    // Haal toegestane thema's op voor deze werkgever/team (gebruik nieuwe filtering)
+    const toegestaneThemeIds = await getAllowedThemeIds(werknemer.employer_id, team_id || null)
+    
+    if (!toegestaneThemeIds || toegestaneThemeIds.length === 0) {
+      // Geen toegestane thema's, return lege lijst
+      return res.json({
+        periode: periode,
+        actieve_maanden: actieveMaanden,
+        resultaten: [],
+        totaal_themas: 0,
+        themas_met_resultaat: 0,
+        team_filter: team_id || null
+      })
+    }
+
+    // Haal details op van toegestane thema's
     const { data: themaData, error: themaError } = await supabase
       .from('themes')
       .select('id, titel, beschrijving_werknemer')
+      .in('id', toegestaneThemeIds)
       .eq('klaar_voor_gebruik', true)
-      .eq('standaard_zichtbaar', true)
       .order('volgorde_index')
 
     if (themaError) throw themaError

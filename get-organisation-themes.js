@@ -1,6 +1,7 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
 const { authMiddleware, assertTeamInOrg } = require('./middleware/auth')
+const { getAllowedThemeIds } = require('./utils/themeAccessService')
 
 const router = express.Router()
 const supabase = createClient(
@@ -123,18 +124,33 @@ router.get('/:orgId', async (req, res) => {
       await assertTeamInOrg(team_id, orgId)
     }
 
-    // 1. Haal alle actieve thema's op
+    // 1. Haal toegestane theme_id's op voor deze werkgever/team
+    const allowedThemeIds = await getAllowedThemeIds(orgId, team_id || null)
+    
+    if (allowedThemeIds.length === 0) {
+      // Geen toegestane thema's, return lege lijst
+      return res.json({
+        organisatie_id: orgId,
+        totaal_medewerkers: 0,
+        totale_voortgang_percentage: 0,
+        voltooide_gesprekken: 0,
+        totaal_mogelijke_gesprekken: 0,
+        thema_s: []
+      })
+    }
+
+    // 2. Haal details op van toegestane thema's
     const { data: themeData, error: themeError } = await supabase
       .from('themes')
       .select('id, titel, beschrijving_werknemer, beschrijving_werkgever, geeft_score, geeft_samenvatting')
+      .in('id', allowedThemeIds)
       .eq('klaar_voor_gebruik', true)
-      .eq('standaard_zichtbaar', true)
       .order('volgorde_index', { ascending: true })
 
     if (themeError) throw themeError
     console.log('✅ Thema\'s opgehaald:', themeData?.length || 0)
 
-    // 2. Haal werknemers van deze organisatie op (met team filtering)
+    // 3. Haal werknemers van deze organisatie op (met team filtering)
     let employeeQuery = supabase
       .from('users')
       .select('id, team_id')
@@ -151,7 +167,7 @@ router.get('/:orgId', async (req, res) => {
     if (employeesError) throw employeesError
     console.log('✅ Werknemers opgehaald:', employees?.length || 0)
 
-    // 3. Haal bestaande organisatie insights op (team-specifiek of organisatie-breed)
+    // 4. Haal bestaande organisatie insights op (team-specifiek of organisatie-breed)
     let insightsQuery = supabase
       .from('organization_theme_insights')
       .select('*')
@@ -169,7 +185,7 @@ router.get('/:orgId', async (req, res) => {
     if (insightsError) throw insightsError
     console.log('✅ Insights opgehaald:', existingInsights?.length || 0)
 
-    // 4. Voor elk thema, bereken voortgang en scores
+    // 5. Voor elk thema, bereken voortgang en scores
     const themesWithProgress = await Promise.all(themeData.map(async (theme) => {
       // Zoek bestaande insight voor dit thema
       const existingInsight = existingInsights?.find(insight => insight.theme_id === theme.id)
