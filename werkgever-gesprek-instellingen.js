@@ -335,24 +335,64 @@ router.get('/:werkgever_id/themas', async (req, res) => {
   }
 
   try {
-    // Haal toegestane theme_id's op
-    const toegestaneThemeIds = await getAllowedThemeIds(employerId, team_id || null);
-
-    if (toegestaneThemeIds.length === 0) {
-      return res.json({ themas: [] });
-    }
-
-    // Haal details op van toegestane thema's
-    const { data: themaData, error: themaError } = await supabase
+    // Voor instellingen pagina: haal ALLE generieke thema's op (ook als uitgezet)
+    // en alleen exclusieve thema's die gekoppeld zijn
+    // Dit zorgt ervoor dat werkgevers generieke thema's weer aan kunnen zetten
+    
+    // 1. Haal alle generieke thema's op (standaard_zichtbaar = true)
+    const { data: generiekeThemas, error: generiekeError } = await supabase
       .from('themes')
       .select('id, titel, beschrijving_werknemer, beschrijving_werkgever, standaard_zichtbaar, klaar_voor_gebruik, volgorde_index')
-      .in('id', toegestaneThemeIds)
+      .eq('standaard_zichtbaar', true)
       .eq('klaar_voor_gebruik', true)
       .order('volgorde_index', { ascending: true });
 
-    if (themaError) throw themaError;
+    if (generiekeError) throw generiekeError;
 
-    // Haal employer_themes records op om zichtbaarheid status te bepalen
+    // 2. Haal alle exclusieve thema's op die gekoppeld zijn aan deze werkgever/team
+    // We gebruiken employer_themes om te bepalen welke exclusieve thema's gekoppeld zijn
+    let employerThemesQuery = supabase
+      .from('employer_themes')
+      .select('theme_id, zichtbaar, team_id')
+      .eq('employer_id', employerId)
+      .eq('zichtbaar', true); // Alleen actieve koppelingen
+
+    // Als team_id is opgegeven, haal zowel team-specifieke als organisatie-brede koppelingen op
+    if (team_id) {
+      employerThemesQuery = employerThemesQuery.or(`team_id.eq.${team_id},team_id.is.null`);
+    } else {
+      employerThemesQuery = employerThemesQuery.is('team_id', null);
+    }
+
+    const { data: employerThemesKoppelingen, error: employerThemesError } = await employerThemesQuery;
+
+    if (employerThemesError) {
+      console.warn('Fout bij ophalen employer_themes koppelingen:', employerThemesError);
+    }
+
+    // 3. Haal exclusieve thema's op die gekoppeld zijn
+    let exclusieveThemas = [];
+    if (employerThemesKoppelingen && employerThemesKoppelingen.length > 0) {
+      const gekoppeldeThemeIds = employerThemesKoppelingen.map(et => et.theme_id);
+      
+      // Haal details op van gekoppelde exclusieve thema's
+      const { data: exclusieveData, error: exclusieveError } = await supabase
+        .from('themes')
+        .select('id, titel, beschrijving_werknemer, beschrijving_werkgever, standaard_zichtbaar, klaar_voor_gebruik, volgorde_index')
+        .eq('standaard_zichtbaar', false)
+        .eq('klaar_voor_gebruik', true)
+        .in('id', gekoppeldeThemeIds)
+        .order('volgorde_index', { ascending: true });
+
+      if (exclusieveError) throw exclusieveError;
+      exclusieveThemas = exclusieveData || [];
+    }
+
+    // 4. Combineer alle thema's
+    const themaData = [...(generiekeThemas || []), ...exclusieveThemas];
+
+    // 5. Haal alle employer_themes records op om zichtbaarheid status te bepalen
+    // (zowel actieve als inactieve koppelingen voor volledige status)
     let employerThemesQuery = supabase
       .from('employer_themes')
       .select('theme_id, zichtbaar, team_id')
@@ -365,10 +405,10 @@ router.get('/:werkgever_id/themas', async (req, res) => {
       employerThemesQuery = employerThemesQuery.is('team_id', null);
     }
 
-    const { data: employerThemes, error: employerThemesError } = await employerThemesQuery;
+    const { data: employerThemes, error: employerThemesError2 } = await employerThemesQuery;
 
-    if (employerThemesError) {
-      console.warn('Fout bij ophalen employer_themes:', employerThemesError);
+    if (employerThemesError2) {
+      console.warn('Fout bij ophalen employer_themes:', employerThemesError2);
     }
 
     // Combineer thema data met zichtbaarheid status
