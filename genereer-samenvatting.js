@@ -216,17 +216,8 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
       throw new Error('Fout bij parsen van GPT response')
     }
 
-    // ✅ 5. Haal werkgever op via werknemer
-    const { data: werknemer, error: werknemerError } = await supabase
-      .from('users')
-      .select('employer_id')
-      .eq('id', werknemer_id)
-      .single()
-
-    if (werknemerError) throw werknemerError
-    if (!werknemer) {
-      return res.status(404).json({ error: 'Werknemer niet gevonden' })
-    }
+    // ✅ 5. Werknemer is al opgehaald bij validatie (regel 28), gebruik die data
+    // werknemer.employer_id is al beschikbaar
 
     // ✅ 6. Bepaal gespreksronde en periode
     let gespreksronde = 1
