@@ -1,7 +1,6 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
-// 🔄 MIGRATIE: Azure → OpenAI Direct
-// Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4o', temperature 0.3, max_completion_tokens 4000
+// 🔄 MIGRATIE: Nu met Responses API voor GPT-5.2
 const openaiClient = require('./utils/openaiClient')
 const { authMiddleware } = require('./middleware/auth')
 const { getAllowedThemeIds } = require('./utils/themeAccessService')
@@ -178,9 +177,9 @@ async function generateTopActions(werknemer_id, periode, employerId) {
     })
 
     // 5️⃣ Bouw GPT prompt
-    const prompt = `Je bent een HR-coach die de top 3 meest belangrijke vervolgacties bepaalt voor een werknemer op basis van alle gevoerde gesprekken.
+    const systemInstructions = `Je bent een HR-coach die de top 3 meest belangrijke vervolgacties bepaalt voor een werknemer op basis van alle gevoerde gesprekken. Antwoord ALLEEN in JSON-formaat.`
 
-WERKNEMER CONTEXT:
+    const userInput = `WERKNEMER CONTEXT:
 - Functie: ${werknemer.functie_omschrijving || 'Niet opgegeven'}
 - Geslacht: ${werknemer.gender || 'Niet opgegeven'}
 - Organisatie: ${werkgeverConfig?.organisatie_omschrijving || 'Niet opgegeven'}
@@ -208,9 +207,7 @@ PRIORITEER op basis van:
 - Haalbaarheid – wat kun jij realistisch doen?
 - Verbanden – welke actie helpt bij meerdere thema's tegelijk?
 
-BELANGRIJK: Antwoord ALLEEN in geldig JSON-formaat. Geen markdown code blocks, geen extra tekst voor of na de JSON.
-
-Gebruik exact dit format:
+Antwoord in JSON-formaat met de volgende structuur:
 {
   "actie_1": {
     "tekst": "Concrete, specifieke actie",
@@ -227,37 +224,69 @@ Gebruik exact dit format:
     "prioriteit": "laag", 
     "toelichting": "Waarom deze actie voor jou de derde prioriteit heeft"
   },
-  "algemene_toelichting": "Korte samenvatting van waarom deze 3 acties de beste keuzes zijn voor jou. Gebruik 'jij', 'jou' en 'je' in plaats van 'de werknemer'."
-}
+  "algemene_toelichting": "Korte samenvatting van waarom deze 3 acties de beste keuzes zijn voor jou."
+}`
 
-Zorg dat:
-- Alle velden zijn aanwezig (actie_1, actie_2, actie_3, algemene_toelichting)
-- Elk actie object heeft tekst, prioriteit en toelichting
-- Prioriteit is altijd "hoog", "medium" of "laag"
-- Geen speciale karakters die JSON parsing kunnen verstoren
-- Geen markdown formatting`
-
-    // 6️⃣ Stuur naar OpenAI Direct
-    console.log('🤖 Stuur prompt naar OpenAI Direct...')
-    const completion = await openaiClient.createCompletion({
-      model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
-      messages: [{ role: 'user', content: prompt }],
-      // GPT-5 ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
-      // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
-      // Voor gpt-4o zouden we gebruiken: temperature: 0.5, top_p: 0.9, frequency_penalty: 0.25, presence_penalty: 0.4
-      // BELANGRIJK: GPT-5 gebruikt "reasoning tokens" die meetellen in max_completion_tokens
-      // Bij meerdere gesprekken/thema's gebruikt GPT-5 veel reasoning tokens voor analyse
-      // Verhoogd naar 3000 om ruimte te geven voor reasoning (1500-2000) + uitgebreide output (800-1200)
-      max_completion_tokens: 3000, // Verhoogd van 1050 naar 3000 voor GPT-5 reasoning tokens bij meerdere gesprekken
-      response_format: { type: 'json_object' }, // Garandeert geldige JSON
-      stream: false
+    // 6️⃣ Stuur naar OpenAI Responses API (GPT-5.2)
+    console.log('🤖 Stuur prompt naar OpenAI Responses API (GPT-5.2)...')
+    const response = await openaiClient.createResponse({
+      model: 'gpt-5.2', // GPT-5.2 voor top acties generatie
+      instructions: systemInstructions,
+      input: [{ role: 'user', content: userInput }],
+      max_output_tokens: 3000,
+      service_tier: 'default',
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'top_actions_output',
+          schema: {
+            type: 'object',
+            properties: {
+              actie_1: {
+                type: 'object',
+                properties: {
+                  tekst: { type: 'string' },
+                  prioriteit: { type: 'string', enum: ['hoog', 'medium', 'laag'] },
+                  toelichting: { type: 'string' }
+                },
+                required: ['tekst', 'prioriteit', 'toelichting'],
+                additionalProperties: false
+              },
+              actie_2: {
+                type: 'object',
+                properties: {
+                  tekst: { type: 'string' },
+                  prioriteit: { type: 'string', enum: ['hoog', 'medium', 'laag'] },
+                  toelichting: { type: 'string' }
+                },
+                required: ['tekst', 'prioriteit', 'toelichting'],
+                additionalProperties: false
+              },
+              actie_3: {
+                type: 'object',
+                properties: {
+                  tekst: { type: 'string' },
+                  prioriteit: { type: 'string', enum: ['hoog', 'medium', 'laag'] },
+                  toelichting: { type: 'string' }
+                },
+                required: ['tekst', 'prioriteit', 'toelichting'],
+                additionalProperties: false
+              },
+              algemene_toelichting: { type: 'string' }
+            },
+            required: ['actie_1', 'actie_2', 'actie_3', 'algemene_toelichting'],
+            additionalProperties: false
+          },
+          strict: true
+        }
+      }
     })
 
-    if (!completion.success) {
-      throw new Error(`OpenAI Direct fout: ${completion.error}`)
+    if (!response.success) {
+      throw new Error(`OpenAI Responses API fout: ${response.error}`)
     }
 
-    const gptResponse = completion.data.choices[0].message.content
+    const gptResponse = response.data.output_text
     console.log('🤖 Raw GPT response:', gptResponse)
     
     // Verbeterde response cleaning

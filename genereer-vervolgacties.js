@@ -1,7 +1,6 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
-// 🔄 MIGRATIE: Azure → OpenAI Direct
-// Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4o', temperature 1, max_completion_tokens 4000
+// 🔄 MIGRATIE: Nu met Responses API voor GPT-5.2
 const openaiClient = require('./utils/openaiClient')
 const { authMiddleware } = require('./middleware/auth')
 const { hasThemeAccess } = require('./utils/themeAccessService')
@@ -153,9 +152,11 @@ router.post('/', async (req, res) => {
       `Vraag: ${item.vraag_tekst}\nAntwoord: ${item.antwoord}`
     ).join('\n\n')
 
-    const prompt = `Je bent een HR-assistent die vervolgacties voorstelt voor een WERKNEMER.
+    // System instructions
+    const systemInstructions = `Je bent een HR-assistent die vervolgacties voorstelt voor een WERKNEMER. Antwoord ALLEEN in JSON-formaat.`
 
-Thema: ${thema.titel}
+    // User input
+    const userInput = `Thema: ${thema.titel}
 ${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}${werknemerContext?.functie_omschrijving ? `\n\nFunctie context: ${werknemerContext.functie_omschrijving}` : ''}${werknemerContext?.gender ? `\n\nGeslacht: ${werknemerContext.gender}` : ''}
 
 Hoofdvraag: ${hoofdvraag}
@@ -187,36 +188,41 @@ Voorbeelden van passende vervolgacties:
 - "Onderzoek welke ondersteuning beschikbaar is binnen je organisatie voor…"
 - "Reflecteer wekelijks op je voortgang met…"
 
-Antwoord in JSON-formaat (zonder markdown code blocks):
-{
-  "vervolgacties": [
-    "Concrete actie 1",
-    "Concrete actie 2", 
-    "Concrete actie 3"
-  ],
-  "vervolgacties_toelichting": "Korte uitleg waarom deze acties passend zijn voor de werknemer"
-}`
+Antwoord in JSON-formaat met velden: "vervolgacties" (array van 3 strings) en "vervolgacties_toelichting" (string).`
 
-    // ✅ 4. Stuur prompt naar OpenAI Direct
-    const completion = await openaiClient.createCompletion({
-      model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
-      messages: [{ role: 'user', content: prompt }],
-      // GPT-5 ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
-      // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
-      // Voor gpt-4o zouden we gebruiken: temperature: 0.55, top_p: 0.9, frequency_penalty: 0.25, presence_penalty: 0.35
-      // BELANGRIJK: GPT-5 gebruikt "reasoning tokens" die meetellen in max_completion_tokens
-      // Bij lange gespreksgeschiedenis gebruikt GPT-5 meer reasoning tokens
-      // Verhoogd naar 5000 om ruimte te geven voor reasoning (2000-3000) + output (500-1000) bij lange prompts
-      max_completion_tokens: 5000, // Verhoogd van 2500 naar 5000 voor lange gespreksgeschiedenis
-      response_format: { type: 'json_object' }, // Garandeert geldige JSON
-      stream: false
+    // ✅ 4. Stuur prompt naar OpenAI Responses API (GPT-5.2)
+    const response = await openaiClient.createResponse({
+      model: 'gpt-5.2', // GPT-5.2 voor vervolgacties generatie
+      instructions: systemInstructions,
+      input: [{ role: 'user', content: userInput }],
+      max_output_tokens: 3000,
+      service_tier: 'default',
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'vervolgacties_output',
+          schema: {
+            type: 'object',
+            properties: {
+              vervolgacties: {
+                type: 'array',
+                items: { type: 'string' }
+              },
+              vervolgacties_toelichting: { type: 'string' }
+            },
+            required: ['vervolgacties', 'vervolgacties_toelichting'],
+            additionalProperties: false
+          },
+          strict: true
+        }
+      }
     })
 
-    if (!completion.success) {
-      throw new Error(`OpenAI Direct fout: ${completion.error}`)
+    if (!response.success) {
+      throw new Error(`OpenAI Responses API fout: ${response.error}`)
     }
 
-    const gptResponse = completion.data.choices[0].message.content
+    const gptResponse = response.data.output_text
     
     // Verwijder markdown code blocks als die er zijn
     let cleanResponse = gptResponse

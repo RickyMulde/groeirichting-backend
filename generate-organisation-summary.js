@@ -1,7 +1,6 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
-// 🔄 MIGRATIE: Azure → OpenAI Direct
-// Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-5-mini', temperature 1, max_completion_tokens 15000
+// 🔄 MIGRATIE: Nu met Responses API voor GPT-5.2
 const openaiClient = require('./utils/openaiClient')
 const { authMiddleware, assertTeamInOrg } = require('./middleware/auth')
 const { hasThemeAccess } = require('./utils/themeAccessService')
@@ -143,9 +142,11 @@ router.post('/', async (req, res) => {
       `\n\nTeam context: ${teamInfo.naam}${teamInfo.teams_beschrijving ? ` - ${teamInfo.teams_beschrijving}` : ''}\nAantal teamleden: ${employees.length}` : 
       `\n\nOrganisatie context: ${employees.length} medewerkers`
 
-    const prompt = `Je bent een HR-expert die ${teamInfo ? 'team-specifieke' : 'organisatie-brede'} inzichten analyseert.
+    // System instructions
+    const systemInstructions = `Je bent een HR-expert die ${teamInfo ? 'team-specifieke' : 'organisatie-brede'} inzichten analyseert. Antwoord ALLEEN in JSON-formaat.`
 
-Thema: ${theme.titel}
+    // User input
+    const userInput = `Thema: ${theme.titel}
 Beschrijving: ${theme.beschrijving_werknemer}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}${teamContext}
 
 Hieronder vind je alle gesprekken van ${teamInfo ? 'teamleden' : 'medewerkers'} over dit thema:
@@ -170,38 +171,52 @@ Voorbeelden van veralgemeniseren:
 ❌ In plaats van: "Manager klaagt over gebrek aan communicatie"
 ✅ Zeg: "Communicatie tussen verschillende lagen in de organisatie kan verbeterd worden."
 
-Antwoord in JSON-formaat:
-{
-  "samenvatting": "...",
-  "verbeteradvies": "...",
-  "signaalwoorden": ["woord1", "woord2", "woord3"],
-  "gpt_adviezen": {
-    "prioriteit_1": "Eerste prioriteit advies",
-    "prioriteit_2": "Tweede prioriteit advies", 
-    "prioriteit_3": "Derde prioriteit advies"
-  }
-}`
+Antwoord in JSON-formaat met velden: "samenvatting" (string), "verbeteradvies" (string), "signaalwoorden" (array van strings), "gpt_adviezen" (object met prioriteit_1, prioriteit_2, prioriteit_3).`
 
-    // 5. Stuur naar OpenAI Direct
-    const completion = await openaiClient.createCompletion({
-      model: 'gpt-5-mini', // Kostenbewust: zware prompts (veel gesprekken)
-      messages: [{ role: 'user', content: prompt }],
-      // GPT-5-mini ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
-      // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
-      // Voor gpt-4o zouden we gebruiken: temperature: 0.4, top_p: 0.9, frequency_penalty: 0.15, presence_penalty: 0.15
-      // BELANGRIJK: GPT-5 gebruikt "reasoning tokens" die meetellen in max_completion_tokens
-      // Bij veel gesprekken (organisatie/team analyse) gebruikt GPT-5 veel reasoning tokens
-      // Verhoogd naar 4000 om ruimte te geven voor reasoning (2000-2500) + uitgebreide output (1000-1500)
-      max_completion_tokens: 4000, // Verhoogd van 1500 naar 4000 voor GPT-5 reasoning tokens bij veel gesprekken
-      response_format: { type: 'json_object' }, // Garandeert geldige JSON
-      stream: false
+    // 5. Stuur naar OpenAI Responses API (GPT-5.2)
+    const response = await openaiClient.createResponse({
+      model: 'gpt-5.2', // GPT-5.2 voor organisatie samenvatting
+      instructions: systemInstructions,
+      input: [{ role: 'user', content: userInput }],
+      max_output_tokens: 4000,
+      service_tier: 'default',
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'organisation_summary_output',
+          schema: {
+            type: 'object',
+            properties: {
+              samenvatting: { type: 'string' },
+              verbeteradvies: { type: 'string' },
+              signaalwoorden: {
+                type: 'array',
+                items: { type: 'string' }
+              },
+              gpt_adviezen: {
+                type: 'object',
+                properties: {
+                  prioriteit_1: { type: 'string' },
+                  prioriteit_2: { type: 'string' },
+                  prioriteit_3: { type: 'string' }
+                },
+                required: ['prioriteit_1', 'prioriteit_2', 'prioriteit_3'],
+                additionalProperties: false
+              }
+            },
+            required: ['samenvatting', 'verbeteradvies', 'signaalwoorden', 'gpt_adviezen'],
+            additionalProperties: false
+          },
+          strict: true
+        }
+      }
     })
 
-    if (!completion.success) {
-      throw new Error(`OpenAI Direct fout: ${completion.error}`)
+    if (!response.success) {
+      throw new Error(`OpenAI Responses API fout: ${response.error}`)
     }
 
-    const gptResponse = completion.data.choices[0].message.content
+    const gptResponse = response.data.output_text
     const parsed = JSON.parse(gptResponse)
 
     // 6. Bereken gemiddelde score
@@ -284,4 +299,4 @@ Antwoord in JSON-formaat:
   }
 })
 
-module.exports = router 
+module.exports = router
