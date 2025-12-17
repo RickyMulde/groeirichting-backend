@@ -51,377 +51,262 @@ async function generateTopActions(werknemer_id, periode, employerId) {
 
   console.log(`🔄 [GENERATE] Start generatie top 3 acties voor werknemer ${werknemer_id}, periode ${periode}, employer ${employerId}`)
 
-    // 1️⃣ Haal alle gesprekken op van alle thema's voor deze werknemer in deze periode
-    const { data: gesprekken, error: gesprekError } = await supabase
-      .from('gesprek')
-      .select(`
+  // 1️⃣ Haal gesprekresultaten op voor deze periode met thema info
+  const { data: resultaten, error: resultatenError } = await supabase
+    .from('gesprekresultaten')
+    .select(`
+      id,
+      theme_id,
+      score,
+      vervolgacties,
+      gesprek_id,
+      themes!inner(
         id,
-        theme_id,
-        gestart_op,
-        team_id,
-        themes!inner(
-          id,
-          titel,
-          beschrijving_werknemer,
-          score_instructies
-        )
-      `)
-      .eq('werknemer_id', werknemer_id)
-      .eq('status', 'Afgerond')
-      .gte('gestart_op', `${periode}-01`)
-      .lt('gestart_op', getNextMonth(periode)) // Volgende maand
+        titel
+      )
+    `)
+    .eq('werknemer_id', werknemer_id)
+    .eq('periode', periode)
 
-    if (gesprekError) throw gesprekError
-    if (!gesprekken || gesprekken.length === 0) {
-      throw new Error('Geen voltooide gesprekken gevonden voor deze periode')
-    }
+  if (resultatenError) throw resultatenError
+  if (!resultaten || resultaten.length === 0) {
+    throw new Error('Geen gesprekresultaten gevonden voor deze periode')
+  }
 
-    console.log(`📊 ${gesprekken.length} voltooide gesprekken gevonden`)
+  console.log(`📊 ${resultaten.length} gesprekresultaten gevonden`)
 
-    // Extra: haal team_id op uit gesprekken
-    const teamId = gesprekken.find(g => g.team_id)?.team_id || null
-    if (teamId) {
-      console.log(`👥 Team ID gevonden: ${teamId}`)
-    } else {
-      console.log('⚠️ Geen team_id gevonden in gesprekken')
-    }
-
-    // 1.5️⃣ Extra validatie: controleer of alle thema's zijn afgerond
-    // Haal toegestane thema's op voor deze werkgever (gebruik nieuwe filtering)
-    const toegestaneThemeIds = await getAllowedThemeIds(employerId, teamId || null)
+  // 2️⃣ Haal team_id op uit een van de gesprekken
+  const gesprekIds = resultaten.map(r => r.gesprek_id).filter(Boolean)
+  let teamId = null
+  
+  if (gesprekIds.length > 0) {
+    const { data: gesprekData } = await supabase
+      .from('gesprek')
+      .select('team_id')
+      .in('id', gesprekIds)
+      .not('team_id', 'is', null)
+      .limit(1)
     
-    if (!toegestaneThemeIds || toegestaneThemeIds.length === 0) {
-      throw new Error('Geen toegestane thema\'s gevonden voor deze werkgever')
+    teamId = gesprekData?.[0]?.team_id || null
+  }
+
+  // 3️⃣ Validatie: controleer of alle thema's zijn afgerond
+  const toegestaneThemeIds = await getAllowedThemeIds(employerId, teamId)
+  
+  if (!toegestaneThemeIds || toegestaneThemeIds.length === 0) {
+    throw new Error('Geen toegestane thema\'s gevonden voor deze werkgever')
+  }
+
+  const uniekeThemasInResultaten = [...new Set(resultaten.map(r => r.theme_id))]
+  
+  if (uniekeThemasInResultaten.length < toegestaneThemeIds.length) {
+    console.log(`⚠️ Niet alle thema's zijn afgerond: ${uniekeThemasInResultaten.length}/${toegestaneThemeIds.length}`)
+    throw new Error(`Niet alle thema's zijn afgerond voor deze periode. Afgerond: ${uniekeThemasInResultaten.length}/${toegestaneThemeIds.length} thema's`)
+  }
+
+  console.log(`✅ Alle ${toegestaneThemeIds.length} thema's zijn afgerond, ga door met selectie`)
+
+  // 4️⃣ Haal werknemer op voor employer_id
+  const { data: werknemer, error: werknemerError } = await supabase
+    .from('users')
+    .select('employer_id')
+    .eq('id', werknemer_id)
+    .eq('employer_id', employerId)
+    .single()
+
+  if (werknemerError) {
+    if (werknemerError.code === 'PGRST116') {
+      throw new Error('Werknemer niet gevonden')
     }
+    throw werknemerError
+  }
 
-    const uniekeThemasInGesprekken = [...new Set(gesprekken.map(g => g.theme_id))]
-    const alleThemasAfgerond = uniekeThemasInGesprekken.length === toegestaneThemeIds.length
-    
-    // Extra check: alle gesprekken moeten van toegestane thema's zijn
-    const ongeldigeThemas = uniekeThemasInGesprekken.filter(themeId => !toegestaneThemeIds.includes(themeId))
-    if (ongeldigeThemas.length > 0) {
-      throw new Error(`Gesprekken gevonden voor niet-toegestane thema's: ${ongeldigeThemas.join(', ')}`)
-    }
+  // 5️⃣ Bouw input data voor AI
+  const themasData = resultaten.map(r => ({
+    thema: r.themes.titel,
+    score: r.score,
+    adviezen: r.vervolgacties || []
+  }))
 
-    if (!alleThemasAfgerond) {
-      console.log(`⚠️ Niet alle thema's zijn afgerond: ${uniekeThemasInGesprekken.length}/${toegestaneThemeIds.length}`)
-      throw new Error(`Niet alle thema's zijn afgerond voor deze periode. Afgerond: ${uniekeThemasInGesprekken.length}/${toegestaneThemeIds.length} thema's`)
-    }
+  console.log('📋 Thema data voor AI:', JSON.stringify(themasData, null, 2))
 
-    console.log(`✅ Alle ${toegestaneThemeIds.length} thema's zijn afgerond, ga door met generatie`)
+  // 6️⃣ Bouw GPT prompt
+  const systemInstructions = `TAAK: Selecteer exact 3 adviezen uit de dataset.
 
-    // 2️⃣ Haal alle gespreksgeschiedenis op
-    const gesprekIds = gesprekken.map(g => g.id)
-    console.log('🔍 Zoek naar gespreksgeschiedenis voor IDs:', gesprekIds)
-    
-    const { data: gespreksgeschiedenis, error: geschiedenisError } = await supabase
-      .from('gesprekken_compleet')
-      .select('gespreksgeschiedenis, metadata, gesprek_id')
-      .in('gesprek_id', gesprekIds)
+INPUT: Thema's met scores (1-10) en adviezen (gelabeld met categorie: 'Oplossing', 'Persoon', 'Verbinding').
 
-    if (geschiedenisError) {
-      console.error('❌ Fout bij ophalen gespreksgeschiedenis:', geschiedenisError)
-      throw geschiedenisError
-    }
-    
-    console.log('📚 Gespreksgeschiedenis gevonden:', gespreksgeschiedenis?.length || 0)
-    
-    if (!gespreksgeschiedenis || gespreksgeschiedenis.length === 0) {
-      throw new Error(`Geen gespreksgeschiedenis gevonden. Gezocht naar ${gesprekIds.length} gesprek IDs in gesprekken_compleet tabel`)
-    }
+ANALYSE STAPPEN:
+1. Sorteer thema's van LAAGSTE score naar HOOGSTE score.
+2. Tel het aantal 'Onvoldoendes' (thema's met score < 6.0).
+   - Noem dit getal: AANTAL_ONVOLDOENDES.
 
-    // 3️⃣ Haal werkgever en werknemer context op
-    const { data: werknemer, error: werknemerError } = await supabase
-      .from('users')
-      .select('employer_id, functie_omschrijving, gender')
-      .eq('id', werknemer_id)
-      .eq('employer_id', employerId)  // Voeg org-scope toe
-      .single()
+SELECTIE ALGORITME (Kies het scenario dat past bij AANTAL_ONVOLDOENDES):
 
-    if (werknemerError) {
-      if (werknemerError.code === 'PGRST116') {
-        throw new Error('Werknemer niet gevonden')
-      }
-      throw werknemerError
-    }
+SCENARIO A: CRISIS (AANTAL_ONVOLDOENDES is 3 of 4)
+"Er zijn te veel problemen om diep op één ding in te gaan. We moeten breed blussen."
+1. Kies uit Slechtste Thema -> Categorie 'Oplossing'.
+2. Kies uit 2e Slechtste Thema -> Categorie 'Oplossing'.
+3. Kies uit 3e Slechtste Thema -> Categorie 'Oplossing'.
 
-    const { data: werkgeverConfig, error: configError } = await supabase
-      .from('werkgever_gesprek_instellingen')
-      .select('organisatie_omschrijving')
-      .eq('werkgever_id', werknemer.employer_id)
-      .single()
+SCENARIO B: FOCUS (AANTAL_ONVOLDOENDES is 2)
+"Er zijn twee duidelijke problemen. We pakken ze allebei aan, maar de zwaarste krijgt extra aandacht."
+1. Kies uit Slechtste Thema -> Categorie 'Oplossing'.
+2. Kies uit 2e Slechtste Thema -> Categorie 'Oplossing'.
+3. Kies uit Slechtste Thema -> Categorie 'Persoon' OF 'Verbinding' (Kies wat beste past voor extra steun).
 
-    if (configError && configError.code !== 'PGRST116') {
-      console.warn('Kon werkgever configuratie niet ophalen:', configError)
-    }
+SCENARIO C: KNELPUNT (AANTAL_ONVOLDOENDES is 1)
+"Er is één duidelijk lek. Dat dichten we goed. Daarnaast een positieve impuls."
+1. Kies uit Slechtste Thema -> Categorie 'Oplossing'.
+2. Kies uit Slechtste Thema -> Categorie 'Persoon' OF 'Verbinding'.
+3. Kies uit Beste Thema (Hoogste Score) -> Categorie 'Verbinding' (Mentorschap/Succes delen).
 
-    // 4️⃣ Bouw complete context voor GPT
-    let completeContext = ''
-    let themaOverzicht = ''
+SCENARIO D: GROEI (AANTAL_ONVOLDOENDES is 0)
+"Alles gaat goed. Focus op ambitie en anderen helpen."
+1. Kies uit Beste Thema -> Categorie 'Verbinding' (Mentorschap).
+2. Kies uit 2e Beste Thema -> Categorie 'Oplossing' (Ambitieus project/Verdieping).
+3. Kies uit 3e Beste Thema -> Categorie 'Persoon' (Reflectie/Grip behouden).
 
-    gesprekken.forEach((gesprek, index) => {
-      const thema = gesprek.themes
-      const geschiedenis = gespreksgeschiedenis.find(g => g.gesprek_id === gesprek.id)
-      
-      themaOverzicht += `\n\n📋 THEMA ${index + 1}: ${thema.titel}`
-      if (thema.beschrijving_werknemer) {
-        themaOverzicht += `\nBeschrijving: ${thema.beschrijving_werknemer}`
-      }
-      
-      if (geschiedenis && geschiedenis.gespreksgeschiedenis) {
-        completeContext += `\n\n=== THEMA: ${thema.titel} ===\n`
-        geschiedenis.gespreksgeschiedenis.forEach(item => {
-          completeContext += `Vraag: ${item.vraag_tekst}\nAntwoord: ${item.antwoord}\n\n`
-        })
-      }
-    })
+OUTPUT:
+JSON object met 'geselecteerde_adviezen' (array van precies 3 items) en 'toelichting' (korte uitleg welk scenario is toegepast).
+Neem de advies-teksten EXACT en ONGEWIJZIGD over uit de input.`
 
-    // 5️⃣ Bouw GPT prompt
-    const systemInstructions = `Je bent een HR-coach die de top 3 meest belangrijke vervolgacties bepaalt voor een werknemer op basis van alle gevoerde gesprekken. Antwoord ALLEEN in JSON-formaat.`
+  const userInput = `THEMA DATA:
+${JSON.stringify(themasData, null, 2)}
 
-    const userInput = `WERKNEMER CONTEXT:
-- Functie: ${werknemer.functie_omschrijving || 'Niet opgegeven'}
-- Geslacht: ${werknemer.gender || 'Niet opgegeven'}
-- Organisatie: ${werkgeverConfig?.organisatie_omschrijving || 'Niet opgegeven'}
+Selecteer de 3 belangrijkste adviezen volgens het algoritme.`
 
-PERIODE OVERZICHT:
-${themaOverzicht}
-
-COMPLETE GESPREKSGESCHIEDENIS:
-${completeContext}
-
-OPDRACHT:
-Analyseer alle gesprekken en bepaal de TOP 3 vervolgacties die:
-- Hebben de hoogste impact op jouw groei en ontwikkeling
-- Hebben de meeste urgentie (wat moet je eerst aanpakken?)
-- Zijn haalbaar voor jou om zelf uit te voeren
-- Leggen verbanden tussen verschillende thema's waar mogelijk
-- Zijn specifiek en praktisch (geen algemene adviezen)
-- Schrijf altijd in de tweede persoon ("jij/je/jouw")
-- Als de gesprekken positief en in balans zijn: formuleer acties die helpen om dit te behouden of verder te versterken (bijv. "Blijf…" of "Blijf ontwikkelen door…")
-- BELANGRIJK: Verwijs NIET naar specifieke organisatie-onderdelen zoals "HR-afdeling", "interne workshops" of andere resources, tenzij deze expliciet in de organisatie context worden genoemd. Gebruik generieke termen zoals "je leidinggevende" of "beschikbare ondersteuning" als dat relevant is.
-
-PRIORITEER op basis van:
-- Urgentie – wat moet jij als eerste oppakken?
-- Impact – welke actie heeft het grootste effect op jou?
-- Haalbaarheid – wat kun jij realistisch doen?
-- Verbanden – welke actie helpt bij meerdere thema's tegelijk?
-
-Antwoord in JSON-formaat met de volgende structuur:
-{
-  "actie_1": {
-    "tekst": "Concrete, specifieke actie",
-    "prioriteit": "hoog",
-    "toelichting": "Waarom deze actie voor jou de hoogste prioriteit heeft"
-  },
-  "actie_2": {
-    "tekst": "Concrete, specifieke actie", 
-    "prioriteit": "medium",
-    "toelichting": "Waarom deze actie voor jou de tweede prioriteit heeft"
-  },
-  "actie_3": {
-    "tekst": "Concrete, specifieke actie",
-    "prioriteit": "laag", 
-    "toelichting": "Waarom deze actie voor jou de derde prioriteit heeft"
-  },
-  "algemene_toelichting": "Korte samenvatting van waarom deze 3 acties de beste keuzes zijn voor jou."
-}`
-
-    // 6️⃣ Stuur naar OpenAI Responses API (GPT-5.2)
-    console.log('🤖 Stuur prompt naar OpenAI Responses API (GPT-5.2)...')
-    const response = await openaiClient.createResponse({
-      model: 'gpt-5.2', // GPT-5.2 voor top acties generatie
-      instructions: systemInstructions,
-      input: [{ role: 'user', content: userInput }],
-      max_output_tokens: 3000,
-      service_tier: 'default',
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'top_actions_output',
-          schema: {
-            type: 'object',
-            properties: {
-              actie_1: {
+  // 7️⃣ Stuur naar OpenAI Responses API
+  console.log('🤖 Stuur prompt naar OpenAI Responses API...')
+  const response = await openaiClient.createResponse({
+    model: 'gpt-5.2',
+    instructions: systemInstructions,
+    input: [{ role: 'user', content: userInput }],
+    max_output_tokens: 2000,
+    service_tier: 'default',
+    text: {
+      format: {
+        type: 'json_schema',
+        name: 'top_actions_selection',
+        schema: {
+          type: 'object',
+          properties: {
+            geselecteerde_adviezen: {
+              type: 'array',
+              items: {
                 type: 'object',
                 properties: {
-                  tekst: { type: 'string' },
-                  prioriteit: { type: 'string', enum: ['hoog', 'medium', 'laag'] },
-                  toelichting: { type: 'string' }
+                  titel: { type: 'string' },
+                  reden: { type: 'string' },
+                  resultaat: { type: 'string' },
+                  categorie: { type: 'string' }
                 },
-                required: ['tekst', 'prioriteit', 'toelichting'],
+                required: ['titel', 'reden', 'resultaat', 'categorie'],
                 additionalProperties: false
               },
-              actie_2: {
-                type: 'object',
-                properties: {
-                  tekst: { type: 'string' },
-                  prioriteit: { type: 'string', enum: ['hoog', 'medium', 'laag'] },
-                  toelichting: { type: 'string' }
-                },
-                required: ['tekst', 'prioriteit', 'toelichting'],
-                additionalProperties: false
-              },
-              actie_3: {
-                type: 'object',
-                properties: {
-                  tekst: { type: 'string' },
-                  prioriteit: { type: 'string', enum: ['hoog', 'medium', 'laag'] },
-                  toelichting: { type: 'string' }
-                },
-                required: ['tekst', 'prioriteit', 'toelichting'],
-                additionalProperties: false
-              },
-              algemene_toelichting: { type: 'string' }
+              minItems: 3,
+              maxItems: 3
             },
-            required: ['actie_1', 'actie_2', 'actie_3', 'algemene_toelichting'],
-            additionalProperties: false
+            toelichting: { type: 'string' }
           },
-          strict: true
-        }
-      }
-    })
-
-    if (!response.success) {
-      throw new Error(`OpenAI Responses API fout: ${response.error}`)
-    }
-
-    const gptResponse = response.data.output_text
-    console.log('🤖 Raw GPT response:', gptResponse)
-    
-    // Verbeterde response cleaning
-    let cleanResponse = gptResponse.trim()
-    
-    // Verwijder verschillende markdown code block formaten
-    if (cleanResponse.includes('```json')) {
-      cleanResponse = cleanResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    } else if (cleanResponse.includes('```')) {
-      cleanResponse = cleanResponse.replace(/```\n?/g, '').trim()
-    }
-    
-    // Verwijder eventuele extra tekst voor/na JSON
-    const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      cleanResponse = jsonMatch[0]
-    }
-    
-    console.log('🧹 Cleaned response:', cleanResponse)
-    
-    let parsed
-    try {
-      parsed = JSON.parse(cleanResponse)
-      
-      // Valideer dat alle vereiste velden aanwezig zijn
-      if (!parsed.actie_1 || !parsed.actie_2 || !parsed.actie_3) {
-        throw new Error('Ontbrekende acties in response')
-      }
-      
-      if (!parsed.actie_1.tekst || !parsed.actie_2.tekst || !parsed.actie_3.tekst) {
-        throw new Error('Ontbrekende actie teksten in response')
-      }
-      
-      console.log('✅ GPT response succesvol geparsed')
-      
-    } catch (parseError) {
-      console.error('❌ Fout bij parsen van GPT-respons:', parseError)
-      console.error('Raw response:', gptResponse)
-      console.error('Cleaned response:', cleanResponse)
-      
-      // Fallback: genereer een basis response als parsing mislukt
-      console.log('🔄 Gebruik fallback response...')
-      parsed = {
-        actie_1: {
-          tekst: "Bespreek je ontwikkelpunten met je leidinggevende",
-          prioriteit: "hoog",
-          toelichting: "Op basis van je gesprekken is het belangrijk om regelmatig feedback te vragen"
+          required: ['geselecteerde_adviezen', 'toelichting'],
+          additionalProperties: false
         },
-        actie_2: {
-          tekst: "Stel concrete doelen op voor de komende periode",
-          prioriteit: "medium", 
-          toelichting: "Duidelijke doelen helpen je om gericht te werken aan je ontwikkeling"
-        },
-        actie_3: {
-          tekst: "Zoek naar leermogelijkheden binnen je rol",
-          prioriteit: "laag",
-          toelichting: "Blijf jezelf ontwikkelen door nieuwe uitdagingen aan te gaan"
-        },
-        algemene_toelichting: "Deze acties zijn gebaseerd op je gesprekken en helpen je om je verder te ontwikkelen."
+        strict: true
       }
     }
+  })
 
-    // 7️⃣ Sla op in database
-    const topActiesData = {
-      werknemer_id,
-      werkgever_id: werknemer.employer_id,
-      team_id: teamId,
-      periode,
-      actie_1: parsed.actie_1.tekst,
-      actie_2: parsed.actie_2.tekst,
-      actie_3: parsed.actie_3.tekst,
-      prioriteit_1: parsed.actie_1.prioriteit,
-      prioriteit_2: parsed.actie_2.prioriteit,
-      prioriteit_3: parsed.actie_3.prioriteit,
-      toelichting_per_actie: [
-        parsed.actie_1.toelichting,
-        parsed.actie_2.toelichting,
-        parsed.actie_3.toelichting
-      ],
-      algemene_toelichting: parsed.algemene_toelichting,
-      gegenereerd_op: new Date().toISOString(),
-      gesprek_ids: gesprekIds
+  if (!response.success) {
+    throw new Error(`OpenAI Responses API fout: ${response.error}`)
+  }
+
+  const gptResponse = response.data.output_text
+  console.log('🤖 Raw GPT response:', gptResponse)
+  
+  let cleanResponse = gptResponse.trim()
+  if (cleanResponse.includes('```json')) {
+    cleanResponse = cleanResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  } else if (cleanResponse.includes('```')) {
+    cleanResponse = cleanResponse.replace(/```\n?/g, '').trim()
+  }
+  
+  const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/)
+  if (jsonMatch) {
+    cleanResponse = jsonMatch[0]
+  }
+  
+  let parsed
+  try {
+    parsed = JSON.parse(cleanResponse)
+    
+    if (!parsed.geselecteerde_adviezen || parsed.geselecteerde_adviezen.length !== 3) {
+      throw new Error('Geen 3 adviezen in response')
     }
+    
+    console.log('✅ GPT response succesvol geparsed')
+    
+  } catch (parseError) {
+    console.error('❌ Fout bij parsen van GPT-respons:', parseError)
+    throw new Error('Fout bij verwerken van AI response')
+  }
 
-    // Probeer eerst update, anders insert
-    const { data: updateData, error: updateError } = await supabase
+  // 8️⃣ Sla op in database
+  const adviezen = parsed.geselecteerde_adviezen
+  const topActiesData = {
+    werknemer_id,
+    werkgever_id: werknemer.employer_id,
+    team_id: teamId,
+    periode,
+    actie_1: JSON.stringify(adviezen[0]),
+    actie_2: JSON.stringify(adviezen[1]),
+    actie_3: JSON.stringify(adviezen[2]),
+    prioriteit_1: 'hoog',
+    prioriteit_2: 'medium',
+    prioriteit_3: 'laag',
+    toelichting_per_actie: [adviezen[0].reden, adviezen[1].reden, adviezen[2].reden],
+    algemene_toelichting: parsed.toelichting,
+    gegenereerd_op: new Date().toISOString(),
+    gesprek_ids: gesprekIds
+  }
+
+  // Probeer eerst update, anders insert
+  const { data: updateData, error: updateError } = await supabase
+    .from('top_vervolgacties')
+    .update(topActiesData)
+    .eq('werknemer_id', werknemer_id)
+    .eq('periode', periode)
+    .select()
+
+  if (updateError) {
+    console.error('Fout bij updaten top vervolgacties:', updateError)
+    throw updateError
+  }
+
+  if (!updateData || updateData.length === 0) {
+    const { error: insertError } = await supabase
       .from('top_vervolgacties')
-      .update(topActiesData)
-      .eq('werknemer_id', werknemer_id)
-      .eq('periode', periode)
-      .select()
-
-    if (updateError) {
-      console.error('Fout bij updaten top vervolgacties:', updateError)
-      throw updateError
+      .insert(topActiesData)
+    
+    if (insertError) {
+      console.error('Fout bij invoegen top vervolgacties:', insertError)
+      throw insertError
     }
+  }
 
-    if (!updateData || updateData.length === 0) {
-      // Geen bestaande rij, dus insert
-      const { error: insertError } = await supabase
-        .from('top_vervolgacties')
-        .insert(topActiesData)
-      
-      if (insertError) {
-        console.error('Fout bij invoegen top vervolgacties:', insertError)
-        throw insertError
-      }
-    }
+  console.log('✅ Top 3 vervolgacties succesvol geselecteerd en opgeslagen')
 
-    console.log('✅ Top 3 vervolgacties succesvol gegenereerd en opgeslagen')
-
-    // 8️⃣ Return resultaat
-    return {
-      success: true,
-      top_acties: {
-        actie_1: {
-          tekst: parsed.actie_1.tekst,
-          prioriteit: parsed.actie_1.prioriteit,
-          toelichting: parsed.actie_1.toelichting
-        },
-        actie_2: {
-          tekst: parsed.actie_2.tekst,
-          prioriteit: parsed.actie_2.prioriteit,
-          toelichting: parsed.actie_2.toelichting
-        },
-        actie_3: {
-          tekst: parsed.actie_3.tekst,
-          prioriteit: parsed.actie_3.prioriteit,
-          toelichting: parsed.actie_3.toelichting
-        }
-      },
-      algemene_toelichting: parsed.algemene_toelichting,
-      periode,
-      gegenereerd_op: new Date().toISOString()
-    }
+  // 9️⃣ Return resultaat
+  return {
+    success: true,
+    top_acties: {
+      actie_1: adviezen[0],
+      actie_2: adviezen[1],
+      actie_3: adviezen[2]
+    },
+    algemene_toelichting: parsed.toelichting,
+    periode,
+    gegenereerd_op: new Date().toISOString()
+  }
 }
 
 // POST endpoint om top 3 vervolgacties te genereren (via HTTP)
