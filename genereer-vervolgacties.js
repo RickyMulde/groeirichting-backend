@@ -152,33 +152,43 @@ router.post('/', async (req, res) => {
       `Vraag: ${item.vraag_tekst}\nAntwoord: ${item.antwoord}`
     ).join('\n\n')
 
-    // System instructions - Focus: Helder, nuchter, oplossingsgericht (Geen marketing)
-    const systemInstructions = `Je bent een professionele, inhoudelijke HR-adviseur voor 'GroeiRichting'.
-Je analyseert gespreksverslagen en formuleert 3 concrete vervolgstappen.
+    // System instructions - De "Gouden Driehoek" met professionele toon
+    const systemInstructions = `Je bent een senior HR-adviseur voor de tool 'GroeiRichting'.
+Je analyseert gespreksverslagen en genereert precies 3 diverse, concreet uitvoerbare adviezen.
 
-Jouw toon is:
-- Nuchter en helder (geen marketing-kreten of uitroeptekens).
-- Oplossingsgericht (de titel beschrijft de oplossing).
-- Persoonlijk (je refereert aan wat er gezegd is).
+DOEL:
+Ondersteun de medewerker met adviezen die verschillen in insteek (Inhoudelijk, Persoonlijk, Sociaal).
 
-Richtlijnen voor de 3 adviezen:
+JE TOON EN STIJL:
+- Professioneel en nuchter (Geen marketingtaal, geen uitroeptekens in titels).
+- Beschrijvend: De titel zegt wat je gaat DOEN.
+- Betrokken: De onderbouwing refereert aan wat de medewerker letterlijk heeft gezegd.
 
-1. DE TITEL (De Oplossing):
-   - Beschrijf concreet wat de werknemer gaat doen of bereiken.
-   - Begin met een werkwoord.
-   - Wees specifiek.
-   - NIET: "Tem de piekdrukte!"
-   - WEL: "Organiseer extra ondersteuning tijdens piekmomenten"
-   - NIET: "Pak je kans!"
-   - WEL: "Bespreek jouw ambities voor een rol als teamleider"
+BELANGRIJK: Genereer PRECIES 1 advies per onderstaande categorie:
 
-2. DE REDEN (De Context):
-   - Begin met: "Je gaf aan dat..." of "Omdat je aangaf dat..."
-   - Vat kort samen waarom dit advies relevant is op basis van het gesprek.
+CATEGORIE 1: DE OPLOSSING (Structuur & Proces)
+- Focus: Het aanpakken van het grootste praktische knelpunt of de ambitie.
+- Doel: Iets concreet veranderen in werkwijze, taken of organisatie.
+- Voorbeeld Titel: "Organiseer ondersteuning tijdens piekmomenten" (Niet: "Tem de drukte!")
 
-3. HET RESULTAAT (De Belofte):
-   - Eén zin die uitlegt wat het oplevert als de werknemer dit doet.
-   - Bijv: "Dit zorgt voor meer rust en overzicht in je dagelijkse werk."`
+CATEGORIE 2: DE PERSOON (Vitaliteit & Gedrag)
+- Focus: De medewerker zelf (energie, grenzen, mindset, reflectie).
+- Doel: De eigen weerbaarheid of vaardigheden vergroten.
+- Voorbeeld Titel: "Bewaak je energiegrens in de avonduren" (Niet: "Pak je rust!")
+
+CATEGORIE 3: DE VERBINDING (Sociaal & Support)
+- Focus: De relatie met collega's, leidinggevende of de cultuur.
+- LOGICA (Kies wat past bij het gesprek):
+    * Situatie Positief (Veilig/Blij): Adviseer om dit succes te borgen, uit te dragen of anderen te helpen (mentorrol).
+    * Situatie Negatief (Onveilig/Conflict/Eenzaam): Adviseer om steun te zoeken, het gesprek aan te gaan of hulp te vragen.
+- Voorbeeld Titel: "Deel jouw werkwijze met nieuwe collega's" OF "Bespreek je verwachtingen met je leidinggevende".
+
+VORMVEREISTEN PER ADVIES:
+1. TITEL: Start met een werkwoord, beschrijvend, niet te lang.
+2. REDEN: Begin met "Je gaf aan dat..." of "Omdat je zei dat...".
+3. RESULTAAT: Eén zin over wat het oplevert voor de medewerker.
+
+Antwoord in JSON.`
 
     // User input
     const userInput = `Thema: ${thema.titel}
@@ -194,14 +204,10 @@ Volledige Gespreksgeschiedenis:
 ${inputJSON}
 
 OPDRACHT:
-Genereer 3 unieke, inhoudelijke vervolgacties op basis van dit gesprek.
+Genereer 3 adviezen volgens de categorieën (Oplossing, Persoon, Verbinding).
+Zorg dat ze inhoudelijk echt van elkaar verschillen en aansluiten bij de toon van een professionele adviseur, maar hou het niveau op MBO-niveau.
 
-Zorg dat de adviezen aansluiten bij de input:
-- Als de werknemer zelf een oplossing aandraagt (bijv. hulp van andere afdelingen), maak dat dan één van de adviezen.
-- Als de werknemer passief is, maak een advies om regie te pakken of het gesprek aan te gaan.
-- Als de werknemer tevreden is, maak een advies om dit succes te borgen of te delen.
-
-Antwoord in JSON-formaat.`
+Antwoord in JSON.`
 
     // ✅ 4. Stuur prompt naar OpenAI Responses API
     const response = await openaiClient.createResponse({
@@ -217,17 +223,18 @@ Antwoord in JSON-formaat.`
           schema: {
             type: 'object',
             properties: {
-              vervolgacties_toelichting: { type: 'string', description: "Korte samenvatting voor HR manager" },
+              vervolgacties_toelichting: { type: 'string', description: "Korte toelichting op de gekozen set adviezen." },
               adviezen: {
                 type: 'array',
                 items: { 
                   type: 'object',
                   properties: {
-                    titel: { type: 'string', description: "Concrete, beschrijvende titel (bijv: 'Maak afspraken over bereikbaarheid')" },
-                    reden: { type: 'string', description: "Korte context: 'Je gaf aan dat...'" },
-                    resultaat: { type: 'string', description: "Wat levert het op? (bijv: 'Dit voorkomt dat je werk zich opstapelt.')" }
+                    categorie: { type: 'string', description: "De gekozen categorie (Oplossing, Persoon of Verbinding)" },
+                    titel: { type: 'string', description: "De actieve, beschrijvende titel" },
+                    reden: { type: 'string', description: "De 'Je gaf aan dat...' tekst" },
+                    resultaat: { type: 'string', description: "Het voordeel/resultaat" }
                   },
-                  required: ['titel', 'reden', 'resultaat'],
+                  required: ['categorie', 'titel', 'reden', 'resultaat'],
                   additionalProperties: false
                 },
                 minItems: 3,
