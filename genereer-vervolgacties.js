@@ -152,47 +152,60 @@ router.post('/', async (req, res) => {
       `Vraag: ${item.vraag_tekst}\nAntwoord: ${item.antwoord}`
     ).join('\n\n')
 
-    // System instructions
-    const systemInstructions = `Je bent een HR-assistent die vervolgacties voorstelt voor een WERKNEMER. Antwoord ALLEEN in JSON-formaat.`
+    // System instructions - Focus: Helder, nuchter, oplossingsgericht (Geen marketing)
+    const systemInstructions = `Je bent een professionele, inhoudelijke HR-adviseur voor 'GroeiRichting'.
+Je analyseert gespreksverslagen en formuleert 3 concrete vervolgstappen.
+
+Jouw toon is:
+- Nuchter en helder (geen marketing-kreten of uitroeptekens).
+- Oplossingsgericht (de titel beschrijft de oplossing).
+- Persoonlijk (je refereert aan wat er gezegd is).
+
+Richtlijnen voor de 3 adviezen:
+
+1. DE TITEL (De Oplossing):
+   - Beschrijf concreet wat de werknemer gaat doen of bereiken.
+   - Begin met een werkwoord.
+   - Wees specifiek.
+   - NIET: "Tem de piekdrukte!"
+   - WEL: "Organiseer extra ondersteuning tijdens piekmomenten"
+   - NIET: "Pak je kans!"
+   - WEL: "Bespreek jouw ambities voor een rol als teamleider"
+
+2. DE REDEN (De Context):
+   - Begin met: "Je gaf aan dat..." of "Omdat je aangaf dat..."
+   - Vat kort samen waarom dit advies relevant is op basis van het gesprek.
+
+3. HET RESULTAAT (De Belofte):
+   - Eén zin die uitlegt wat het oplevert als de werknemer dit doet.
+   - Bijv: "Dit zorgt voor meer rust en overzicht in je dagelijkse werk."`
 
     // User input
     const userInput = `Thema: ${thema.titel}
-${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}${werknemerContext?.functie_omschrijving ? `\n\nFunctie context: ${werknemerContext.functie_omschrijving}` : ''}${werknemerContext?.gender ? `\n\nGeslacht: ${werknemerContext.gender}` : ''}
+${thema.beschrijving_werknemer ? `Beschrijving thema: ${thema.beschrijving_werknemer}` : ''}
+${werkgeverConfig?.organisatie_omschrijving ? `Organisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}
+${werknemerContext?.functie_omschrijving ? `Functie context: ${werknemerContext.functie_omschrijving}` : ''}
 
+Context van het gesprek:
 Hoofdvraag: ${hoofdvraag}
 Doel van het gesprek: ${doelantwoord}
 
-Gespreksgeschiedenis:
+Volledige Gespreksgeschiedenis:
 ${inputJSON}
 
-Opdracht:
-Genereer 3 concrete en uitvoerbare vervolgacties die direct aansluiten op de inhoud van het gesprek.
+OPDRACHT:
+Genereer 3 unieke, inhoudelijke vervolgacties op basis van dit gesprek.
 
-De acties moeten voldoen aan deze regels:
-- Schrijf altijd in de tweede persoon ("jij/je/jouw")
-- Gericht op jou als werknemer, nooit op de werkgever
-- Acties die jij zelf kunt ondernemen en beïnvloeden
-- Aansluiten bij het thema en jouw antwoorden
-- Specifiek en praktisch, geen algemene adviezen
-- Geen suggesties die primair bij de werkgever horen
-- Als het gesprek positief en in balans is: formuleer acties die helpen om dit vast te houden of te versterken
-- BELANGRIJK: Verwijs NIET naar specifieke organisatie-onderdelen zoals "HR-afdeling", "interne workshops" of andere resources, tenzij deze expliciet in de organisatie context worden genoemd. Gebruik generieke termen zoals "je leidinggevende" of "beschikbare ondersteuning" als dat relevant is.
+Zorg dat de adviezen aansluiten bij de input:
+- Als de werknemer zelf een oplossing aandraagt (bijv. hulp van andere afdelingen), maak dat dan één van de adviezen.
+- Als de werknemer passief is, maak een advies om regie te pakken of het gesprek aan te gaan.
+- Als de werknemer tevreden is, maak een advies om dit succes te borgen of te delen.
 
-Voorbeelden van passende vervolgacties:
-- "Plan een gesprek met je leidinggevende over…"
-- "Zoek online naar workshops of trainingen over…" (niet "interne workshops")
-- "Maak een concreet actieplan voor…"
-- "Stel jezelf als doel om in de komende weken…"
-- "Blijf de gezamenlijke takenlijst gebruiken om overzicht te behouden."
-- "Blijf na werktijd bewust offline, dat zorgt voor een goede balans."
-- "Onderzoek welke ondersteuning beschikbaar is binnen je organisatie voor…"
-- "Reflecteer wekelijks op je voortgang met…"
+Antwoord in JSON-formaat.`
 
-Antwoord in JSON-formaat met velden: "vervolgacties" (array van 3 strings) en "vervolgacties_toelichting" (string).`
-
-    // ✅ 4. Stuur prompt naar OpenAI Responses API (GPT-5.2)
+    // ✅ 4. Stuur prompt naar OpenAI Responses API
     const response = await openaiClient.createResponse({
-      model: 'gpt-5.2', // GPT-5.2 voor vervolgacties generatie
+      model: 'gpt-5.2', 
       instructions: systemInstructions,
       input: [{ role: 'user', content: userInput }],
       max_output_tokens: 3000,
@@ -204,13 +217,24 @@ Antwoord in JSON-formaat met velden: "vervolgacties" (array van 3 strings) en "v
           schema: {
             type: 'object',
             properties: {
-              vervolgacties: {
+              vervolgacties_toelichting: { type: 'string', description: "Korte samenvatting voor HR manager" },
+              adviezen: {
                 type: 'array',
-                items: { type: 'string' }
-              },
-              vervolgacties_toelichting: { type: 'string' }
+                items: { 
+                  type: 'object',
+                  properties: {
+                    titel: { type: 'string', description: "Concrete, beschrijvende titel (bijv: 'Maak afspraken over bereikbaarheid')" },
+                    reden: { type: 'string', description: "Korte context: 'Je gaf aan dat...'" },
+                    resultaat: { type: 'string', description: "Wat levert het op? (bijv: 'Dit voorkomt dat je werk zich opstapelt.')" }
+                  },
+                  required: ['titel', 'reden', 'resultaat'],
+                  additionalProperties: false
+                },
+                minItems: 3,
+                maxItems: 3
+              }
             },
-            required: ['vervolgacties', 'vervolgacties_toelichting'],
+            required: ['adviezen', 'vervolgacties_toelichting'],
             additionalProperties: false
           },
           strict: true
@@ -278,7 +302,7 @@ Antwoord in JSON-formaat met velden: "vervolgacties" (array van 3 strings) en "v
 
     // ✅ 7. Update gesprekresultaten met vervolgacties (met retry logica)
     const updateData = {
-      vervolgacties: parsed.vervolgacties || [],
+      vervolgacties: parsed.adviezen || [],
       vervolgacties_toelichting: parsed.vervolgacties_toelichting || '',
       vervolgacties_generatie_datum: new Date().toISOString()
     }
@@ -348,7 +372,7 @@ Antwoord in JSON-formaat met velden: "vervolgacties" (array van 3 strings) en "v
     }
 
     return res.json({
-      vervolgacties: parsed.vervolgacties || [],
+      adviezen: parsed.adviezen || [],
       vervolgacties_toelichting: parsed.vervolgacties_toelichting || ''
     })
   } catch (err) {
