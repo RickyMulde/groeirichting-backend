@@ -40,7 +40,7 @@ router.post('/', async (req, res) => {
   // 2. OpenAI Direct call met de volledige prompt
   try {
         const completion = await openaiClient.createCompletion({
-          model: 'gpt-5-mini', // Gebruik GPT-5-mini (rechtstreeks naar OpenAI)
+          model: 'gpt-5.2-instant', // Gebruik GPT-5-mini (rechtstreeks naar OpenAI)
           max_completion_tokens: 2500,
           service_tier: 'default',
           response_format: { type: 'json_object' }, // Garandeert geldige JSON
