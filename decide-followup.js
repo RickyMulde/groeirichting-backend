@@ -73,7 +73,7 @@ router.post('/', async (req, res) => {
   // 2. OpenAI Responses API call voor GPT-5.2-instant
   try {
     const response = await openaiClient.createResponse({
-      model: 'gpt-5.2-instant', // Snelste GPT-5.2 variant voor real-time gesprekken
+      model: 'gpt-5.2', // Snelste GPT-5.2 variant voor real-time gesprekken
       instructions: systemInstructions,
       input: [
         {
