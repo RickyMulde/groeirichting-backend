@@ -18,7 +18,7 @@ router.use(authMiddleware)
 // Genereert een nieuwe organisatie samenvatting en adviezen (team-specifiek of organisatie-breed)
 router.post('/', async (req, res) => {
   const { organisatie_id, theme_id, team_id } = req.body
-  const employerId = req.ctx.employerId
+  const { employerId, isTeamleider, teamleiderVanTeamId, role } = req.ctx
 
   // Valideer dat organisatie_id overeenkomt met employerId uit context
   if (organisatie_id !== employerId) {
@@ -29,13 +29,26 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Organisatie ID en Thema ID zijn verplicht' })
   }
 
-  // Valideer team_id als opgegeven
-  if (team_id) {
-    await assertTeamInOrg(team_id, employerId)
+  // Voor teamleiders: gebruik automatisch hun team
+  let effectiveTeamId = team_id
+  if (isTeamleider) {
+    effectiveTeamId = teamleiderVanTeamId
+    if (!effectiveTeamId) {
+      return res.status(400).json({ error: 'Geen team gekoppeld aan deze teamleider' })
+    }
+    console.log('🔍 Teamleider toegang - automatisch team filter:', effectiveTeamId)
+  } else if (role === 'employer') {
+    // Werkgevers: valideer team_id als opgegeven
+    if (team_id) {
+      await assertTeamInOrg(team_id, employerId)
+    }
+    effectiveTeamId = team_id
+  } else {
+    return res.status(403).json({ error: 'Alleen werkgevers en teamleiders hebben toegang tot deze endpoint' })
   }
 
   // ✅ VALIDATIE: Check toegang tot thema
-  const hasAccess = await hasThemeAccess(employerId, theme_id, team_id || null)
+  const hasAccess = await hasThemeAccess(employerId, theme_id, effectiveTeamId || null)
   if (!hasAccess) {
     return res.status(403).json({ 
       error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
@@ -51,8 +64,8 @@ router.post('/', async (req, res) => {
       .eq('role', 'employee')
 
     // Filter op team_id als opgegeven
-    if (team_id) {
-      employeesQuery = employeesQuery.eq('team_id', team_id)
+    if (effectiveTeamId) {
+      employeesQuery = employeesQuery.eq('team_id', effectiveTeamId)
     }
 
     const { data: employees, error: employeesError } = await employeesQuery
@@ -117,11 +130,11 @@ router.post('/', async (req, res) => {
 
     // 4. Haal team informatie op als team_id is opgegeven
     let teamInfo = null
-    if (team_id) {
+    if (effectiveTeamId) {
       const { data: team, error: teamError } = await supabase
         .from('teams')
         .select('naam, teams_beschrijving')
-        .eq('id', team_id)
+        .eq('id', effectiveTeamId)
         .eq('werkgever_id', employerId)
         .single()
       
@@ -228,7 +241,7 @@ Antwoord in JSON-formaat met velden: "samenvatting" (string), "verbeteradvies" (
     const insightData = {
       organisatie_id,
       theme_id,
-      team_id: team_id || null, // team_id voor team-specifieke insights
+      team_id: effectiveTeamId || null, // team_id voor team-specifieke insights
       samenvatting: parsed.samenvatting,
       verbeteradvies: parsed.verbeteradvies,
       signaalwoorden: parsed.signaalwoorden,
@@ -249,8 +262,8 @@ Antwoord in JSON-formaat met velden: "samenvatting" (string), "verbeteradvies" (
       .eq('theme_id', theme_id)
 
     // Filter op team_id als opgegeven, anders organisatie-breed (team_id IS NULL)
-    if (team_id) {
-      existingQuery = existingQuery.eq('team_id', team_id)
+    if (effectiveTeamId) {
+      existingQuery = existingQuery.eq('team_id', effectiveTeamId)
     } else {
       existingQuery = existingQuery.is('team_id', null)
     }
@@ -281,7 +294,7 @@ Antwoord in JSON-formaat met velden: "samenvatting" (string), "verbeteradvies" (
     res.json({
       success: true,
       team_context: teamInfo ? {
-        team_id: team_id,
+        team_id: effectiveTeamId,
         team_naam: teamInfo.naam,
         team_beschrijving: teamInfo.teams_beschrijving
       } : null,

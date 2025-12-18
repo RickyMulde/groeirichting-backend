@@ -18,7 +18,7 @@ router.use(authMiddleware)
 router.get('/:orgId/:themeId', async (req, res) => {
   const { orgId, themeId } = req.params
   const { team_id } = req.query
-  const employerId = req.ctx.employerId
+  const { employerId, isTeamleider, teamleiderVanTeamId, role } = req.ctx
 
   if (!orgId || !themeId) {
     return res.status(400).json({ error: 'Organisatie ID en Thema ID zijn verplicht' })
@@ -30,13 +30,26 @@ router.get('/:orgId/:themeId', async (req, res) => {
   }
 
   try {
-    // Valideer team_id als opgegeven
-    if (team_id) {
-      await assertTeamInOrg(team_id, employerId)
+    // Voor teamleiders: gebruik automatisch hun team
+    let effectiveTeamId = team_id
+    if (isTeamleider) {
+      effectiveTeamId = teamleiderVanTeamId
+      if (!effectiveTeamId) {
+        return res.status(400).json({ error: 'Geen team gekoppeld aan deze teamleider' })
+      }
+      console.log('🔍 Teamleider toegang - automatisch team filter:', effectiveTeamId)
+    } else if (role === 'employer') {
+      // Werkgevers: valideer team_id als opgegeven
+      if (team_id) {
+        await assertTeamInOrg(team_id, employerId)
+      }
+      effectiveTeamId = team_id
+    } else {
+      return res.status(403).json({ error: 'Alleen werkgevers en teamleiders hebben toegang tot deze endpoint' })
     }
 
     // ✅ VALIDATIE: Check toegang tot thema
-    const hasAccess = await hasThemeAccess(employerId, themeId, team_id || null)
+    const hasAccess = await hasThemeAccess(employerId, themeId, effectiveTeamId || null)
     if (!hasAccess) {
       return res.status(403).json({ 
         error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
@@ -51,8 +64,8 @@ router.get('/:orgId/:themeId', async (req, res) => {
       .eq('theme_id', themeId)
 
     // Filter op team_id als opgegeven, anders organisatie-breed (team_id IS NULL)
-    if (team_id) {
-      insightQuery = insightQuery.eq('team_id', team_id)
+    if (effectiveTeamId) {
+      insightQuery = insightQuery.eq('team_id', effectiveTeamId)
     } else {
       insightQuery = insightQuery.is('team_id', null)
     }
@@ -78,7 +91,7 @@ router.get('/:orgId/:themeId', async (req, res) => {
     res.json({
       organisatie_id: orgId,
       theme_id: themeId,
-      team_id: team_id || null,
+      team_id: effectiveTeamId || null,
       titel: themeData.titel,
       beschrijving_werknemer: themeData.beschrijving_werknemer,
       beschrijving_werkgever: themeData.beschrijving_werkgever,

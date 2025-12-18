@@ -16,7 +16,7 @@ router.use(authMiddleware)
 // Haalt beschikbare jaar/maand combinaties op voor een organisatie
 router.get('/:orgId/available-periods', async (req, res) => {
   const { orgId } = req.params
-  const employerId = req.ctx.employerId
+  const { employerId, isTeamleider, teamleiderVanTeamId, role } = req.ctx
 
   if (!orgId) {
     return res.status(400).json({ error: 'Organisatie ID is verplicht' })
@@ -27,15 +27,27 @@ router.get('/:orgId/available-periods', async (req, res) => {
     return res.status(403).json({ error: 'Geen toegang tot deze organisatie' })
   }
 
-  try {
-    console.log('🔍 Start ophalen beschikbare periodes voor:', { orgId })
+  // Voor teamleiders: controleer toegang
+  if (isTeamleider && !teamleiderVanTeamId) {
+    return res.status(400).json({ error: 'Geen team gekoppeld aan deze teamleider' })
+  }
 
-    // Haal alle werknemers van deze organisatie op
-    const { data: employees, error: employeesError } = await supabase
+  try {
+    console.log('🔍 Start ophalen beschikbare periodes voor:', { orgId, isTeamleider, teamleiderVanTeamId })
+
+    // Haal werknemers op (team-specifiek voor teamleiders, alle werknemers voor werkgevers)
+    let employeesQuery = supabase
       .from('users')
       .select('id')
       .eq('employer_id', employerId)  // Gebruik employerId uit context
       .eq('role', 'employee')
+
+    // Voor teamleiders: filter op hun team
+    if (isTeamleider && teamleiderVanTeamId) {
+      employeesQuery = employeesQuery.eq('team_id', teamleiderVanTeamId)
+    }
+
+    const { data: employees, error: employeesError } = await employeesQuery
 
     if (employeesError) throw employeesError
 
@@ -106,6 +118,7 @@ router.get('/:orgId/available-periods', async (req, res) => {
 router.get('/:orgId', async (req, res) => {
   const { orgId } = req.params
   const { maand, jaar, team_id } = req.query // Nieuwe query parameters voor maand, jaar en team filtering
+  const { isTeamleider, teamleiderVanTeamId, role, employerId } = req.ctx
 
   if (!orgId) {
     return res.status(400).json({ error: 'Organisatie ID is verplicht' })
@@ -117,15 +130,37 @@ router.get('/:orgId', async (req, res) => {
   }
 
   try {
-    console.log('🔍 Start ophalen organisatie thema\'s voor:', { orgId, maand, jaar, team_id })
-
-    // Valideer team_id als opgegeven
-    if (team_id) {
-      await assertTeamInOrg(team_id, orgId)
+    // Voor teamleiders: gebruik automatisch hun team en controleer toegang
+    let effectiveTeamId = team_id
+    if (isTeamleider) {
+      // Teamleiders kunnen alleen hun eigen team zien
+      if (orgId !== employerId) {
+        return res.status(403).json({ error: 'Geen toegang tot deze organisatie' })
+      }
+      effectiveTeamId = teamleiderVanTeamId
+      if (!effectiveTeamId) {
+        return res.status(400).json({ error: 'Geen team gekoppeld aan deze teamleider' })
+      }
+      console.log('🔍 Teamleider toegang - automatisch team filter:', effectiveTeamId)
+    } else if (role === 'employer') {
+      // Werkgevers: valideer team_id als opgegeven
+      if (team_id) {
+        await assertTeamInOrg(team_id, orgId)
+      }
+      effectiveTeamId = team_id
+    } else {
+      return res.status(403).json({ error: 'Alleen werkgevers en teamleiders hebben toegang tot deze endpoint' })
     }
 
+    // Valideer dat orgId overeenkomt met employerId uit context
+    if (orgId !== employerId) {
+      return res.status(403).json({ error: 'Geen toegang tot deze organisatie' })
+    }
+
+    console.log('🔍 Start ophalen organisatie thema\'s voor:', { orgId, maand, jaar, team_id: effectiveTeamId, isTeamleider })
+
     // 1. Haal toegestane theme_id's op voor deze werkgever/team
-    const allowedThemeIds = await getAllowedThemeIds(orgId, team_id || null)
+    const allowedThemeIds = await getAllowedThemeIds(orgId, effectiveTeamId || null)
     
     if (allowedThemeIds.length === 0) {
       // Geen toegestane thema's, return lege lijst
@@ -158,8 +193,8 @@ router.get('/:orgId', async (req, res) => {
       .eq('role', 'employee')
 
     // Voeg team filtering toe als team_id is opgegeven
-    if (team_id) {
-      employeeQuery = employeeQuery.eq('team_id', team_id)
+    if (effectiveTeamId) {
+      employeeQuery = employeeQuery.eq('team_id', effectiveTeamId)
     }
 
     const { data: employees, error: employeesError } = await employeeQuery
@@ -174,8 +209,8 @@ router.get('/:orgId', async (req, res) => {
       .eq('organisatie_id', orgId)
 
     // Filter op team_id als opgegeven, anders organisatie-breed (team_id IS NULL)
-    if (team_id) {
-      insightsQuery = insightsQuery.eq('team_id', team_id)
+    if (effectiveTeamId) {
+      insightsQuery = insightsQuery.eq('team_id', effectiveTeamId)
     } else {
       insightsQuery = insightsQuery.is('team_id', null)
     }
@@ -290,7 +325,7 @@ router.get('/:orgId', async (req, res) => {
             body: JSON.stringify({
               organisatie_id: orgId,
               theme_id: theme.id,
-              team_id: team_id || null // team_id voor team-specifieke insights
+              team_id: effectiveTeamId || null // team_id voor team-specifieke insights
             })
           })
           

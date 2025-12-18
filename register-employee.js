@@ -30,12 +30,17 @@ router.post('/', async (req, res) => {
   // 1. Token controleren en gegevens ophalen
   const { data: invitation, error: invitationError } = await supabase
     .from('invitations')
-    .select('email, employer_id, status, functie_omschrijving, team_id')
+    .select('email, employer_id, status, functie_omschrijving, team_id, invite_role, is_teamleider')
     .eq('token', token)
     .single()
 
   if (invitationError || !invitation || invitation.status !== 'pending') {
     return res.status(400).json({ error: 'Ongeldige of verlopen uitnodiging.' })
+  }
+
+  // Controleer dat dit een werknemer uitnodiging is
+  if (invitation.invite_role === 'employer') {
+    return res.status(400).json({ error: 'Deze uitnodiging is voor een werkgever. Gebruik de werkgever registratie pagina.' })
   }
 
   // Valideer dat team_id behoort tot de juiste werkgever
@@ -52,6 +57,24 @@ router.post('/', async (req, res) => {
     }
   }
 
+  // Voor teamleiders: controleer of er al een teamleider is voor dit team
+  if (invitation.is_teamleider && invitation.team_id) {
+    const { data: existingTeamleider, error: teamleiderError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('teamleider_van_team_id', invitation.team_id)
+      .eq('is_teamleider', true)
+      .single()
+
+    if (teamleiderError && teamleiderError.code !== 'PGRST116') {
+      return res.status(500).json({ error: 'Fout bij controleren bestaande teamleider' })
+    }
+
+    if (existingTeamleider) {
+      return res.status(409).json({ error: 'Dit team heeft al een teamleider' })
+    }
+  }
+
   // 2. Gebruiker aanmaken in Supabase Auth
   const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
     email: invitation.email,
@@ -64,7 +87,7 @@ router.post('/', async (req, res) => {
   }
 
   // 3. Toevoegen aan users-tabel
-  const { error: insertError } = await supabase.from('users').insert({
+  const userData = {
     id: authUser.user.id,            // ✅ correct id
     email: invitation.email,         // ✅ email meegeven
     first_name,
@@ -76,8 +99,12 @@ router.post('/', async (req, res) => {
     employer_id: invitation.employer_id,
     team_id: invitation.team_id,     // ✅ team_id van invitation overnemen
     functie_omschrijving: invitation.functie_omschrijving || null,
-    toestemming_avg: toestemming_avg
-  })
+    toestemming_avg: toestemming_avg,
+    is_teamleider: invitation.is_teamleider || false,
+    teamleider_van_team_id: (invitation.is_teamleider && invitation.team_id) ? invitation.team_id : null
+  }
+
+  const { error: insertError } = await supabase.from('users').insert(userData)
 
   if (insertError) {
     console.error('❌ Insert error:', insertError)

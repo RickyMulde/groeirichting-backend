@@ -41,7 +41,7 @@ const authMiddleware = async (req, res, next) => {
     // Haal user data op uit database
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('id, role, employer_id')
+      .select('id, role, employer_id, is_teamleider, teamleider_van_team_id')
       .eq('id', user.id)
       .single()
 
@@ -62,7 +62,9 @@ const authMiddleware = async (req, res, next) => {
     req.ctx = {
       userId: userData.id,
       role: userData.role,
-      employerId: userData.employer_id
+      employerId: userData.employer_id,
+      isTeamleider: userData.is_teamleider || false,
+      teamleiderVanTeamId: userData.teamleider_van_team_id || null
     }
 
     next()
