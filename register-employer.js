@@ -279,19 +279,46 @@ router.post('/invitation', async (req, res) => {
   const userId = authUser.user.id;
 
   // 5. Toevoegen aan users-tabel als werkgever
-  const { error: insertError } = await supabase.from('users').insert({
+  console.log('🔄 Creating user record in users table:', {
     id: userId,
     email: invitation.email,
-    first_name,
-    middle_name: middle_name || null,
-    last_name,
     role: 'employer',
     employer_id: invitation.employer_id
   });
 
+  const { data: insertedUser, error: insertError } = await supabase
+    .from('users')
+    .insert({
+      id: userId,
+      email: invitation.email,
+      first_name,
+      middle_name: middle_name || null,
+      last_name,
+      role: 'employer',
+      employer_id: invitation.employer_id
+    })
+    .select()
+    .single();
+
   if (insertError) {
     console.error('❌ Insert error:', insertError);
     return res.status(500).json({ error: insertError.message || 'Opslaan in gebruikersdatabase mislukt.' });
+  }
+
+  console.log('✅ User record created successfully:', insertedUser);
+  
+  // Verifieer dat de user record daadwerkelijk bestaat
+  const { data: verifyUser, error: verifyError } = await supabase
+    .from('users')
+    .select('id, email, role, employer_id')
+    .eq('id', userId)
+    .single();
+
+  if (verifyError || !verifyUser) {
+    console.error('❌ Verification failed: User record not found after insert:', verifyError);
+    // Continue anyway, maar log de error
+  } else {
+    console.log('✅ User record verified:', verifyUser);
   }
 
   // 6. Uitnodiging bijwerken
