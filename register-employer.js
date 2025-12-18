@@ -263,13 +263,11 @@ router.post('/invitation', async (req, res) => {
     }
   }
 
-  // 4. Maak nieuwe Supabase Auth gebruiker aan via signUp (vereist email verificatie)
-  const { data: authUser, error: authError } = await supabaseAnon.auth.signUp({
+  // 4. Maak nieuwe Supabase Auth gebruiker aan (geen verificatie nodig - komt via uitnodiging)
+  const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
     email: invitation.email,
     password,
-    options: {
-      emailRedirectTo: `${process.env.FRONTEND_URL}/na-verificatie`
-    }
+    email_confirm: true // Geen verificatie nodig - komt via uitnodiging
   });
 
   if (authError || !authUser?.user?.id) {
@@ -280,28 +278,29 @@ router.post('/invitation', async (req, res) => {
 
   const userId = authUser.user.id;
 
-  // 5. Sla pending employer data op (wordt gebruikt door provisioning na verificatie)
-  const { data: pendingEmployer, error: pendingError } = await supabase
-    .from('pending_employers')
+  // 5. Direct user record aanmaken (geen provisioning nodig)
+  const { data: insertedUser, error: insertError } = await supabase
+    .from('users')
     .insert({
-      user_id: userId,
-      company_name: employer.company_name, // Gebruik company_name van bestaande employer
-      contact_phone: null,
+      id: userId,
+      email: invitation.email,
       first_name,
       middle_name: middle_name || null,
       last_name,
-      status: 'pending_verification',
-      employer_id: invitation.employer_id // Sla employer_id op voor provisioning
+      role: 'employer',
+      employer_id: invitation.employer_id
     })
     .select()
     .single();
 
-  if (pendingError) {
-    console.error('❌ Error creating pending employer:', pendingError);
-    return res.status(500).json({ error: pendingError.message || 'Opslaan in database mislukt.' });
+  if (insertError) {
+    console.error('❌ Insert error:', insertError);
+    return res.status(500).json({ error: insertError.message || 'Opslaan in gebruikersdatabase mislukt.' });
   }
 
-  // 6. Uitnodiging bijwerken naar 'accepted' (maar user moet nog verifiëren)
+  console.log('✅ User record created successfully:', insertedUser);
+
+  // 6. Uitnodiging bijwerken naar 'accepted'
   await supabase
     .from('invitations')
     .update({ status: 'accepted' })
@@ -309,9 +308,7 @@ router.post('/invitation', async (req, res) => {
 
   return res.status(200).json({ 
     success: true,
-    message: 'Account succesvol aangemaakt! Je ontvangt automatisch een verificatie-e-mail.',
-    email: invitation.email,
-    redirectUrl: `${process.env.FRONTEND_URL}/verify-email?email=${encodeURIComponent(invitation.email)}`
+    message: 'Account succesvol aangemaakt!'
   });
 });
 
