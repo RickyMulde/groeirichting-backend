@@ -227,33 +227,61 @@ app.post('/api/provision-employer', async (req, res) => {
       });
     }
 
-    // Check if employer already exists for this email
-    const { data: existingEmployer } = await supabase
-      .from('employers')
-      .select('id')
-      .eq('contact_email', userData.user.email)
-      .single();
+    // Check of dit een manager via uitnodiging is (check invitations tabel)
+    const { data: invitation, error: invitationError } = await supabase
+      .from('invitations')
+      .select('employer_id, invite_role')
+      .eq('email', userData.user.email)
+      .eq('status', 'accepted')
+      .eq('invite_role', 'employer')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     let employerId;
-    if (existingEmployer) {
-      employerId = existingEmployer.id;
-    } else {
-      // Create new employer
-      const { data: emp, error: empErr } = await supabase
+    
+    // Als er een invitation is met employer_id (manager via uitnodiging)
+    if (!invitationError && invitation && invitation.employer_id) {
+      // Verifieer dat de employer bestaat
+      const { data: existingEmployer, error: empCheckError } = await supabase
         .from('employers')
-        .insert({
-          company_name: pendingEmployer.company_name,
-          contact_email: userData.user.email,
-          contact_phone: pendingEmployer.contact_phone || null,
-          kvk_number: null
-        })
         .select('id')
+        .eq('id', invitation.employer_id)
         .single();
-        
-      if (empErr) {
-        return res.status(400).json({ error: 'Employer insert failed', detail: empErr.message });
+      
+      if (empCheckError || !existingEmployer) {
+        return res.status(400).json({ error: 'Werkgever niet gevonden voor deze uitnodiging.' });
       }
-      employerId = emp.id;
+      
+      employerId = invitation.employer_id;
+    } else {
+      // Normale werkgever registratie: check of employer al bestaat of maak nieuwe aan
+      const { data: existingEmployer } = await supabase
+        .from('employers')
+        .select('id')
+        .eq('contact_email', userData.user.email)
+        .single();
+
+      if (existingEmployer) {
+        employerId = existingEmployer.id;
+      } else {
+        // Create new employer
+        const { data: emp, error: empErr } = await supabase
+          .from('employers')
+          .insert({
+            company_name: pendingEmployer.company_name,
+            contact_email: userData.user.email,
+            contact_phone: pendingEmployer.contact_phone || null,
+            kvk_number: null
+          })
+          .select('id')
+          .single();
+          
+        if (empErr) {
+          return res.status(400).json({ error: 'Employer insert failed', detail: empErr.message });
+        }
+        employerId = emp.id;
+      }
     }
 
     // Insert or update user profile

@@ -263,11 +263,13 @@ router.post('/invitation', async (req, res) => {
     }
   }
 
-  // 4. Maak nieuwe Supabase Auth gebruiker aan
-  const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+  // 4. Maak nieuwe Supabase Auth gebruiker aan via signUp (vereist email verificatie)
+  const { data: authUser, error: authError } = await supabaseAnon.auth.signUp({
     email: invitation.email,
     password,
-    email_confirm: true // Geen verificatie nodig - komt via uitnodiging
+    options: {
+      emailRedirectTo: `${process.env.FRONTEND_URL}/na-verificatie`
+    }
   });
 
   if (authError || !authUser?.user?.id) {
@@ -278,50 +280,28 @@ router.post('/invitation', async (req, res) => {
 
   const userId = authUser.user.id;
 
-  // 5. Toevoegen aan users-tabel als werkgever
-  console.log('🔄 Creating user record in users table:', {
-    id: userId,
-    email: invitation.email,
-    role: 'employer',
-    employer_id: invitation.employer_id
-  });
-
-  const { data: insertedUser, error: insertError } = await supabase
-    .from('users')
+  // 5. Sla pending employer data op (wordt gebruikt door provisioning na verificatie)
+  const { data: pendingEmployer, error: pendingError } = await supabase
+    .from('pending_employers')
     .insert({
-      id: userId,
-      email: invitation.email,
+      user_id: userId,
+      company_name: employer.company_name, // Gebruik company_name van bestaande employer
+      contact_phone: null,
       first_name,
       middle_name: middle_name || null,
       last_name,
-      role: 'employer',
-      employer_id: invitation.employer_id
+      status: 'pending_verification',
+      employer_id: invitation.employer_id // Sla employer_id op voor provisioning
     })
     .select()
     .single();
 
-  if (insertError) {
-    console.error('❌ Insert error:', insertError);
-    return res.status(500).json({ error: insertError.message || 'Opslaan in gebruikersdatabase mislukt.' });
+  if (pendingError) {
+    console.error('❌ Error creating pending employer:', pendingError);
+    return res.status(500).json({ error: pendingError.message || 'Opslaan in database mislukt.' });
   }
 
-  console.log('✅ User record created successfully:', insertedUser);
-  
-  // Verifieer dat de user record daadwerkelijk bestaat
-  const { data: verifyUser, error: verifyError } = await supabase
-    .from('users')
-    .select('id, email, role, employer_id')
-    .eq('id', userId)
-    .single();
-
-  if (verifyError || !verifyUser) {
-    console.error('❌ Verification failed: User record not found after insert:', verifyError);
-    // Continue anyway, maar log de error
-  } else {
-    console.log('✅ User record verified:', verifyUser);
-  }
-
-  // 6. Uitnodiging bijwerken
+  // 6. Uitnodiging bijwerken naar 'accepted' (maar user moet nog verifiëren)
   await supabase
     .from('invitations')
     .update({ status: 'accepted' })
@@ -329,7 +309,9 @@ router.post('/invitation', async (req, res) => {
 
   return res.status(200).json({ 
     success: true,
-    message: 'Werkgever account succesvol aangemaakt!'
+    message: 'Account succesvol aangemaakt! Je ontvangt automatisch een verificatie-e-mail.',
+    email: invitation.email,
+    redirectUrl: `${process.env.FRONTEND_URL}/verify-email?email=${encodeURIComponent(invitation.email)}`
   });
 });
 
