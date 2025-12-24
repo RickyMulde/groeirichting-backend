@@ -88,6 +88,11 @@ router.get('/:orgId/:themeId', async (req, res) => {
 
     if (themeError) throw themeError
 
+    // Extract nieuwe structuur uit gpt_adviezen (backward compatible)
+    const gptAdviezen = insight.gpt_adviezen || {}
+    const scenario = gptAdviezen.scenario || null
+    const adviezen = gptAdviezen.adviezen || null
+
     res.json({
       organisatie_id: orgId,
       theme_id: themeId,
@@ -96,6 +101,10 @@ router.get('/:orgId/:themeId', async (req, res) => {
       beschrijving_werknemer: themeData.beschrijving_werknemer,
       beschrijving_werkgever: themeData.beschrijving_werkgever,
       samenvatting: insight.samenvatting,
+      // Nieuwe structuur
+      scenario: scenario,
+      adviezen: adviezen,
+      // Backward compatibility
       verbeteradvies: insight.verbeteradvies,
       gpt_adviezen: insight.gpt_adviezen,
       signaalwoorden: insight.signaalwoorden,

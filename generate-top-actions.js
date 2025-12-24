@@ -168,7 +168,19 @@ SCENARIO D: GROEI (AANTAL_ONVOLDOENDES is 0)
 
 OUTPUT:
 JSON object met 'geselecteerde_adviezen' (array van precies 3 items) en 'toelichting' (korte uitleg welk scenario is toegepast).
-Neem de advies-teksten EXACT en ONGEWIJZIGD over uit de input.`
+Neem de advies-teksten EXACT en ONGEWIJZIGD over uit de input.
+
+MICRO-ADVIEZEN:
+Voor elk geselecteerd advies, genereer precies 3 eenvoudige, direct uitvoerbare micro-adviezen die helpen om het doel van dit advies te behalen.
+Elke micro-advies bestaat uit:
+- Een korte, actiegerichte titel (max 8 woorden) die direct duidelijk maakt wat te doen
+- Een korte toelichting in kleine letters die uitlegt waarom of hoe (max 15 woorden)
+Voorbeelden:
+* "Maak een weekplanning" (toelichting: "Dit geeft overzicht en voorkomt dat taken vergeten worden")
+* "Plan wekelijkse 1-op-1 gesprekken" (toelichting: "Geeft ruimte voor persoonlijke aandacht en feedback")
+* "Organiseer maandelijkse teamuitjes" (toelichting: "Versterkt de onderlinge banden en verbetert de sfeer")
+❌ NIET: Vage adviezen zoals "Verbeter de communicatie" of "Wees proactief"
+✅ WEL: Concrete, uitvoerbare acties die direct opgepakt kunnen worden`
 
   const userInput = `THEMA DATA:
 ${JSON.stringify(themasData, null, 2)}
@@ -198,9 +210,30 @@ Selecteer de 3 belangrijkste adviezen volgens het algoritme.`
                   titel: { type: 'string' },
                   reden: { type: 'string' },
                   resultaat: { type: 'string' },
-                  categorie: { type: 'string' }
+                  categorie: { type: 'string' },
+                  micro_adviezen: {
+                    type: 'array',
+                    description: 'TIJDELIJKE OPLOSSING: Array van precies 3 eenvoudige, direct uitvoerbare micro-adviezen. Elke micro-advies heeft een korte actiegerichte titel (max 8 woorden) en een korte toelichting (max 15 woorden) die uitlegt waarom of hoe. Opslag in tekst formaat in actie_1/2/3 JSON strings.',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        titel: {
+                          type: 'string',
+                          description: 'Korte, actiegerichte titel (max 8 woorden) die direct duidelijk maakt wat te doen. Bijvoorbeeld: "Maak een weekplanning" of "Plan wekelijkse 1-op-1 gesprekken"'
+                        },
+                        toelichting: {
+                          type: 'string',
+                          description: 'Korte toelichting in kleine letters (max 15 woorden) die uitlegt waarom of hoe. Bijvoorbeeld: "Dit geeft overzicht en voorkomt dat taken vergeten worden"'
+                        }
+                      },
+                      required: ['titel', 'toelichting'],
+                      additionalProperties: false
+                    },
+                    minItems: 3,
+                    maxItems: 3
+                  }
                 },
-                required: ['titel', 'reden', 'resultaat', 'categorie'],
+                required: ['titel', 'reden', 'resultaat', 'categorie', 'micro_adviezen'],
                 additionalProperties: false
               },
               minItems: 3,
@@ -251,15 +284,18 @@ Selecteer de 3 belangrijkste adviezen volgens het algoritme.`
   }
 
   // 8️⃣ Sla op in database
+  // TIJDELIJKE OPLOSSING: micro_adviezen worden opgeslagen in actie_1/2/3 JSON strings als tekst.
+  // Inhoud: Array van objecten met {titel: string, toelichting: string} per actie.
+  // Dit is een tijdelijke oplossing totdat een definitieve structuur is bepaald.
   const adviezen = parsed.geselecteerde_adviezen
   const topActiesData = {
     werknemer_id,
     werkgever_id: werknemer.employer_id,
     team_id: teamId,
     periode,
-    actie_1: JSON.stringify(adviezen[0]),
-    actie_2: JSON.stringify(adviezen[1]),
-    actie_3: JSON.stringify(adviezen[2]),
+    actie_1: JSON.stringify(adviezen[0]), // Bevat nu ook micro_adviezen array
+    actie_2: JSON.stringify(adviezen[1]), // Bevat nu ook micro_adviezen array
+    actie_3: JSON.stringify(adviezen[2]), // Bevat nu ook micro_adviezen array
     prioriteit_1: 'hoog',
     prioriteit_2: 'medium',
     prioriteit_3: 'laag',
