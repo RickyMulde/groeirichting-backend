@@ -51,7 +51,7 @@ async function generateTopActions(werknemer_id, periode, employerId) {
 
   console.log(`🔄 [GENERATE] Start generatie top 3 acties voor werknemer ${werknemer_id}, periode ${periode}, employer ${employerId}`)
 
-  // 1️⃣ Haal gesprekresultaten op voor deze periode met thema info
+  // 1️⃣ Haal gesprekresultaten op voor deze periode
   const { data: resultaten, error: resultatenError } = await supabase
     .from('gesprekresultaten')
     .select(`
@@ -59,11 +59,7 @@ async function generateTopActions(werknemer_id, periode, employerId) {
       theme_id,
       score,
       vervolgacties,
-      gesprek_id,
-      themes!inner(
-        id,
-        titel
-      )
+      gesprek_id
     `)
     .eq('werknemer_id', werknemer_id)
     .eq('periode', periode)
@@ -74,6 +70,21 @@ async function generateTopActions(werknemer_id, periode, employerId) {
   }
 
   console.log(`📊 ${resultaten.length} gesprekresultaten gevonden`)
+
+  // 1b️⃣ Haal thema info op voor alle unieke theme_ids
+  const uniekeThemeIds = [...new Set(resultaten.map(r => r.theme_id))]
+  const { data: themes, error: themesError } = await supabase
+    .from('themes')
+    .select('id, titel')
+    .in('id', uniekeThemeIds)
+
+  if (themesError) throw themesError
+  if (!themes || themes.length === 0) {
+    throw new Error('Geen thema\'s gevonden voor de gesprekresultaten')
+  }
+
+  // Maak een map voor snelle lookup
+  const themesMap = new Map(themes.map(t => [t.id, t]))
 
   // 2️⃣ Haal team_id op uit een van de gesprekken
   const gesprekIds = resultaten.map(r => r.gesprek_id).filter(Boolean)
@@ -122,11 +133,18 @@ async function generateTopActions(werknemer_id, periode, employerId) {
   }
 
   // 5️⃣ Bouw input data voor AI
-  const themasData = resultaten.map(r => ({
-    thema: r.themes.titel,
-    score: r.score,
-    adviezen: r.vervolgacties || []
-  }))
+  const themasData = resultaten.map(r => {
+    const theme = themesMap.get(r.theme_id)
+    if (!theme) {
+      console.warn(`⚠️ Thema niet gevonden voor theme_id: ${r.theme_id}`)
+      return null
+    }
+    return {
+      thema: theme.titel,
+      score: r.score,
+      adviezen: r.vervolgacties || []
+    }
+  }).filter(Boolean) // Verwijder null entries
 
   console.log('📋 Thema data voor AI:', JSON.stringify(themasData, null, 2))
 
