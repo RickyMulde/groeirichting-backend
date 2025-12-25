@@ -1,9 +1,9 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
-// 🔄 MIGRATIE: Azure → OpenAI Direct
-// Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4o', temperature 1, max_completion_tokens 2000
+// 🔄 MIGRATIE: Nu met Responses API voor GPT-5.2
 const openaiClient = require('./utils/openaiClient')
 const { authMiddleware } = require('./middleware/auth')
+const { hasThemeAccess } = require('./utils/themeAccessService')
 
 const router = express.Router()
 const supabase = createClient(
@@ -23,6 +23,33 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    // ✅ VALIDATIE: Haal werknemer op om team_id te krijgen en check toegang tot thema
+    const { data: werknemer, error: werknemerError } = await supabase
+      .from('users')
+      .select('employer_id, team_id')
+      .eq('id', werknemer_id)
+      .eq('employer_id', employerId)
+      .single()
+
+    if (werknemerError) {
+      if (werknemerError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Werknemer niet gevonden' })
+      }
+      throw werknemerError
+    }
+
+    if (!werknemer || werknemer.employer_id !== employerId) {
+      return res.status(403).json({ error: 'Geen toegang tot deze werknemer' })
+    }
+
+    // Check toegang tot thema
+    const hasAccess = await hasThemeAccess(employerId, theme_id, werknemer.team_id || null)
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
+      })
+    }
+
     // 0️⃣ Haal het thema op uit de themes-tabel
     const { data: thema, error: themaError } = await supabase
       .from('themes')
@@ -125,9 +152,11 @@ router.post('/', async (req, res) => {
       `Gebruik onderstaande beoordelingscriteria voor het bepalen van de score:\nScore instructie: ${thema.score_instructies.score_instructie}\n${Object.entries(thema.score_instructies).filter(([k]) => k.startsWith('score_bepalen_')).map(([k, v]) => `${k.replace('score_bepalen_', 'Score ')}: ${v}`).join('\n')}`
       : '';
 
-    const prompt = `Je bent een HR-assistent die een gesprek samenvat voor een WERKNEMER.
+    // System instructions
+    const systemInstructions = `Je bent een HR-assistent die een gesprek samenvat voor een WERKNEMER. Antwoord ALLEEN in JSON-formaat.`
 
-Thema: ${thema.titel}
+    // User input
+    const userInput = `Thema: ${thema.titel}
 ${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}${werknemerContext?.functie_omschrijving ? `\n\nFunctie context: ${werknemerContext.functie_omschrijving}` : ''}${werknemerContext?.gender ? `\n\nGeslacht: ${werknemerContext.gender}` : ''}
 
 Hoofdvraag: ${hoofdvraag}
@@ -145,32 +174,38 @@ Opdracht:
    - Maak het persoonlijk en direct gericht aan de werknemer
 2. Geef een score van 1-10 op basis van de score instructies
 
-Antwoord in JSON-formaat (zonder markdown code blocks):
-{
-  "samenvatting": "Vat het gesprek samen in maximaal 6 zinnen in de tweede persoon (jij, je, jouw)",
-  "score": 7
-}`
+Antwoord in JSON-formaat met velden: "samenvatting" (string) en "score" (number 1-10).`
 
-    // ✅ 4. Stuur prompt naar OpenAI Direct
-    const completion = await openaiClient.createCompletion({
-      model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
-      messages: [{ role: 'user', content: prompt }],
-      // GPT-5 ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
-      // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
-      // Voor gpt-4o zouden we gebruiken: temperature: 0.35, top_p: 0.9, frequency_penalty: 0.15, presence_penalty: 0.15
-      // BELANGRIJK: GPT-5 gebruikt "reasoning tokens" die meetellen in max_completion_tokens
-      // Bij lange gespreksgeschiedenis gebruikt GPT-5 meer reasoning tokens
-      // Verhoogd naar 2000 om ruimte te geven voor reasoning (800-1200) + output (200-400)
-      max_completion_tokens: 2000, // Verhoogd van 500 naar 2000 voor GPT-5 reasoning tokens
-      response_format: { type: 'json_object' }, // Garandeert geldige JSON
-      stream: false
+    // ✅ 4. Stuur prompt naar OpenAI Responses API (GPT-5.2)
+    const response = await openaiClient.createResponse({
+      model: 'gpt-5.2', // GPT-5.2 voor samenvatting generatie
+      instructions: systemInstructions,
+      input: [{ role: 'user', content: userInput }],
+      max_output_tokens: 2000,
+      service_tier: 'default',
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'samenvatting_output',
+          schema: {
+            type: 'object',
+            properties: {
+              samenvatting: { type: 'string' },
+              score: { type: 'number' }
+            },
+            required: ['samenvatting', 'score'],
+            additionalProperties: false
+          },
+          strict: true
+        }
+      }
     })
 
-    if (!completion.success) {
-      throw new Error(`OpenAI Direct fout: ${completion.error}`)
+    if (!response.success) {
+      throw new Error(`OpenAI Responses API fout: ${response.error}`)
     }
 
-    const gptResponse = completion.data.choices[0].message.content
+    const gptResponse = response.data.output_text
     
     // Verwijder markdown code blocks als die er zijn
     let cleanResponse = gptResponse
@@ -188,17 +223,8 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
       throw new Error('Fout bij parsen van GPT response')
     }
 
-    // ✅ 5. Haal werkgever op via werknemer
-    const { data: werknemer, error: werknemerError } = await supabase
-      .from('users')
-      .select('employer_id')
-      .eq('id', werknemer_id)
-      .single()
-
-    if (werknemerError) throw werknemerError
-    if (!werknemer) {
-      return res.status(404).json({ error: 'Werknemer niet gevonden' })
-    }
+    // ✅ 5. Werknemer is al opgehaald bij validatie (regel 28), gebruik die data
+    // werknemer.employer_id is al beschikbaar
 
     // ✅ 6. Bepaal gespreksronde en periode
     let gespreksronde = 1

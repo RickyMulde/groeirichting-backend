@@ -201,4 +201,115 @@ router.post('/', async (req, res) => {
   });
 });
 
+// POST /api/register-employer/invitation
+// Registreert een werkgever via uitnodiging (token-based)
+router.post('/invitation', async (req, res) => {
+  const {
+    token,
+    first_name,
+    middle_name,
+    last_name,
+    password
+  } = req.body;
+
+  if (!token || !first_name || !last_name || !password) {
+    return res.status(400).json({ error: 'Niet alle verplichte velden zijn ingevuld.' });
+  }
+
+  // 1. Token controleren en gegevens ophalen
+  const { data: invitation, error: invitationError } = await supabase
+    .from('invitations')
+    .select('email, employer_id, status, invite_role')
+    .eq('token', token)
+    .single();
+
+  if (invitationError || !invitation || invitation.status !== 'pending') {
+    return res.status(400).json({ error: 'Ongeldige of verlopen uitnodiging.' });
+  }
+
+  // Controleer dat dit een werkgever uitnodiging is
+  if (invitation.invite_role !== 'employer') {
+    return res.status(400).json({ error: 'Deze uitnodiging is niet voor een werkgever.' });
+  }
+
+  // 2. Controleer of employer bestaat
+  const { data: employer, error: employerError } = await supabase
+    .from('employers')
+    .select('id, company_name')
+    .eq('id', invitation.employer_id)
+    .single();
+
+  if (employerError || !employer) {
+    return res.status(400).json({ error: 'Werkgever niet gevonden voor deze uitnodiging.' });
+  }
+
+  // 3. Controleer of gebruiker al bestaat
+  const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
+  
+  if (listError) {
+    return res.status(500).json({ error: 'Fout bij controleren bestaande gebruikers.' });
+  }
+  
+  const existingUser = existingUsers.users.find(user => user.email === invitation.email);
+  
+  if (existingUser) {
+    // Verwijder bestaande gebruiker uit Auth
+    const { error: deleteError } = await supabase.auth.admin.deleteUser(existingUser.id);
+    
+    if (deleteError) {
+      return res.status(400).json({ 
+        error: 'Gebruiker bestaat al. Probeer het over een paar minuten opnieuw, of neem contact op met support.' 
+      });
+    }
+  }
+
+  // 4. Maak nieuwe Supabase Auth gebruiker aan (geen verificatie nodig - komt via uitnodiging)
+  const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+    email: invitation.email,
+    password,
+    email_confirm: true // Geen verificatie nodig - komt via uitnodiging
+  });
+
+  if (authError || !authUser?.user?.id) {
+    return res.status(400).json({ 
+      error: 'Account aanmaken mislukt: ' + (authError?.message || 'Onbekende fout') 
+    });
+  }
+
+  const userId = authUser.user.id;
+
+  // 5. Direct user record aanmaken (geen provisioning nodig)
+  const { data: insertedUser, error: insertError } = await supabase
+    .from('users')
+    .insert({
+      id: userId,
+      email: invitation.email,
+      first_name,
+      middle_name: middle_name || null,
+      last_name,
+      role: 'employer',
+      employer_id: invitation.employer_id
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error('❌ Insert error:', insertError);
+    return res.status(500).json({ error: insertError.message || 'Opslaan in gebruikersdatabase mislukt.' });
+  }
+
+  console.log('✅ User record created successfully:', insertedUser);
+
+  // 6. Uitnodiging bijwerken naar 'accepted'
+  await supabase
+    .from('invitations')
+    .update({ status: 'accepted' })
+    .eq('token', token);
+
+  return res.status(200).json({ 
+    success: true,
+    message: 'Account succesvol aangemaakt!'
+  });
+});
+
 module.exports = router;  

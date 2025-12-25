@@ -1,5 +1,6 @@
 // Service voor gesprek datum berekeningen en anonimisering
 const { createClient } = require('@supabase/supabase-js');
+const { getAllowedThemeIds } = require('./themeAccessService');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -204,12 +205,28 @@ const getThemaDataVoorWerknemer = async (werknemerId) => {
     // Haal werkgever configuratie op
     const werkgeverConfig = await getWerkgeverConfiguratie(werknemer.employer_id);
     
-    // Haal alle actieve thema's op
+    // Haal toegestane thema's op voor deze werkgever (gebruik nieuwe filtering)
+    // Haal eerst team_id op van werknemer
+    const { data: werknemerTeam, error: teamError } = await supabase
+      .from('users')
+      .select('team_id')
+      .eq('id', werknemerId)
+      .single();
+    
+    const teamId = werknemerTeam?.team_id || null;
+    const toegestaneThemeIds = await getAllowedThemeIds(werknemer.employer_id, teamId);
+    
+    if (!toegestaneThemeIds || toegestaneThemeIds.length === 0) {
+      // Geen toegestane thema's, return lege lijst
+      return [];
+    }
+
+    // Haal details op van toegestane thema's
     const { data: themaData, error: themaError } = await supabase
       .from('themes')
       .select('id, titel, beschrijving_werknemer')
+      .in('id', toegestaneThemeIds)
       .eq('klaar_voor_gebruik', true)
-      .eq('standaard_zichtbaar', true)
       .order('volgorde_index');
     
     if (themaError) throw themaError;

@@ -24,6 +24,7 @@ const getOrganisationThemes = require('./get-organisation-themes'); // ✅ Nieuw
 const getOrganisationSummary = require('./get-organisation-summary'); // ✅ Nieuw toegevoegd
 const generateOrganisationSummary = require('./generate-organisation-summary'); // ✅ Nieuw toegevoegd
 const werkgeverGesprekInstellingen = require('./werkgever-gesprek-instellingen'); // ✅ Nieuw toegevoegd
+const employerThemes = require('./employer-themes'); // ✅ Nieuw toegevoegd
 const getThemaDataWerknemer = require('./get-thema-data-werknemer'); // ✅ Nieuw toegevoegd
 const verwijderOudeGesprekken = require('./verwijder-oude-gesprekken'); // ✅ Nieuw toegevoegd
 const getGespreksresultatenBulk = require('./get-gespreksresultaten-bulk'); // ✅ Nieuw toegevoegd
@@ -155,6 +156,7 @@ app.use('/api/organisation-themes', getOrganisationThemes); // ✅ Nieuwe route 
 app.use('/api/organisation-summary', getOrganisationSummary); // ✅ Nieuwe route toegevoegd
 app.use('/api/generate-organisation-summary', generateOrganisationSummary); // ✅ Nieuwe route toegevoegd
 app.use('/api/werkgever-gesprek-instellingen', werkgeverGesprekInstellingen); // ✅ Nieuwe route toegevoegd
+app.use('/api/employer-themes', employerThemes); // ✅ Nieuwe route toegevoegd
 app.use('/api/get-thema-data-werknemer', getThemaDataWerknemer); // ✅ Nieuwe route toegevoegd
 app.use('/api/verwijder-oude-gesprekken', verwijderOudeGesprekken); // ✅ Nieuwe route toegevoegd
 app.use('/api/auto-generate-summaries', autoGenerateSummaries); // ✅ Nieuwe route toegevoegd
@@ -225,33 +227,61 @@ app.post('/api/provision-employer', async (req, res) => {
       });
     }
 
-    // Check if employer already exists for this email
-    const { data: existingEmployer } = await supabase
-      .from('employers')
-      .select('id')
-      .eq('contact_email', userData.user.email)
-      .single();
+    // Check of dit een manager via uitnodiging is (check invitations tabel)
+    const { data: invitation, error: invitationError } = await supabase
+      .from('invitations')
+      .select('employer_id, invite_role')
+      .eq('email', userData.user.email)
+      .eq('status', 'accepted')
+      .eq('invite_role', 'employer')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     let employerId;
-    if (existingEmployer) {
-      employerId = existingEmployer.id;
-    } else {
-      // Create new employer
-      const { data: emp, error: empErr } = await supabase
+    
+    // Als er een invitation is met employer_id (manager via uitnodiging)
+    if (!invitationError && invitation && invitation.employer_id) {
+      // Verifieer dat de employer bestaat
+      const { data: existingEmployer, error: empCheckError } = await supabase
         .from('employers')
-        .insert({
-          company_name: pendingEmployer.company_name,
-          contact_email: userData.user.email,
-          contact_phone: pendingEmployer.contact_phone || null,
-          kvk_number: null
-        })
         .select('id')
+        .eq('id', invitation.employer_id)
         .single();
-        
-      if (empErr) {
-        return res.status(400).json({ error: 'Employer insert failed', detail: empErr.message });
+      
+      if (empCheckError || !existingEmployer) {
+        return res.status(400).json({ error: 'Werkgever niet gevonden voor deze uitnodiging.' });
       }
-      employerId = emp.id;
+      
+      employerId = invitation.employer_id;
+    } else {
+      // Normale werkgever registratie: check of employer al bestaat of maak nieuwe aan
+      const { data: existingEmployer } = await supabase
+        .from('employers')
+        .select('id')
+        .eq('contact_email', userData.user.email)
+        .single();
+
+      if (existingEmployer) {
+        employerId = existingEmployer.id;
+      } else {
+        // Create new employer
+        const { data: emp, error: empErr } = await supabase
+          .from('employers')
+          .insert({
+            company_name: pendingEmployer.company_name,
+            contact_email: userData.user.email,
+            contact_phone: pendingEmployer.contact_phone || null,
+            kvk_number: null
+          })
+          .select('id')
+          .single();
+          
+        if (empErr) {
+          return res.status(400).json({ error: 'Employer insert failed', detail: empErr.message });
+        }
+        employerId = emp.id;
+      }
     }
 
     // Insert or update user profile
@@ -325,41 +355,75 @@ app.post('/api/debug/process-triggers', healthLimiter, async (req, res) => {
 // Resend is nu vervangen door de mailer service
 
 app.post('/api/send-invite', verificationLimiter, async (req, res) => {
-  const { to, name, employerId, token, functieOmschrijving, teamId } = req.body;
-
+  const { to, name, employerId, token, functieOmschrijving, teamId, inviteRole, isTeamleider } = req.body;
 
   if (!to || !name || !employerId || !token) {
     return res.status(400).json({ error: 'Verzoek geweigerd: ontbrekende velden' });
   }
 
-  if (!teamId) {
-    return res.status(400).json({ error: 'teamId is verplicht' });
+  // Bepaal de rol (default: employee)
+  const role = inviteRole || 'employee';
+
+  // Voor werknemers (inclusief teamleiders) is teamId verplicht
+  if (role === 'employee' && !teamId) {
+    return res.status(400).json({ error: 'teamId is verplicht voor werknemer uitnodigingen' });
   }
 
-  // Valideer dat team bij werkgever hoort en niet gearchiveerd is
-  try {
-    const { createClient } = require('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+  // Voor teamleiders: valideer dat team bestaat en controleer of er al een teamleider is
+  if (role === 'employee' && isTeamleider) {
+    try {
+      const { createClient } = require('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
 
-    const { data: team, error: teamError } = await supabase
-      .from('teams')
-      .select('id, werkgever_id, archived_at')
-      .eq('id', teamId)
-      .eq('werkgever_id', employerId)
-      .single();
+      // Check of er al een teamleider is voor dit team
+      const { data: existingTeamleider, error: teamleiderError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('teamleider_van_team_id', teamId)
+        .eq('is_teamleider', true)
+        .single();
 
-    if (teamError || !team) {
-      return res.status(403).json({ error: 'Team niet gevonden of behoort niet tot deze organisatie' });
+      if (teamleiderError && teamleiderError.code !== 'PGRST116') {
+        return res.status(500).json({ error: 'Fout bij controleren bestaande teamleider' });
+      }
+
+      if (existingTeamleider) {
+        return res.status(409).json({ error: 'Dit team heeft al een teamleider' });
+      }
+    } catch (error) {
+      return res.status(500).json({ error: 'Fout bij valideren teamleider' });
     }
+  }
 
-    if (team.archived_at) {
-      return res.status(403).json({ error: 'Team is gearchiveerd' });
+  // Valideer dat team bij werkgever hoort en niet gearchiveerd is (voor werknemers)
+  if (role === 'employee' && teamId) {
+    try {
+      const { createClient } = require('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('id, werkgever_id, archived_at')
+        .eq('id', teamId)
+        .eq('werkgever_id', employerId)
+        .single();
+
+      if (teamError || !team) {
+        return res.status(403).json({ error: 'Team niet gevonden of behoort niet tot deze organisatie' });
+      }
+
+      if (team.archived_at) {
+        return res.status(403).json({ error: 'Team is gearchiveerd' });
+      }
+    } catch (error) {
+      return res.status(500).json({ error: 'Fout bij valideren team' });
     }
-  } catch (error) {
-    return res.status(500).json({ error: 'Fout bij valideren team' });
   }
 
   // Maak nieuwe uitnodiging aan
@@ -374,54 +438,83 @@ app.post('/api/send-invite', verificationLimiter, async (req, res) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
+    const invitationData = {
+      email: to,
+      token: token,
+      employer_id: employerId,
+      status: 'pending',
+      expires_at: expiresAt.toISOString(),
+      created_at: new Date().toISOString(),
+      invite_role: role,
+      is_teamleider: role === 'employee' ? (isTeamleider || false) : false
+    };
+
+    // Voeg optionele velden toe
+    if (functieOmschrijving) {
+      invitationData.functie_omschrijving = functieOmschrijving;
+    }
+    if (teamId) {
+      invitationData.team_id = teamId;
+    }
+
     const { error: insertError } = await supabase
       .from('invitations')
-      .insert({
-        email: to,
-        token: token,
-        employer_id: employerId,
-        status: 'pending',
-        expires_at: expiresAt.toISOString(),
-        functie_omschrijving: functieOmschrijving || null,
-        team_id: teamId,
-        created_at: new Date().toISOString()
-      });
+      .insert(invitationData);
 
     if (insertError) {
-      return res.status(500).json({ error: 'Fout bij aanmaken uitnodiging' });
+      return res.status(500).json({ error: 'Fout bij aanmaken uitnodiging', details: insertError.message });
     }
   } catch (error) {
     return res.status(500).json({ error: 'Fout bij aanmaken uitnodiging' });
   }
 
   const frontendUrl = process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com';
-  const registerUrl = `${frontendUrl}/registreer-werknemer?token=${token}`;
+  
+  // Bepaal registratie URL op basis van rol
+  let registerUrl;
+  let emailSubject;
+  let emailTag;
+  let emailMessage;
+
+  if (role === 'employer') {
+    registerUrl = `${frontendUrl}/registreer-werkgever?token=${token}`;
+    emailSubject = 'Je bent uitgenodigd als werkgever/manager voor GroeiRichting';
+    emailTag = 'INVITE_EMPLOYER';
+    emailMessage = 'Je bent uitgenodigd als werkgever/manager voor GroeiRichting.';
+  } else {
+    registerUrl = `${frontendUrl}/registreer-werknemer?token=${token}`;
+    emailSubject = 'Je bent uitgenodigd voor GroeiRichting';
+    emailTag = 'INVITE_EMPLOYEE';
+    emailMessage = 'Je werkgever heeft je uitgenodigd voor GroeiRichting.';
+  }
 
   const htmlBody = [
     `<p>Hallo ${name},</p>`,
-    `<p>Je werkgever heeft je uitgenodigd voor GroeiRichting.</p>`,
+    `<p>${emailMessage}</p>`,
     `<p><a href="${registerUrl}" target="_blank" rel="noopener noreferrer" style="color:#1a73e8;text-decoration:underline;">Klik hier om je aan te melden</a></p>`,
     `<p style="font-size: 12px; color: #888;">Of plak deze link in je browser:<br><span style="color:#000;">${registerUrl}</span></p>`
   ].join('');
 
   const textBody = `Hallo ${name},
 
-Je werkgever heeft je uitgenodigd voor GroeiRichting.
+${emailMessage}
 Klik op deze link om je aan te melden:
 ${registerUrl}`;
 
   try { 
     const emailResponse = await sendEmail({
       to,
-      subject: 'Je bent uitgenodigd voor GroeiRichting',
+      subject: emailSubject,
       html: htmlBody,
       text: textBody,
-      tag: 'INVITE_EMPLOYEE',
+      tag: emailTag,
       metadata: { 
         employerId,
-        teamId,
+        teamId: teamId || null,
         functieOmschrijving,
-        employeeName: name
+        employeeName: name,
+        inviteRole: role,
+        isTeamleider: isTeamleider || false
       }
     });
 

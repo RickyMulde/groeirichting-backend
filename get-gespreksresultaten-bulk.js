@@ -1,9 +1,9 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
-// 🔄 MIGRATIE: Azure → OpenAI Direct
-// Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4o', temperature 1, max_completion_tokens 4000
+// 🔄 MIGRATIE: Nu met Responses API voor GPT-5.2
 const openaiClient = require('./utils/openaiClient')
 const { authMiddleware, assertTeamInOrg } = require('./middleware/auth')
+const { getAllowedThemeIds } = require('./utils/themeAccessService')
 
 const router = express.Router()
 const supabase = createClient(
@@ -112,9 +112,11 @@ const genereerSamenvatting = async (theme_id, werknemer_id, gesprek_id) => {
       `Gebruik onderstaande beoordelingscriteria voor het bepalen van de score:\nScore instructie: ${thema.score_instructies.score_instructie}\n${Object.entries(thema.score_instructies).filter(([k]) => k.startsWith('score_bepalen_')).map(([k, v]) => `${k.replace('score_bepalen_', 'Score ')}: ${v}`).join('\n')}`
       : '';
 
-    const prompt = `Je bent een HR-assistent die een gesprek samenvat en vervolgacties voorstelt voor een WERKNEMER.
+    // System instructions
+    const systemInstructions = `Je bent een HR-assistent die een gesprek samenvat voor een WERKNEMER. Antwoord ALLEEN in JSON-formaat.`
 
-Thema: ${thema.titel}
+    // User input
+    const userInput = `Thema: ${thema.titel}
 ${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}${werknemerContext?.functie_omschrijving ? `\n\nFunctie context: ${werknemerContext.functie_omschrijving}` : ''}${werknemerContext?.gender ? `\n\nGeslacht: ${werknemerContext.gender}` : ''}
 
 Hoofdvraag: ${hoofdvraag}
@@ -132,32 +134,38 @@ Opdracht:
    - Maak het persoonlijk en direct gericht aan de werknemer
 2. Geef een score van 1-10 op basis van de score instructies
 
-Antwoord in JSON-formaat (zonder markdown code blocks):
-{
-  "samenvatting": "Vat het gesprek samen in maximaal 6 zinnen in de tweede persoon (jij, je, jouw)",
-  "score": 7
-}`
+Antwoord in JSON-formaat met velden: "samenvatting" (string) en "score" (number 1-10).`
 
-    // Stuur naar OpenAI Direct (zelfde preset als genereer-samenvatting.js)
-    const completion = await openaiClient.createCompletion({
-      model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
-      messages: [{ role: 'user', content: prompt }],
-      // GPT-5 ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
-      // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
-      // Voor gpt-4o zouden we gebruiken: temperature: 0.35, top_p: 0.9, frequency_penalty: 0.15, presence_penalty: 0.15
-      // BELANGRIJK: GPT-5 gebruikt "reasoning tokens" die meetellen in max_completion_tokens
-      // Bij lange gespreksgeschiedenis gebruikt GPT-5 meer reasoning tokens
-      // Verhoogd naar 2000 om ruimte te geven voor reasoning (800-1200) + output (200-400)
-      max_completion_tokens: 2000, // Verhoogd van 500 naar 2000 voor GPT-5 reasoning tokens
-      response_format: { type: 'json_object' }, // Garandeert geldige JSON
-      stream: false
+    // Stuur naar OpenAI Responses API (GPT-5.2)
+    const response = await openaiClient.createResponse({
+      model: 'gpt-5.2', // GPT-5.2 voor samenvatting generatie
+      instructions: systemInstructions,
+      input: [{ role: 'user', content: userInput }],
+      max_output_tokens: 2000,
+      service_tier: 'default',
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'samenvatting_output',
+          schema: {
+            type: 'object',
+            properties: {
+              samenvatting: { type: 'string' },
+              score: { type: 'number' }
+            },
+            required: ['samenvatting', 'score'],
+            additionalProperties: false
+          },
+          strict: true
+        }
+      }
     })
 
-    if (!completion.success) {
-      throw new Error(`OpenAI Direct fout: ${completion.error}`)
+    if (!response.success) {
+      throw new Error(`OpenAI Responses API fout: ${response.error}`)
     }
 
-    const gptResponse = completion.data.choices[0].message.content
+    const gptResponse = response.data.output_text
     
     // Verwijder markdown code blocks als die er zijn
     let cleanResponse = gptResponse
@@ -324,12 +332,27 @@ router.get('/', async (req, res) => {
       actieveMaanden = configData.actieve_maanden || actieveMaanden
     }
 
-    // Haal alle actieve thema's op
+    // Haal toegestane thema's op voor deze werkgever/team (gebruik nieuwe filtering)
+    const toegestaneThemeIds = await getAllowedThemeIds(werknemer.employer_id, team_id || null)
+    
+    if (!toegestaneThemeIds || toegestaneThemeIds.length === 0) {
+      // Geen toegestane thema's, return lege lijst
+      return res.json({
+        periode: periode,
+        actieve_maanden: actieveMaanden,
+        resultaten: [],
+        totaal_themas: 0,
+        themas_met_resultaat: 0,
+        team_filter: team_id || null
+      })
+    }
+
+    // Haal details op van toegestane thema's
     const { data: themaData, error: themaError } = await supabase
       .from('themes')
       .select('id, titel, beschrijving_werknemer')
+      .in('id', toegestaneThemeIds)
       .eq('klaar_voor_gebruik', true)
-      .eq('standaard_zichtbaar', true)
       .order('volgorde_index')
 
     if (themaError) throw themaError
@@ -489,4 +512,4 @@ router.get('/', async (req, res) => {
   }
 })
 
-module.exports = router 
+module.exports = router

@@ -5,6 +5,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { containsSensitiveInfo } = require('./utils/filterInput.js');
 const { authMiddleware } = require('./middleware/auth');
 const { generateTopActions } = require('./generate-top-actions'); // Importeer functie voor direct gebruik
+const { hasThemeAccess } = require('./utils/themeAccessService');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -44,7 +45,7 @@ router.post('/', async (req, res) => {
       // Check periode restricties (behalve voor superuser)
       const { data: user, error: userError } = await supabase
         .from('users')
-        .select('role, employer_id')
+        .select('role, employer_id, team_id')
         .eq('id', werknemer_id)
         .eq('employer_id', employerId)  // Voeg org-scope toe
         .single();
@@ -54,6 +55,14 @@ router.post('/', async (req, res) => {
           return res.status(404).json({ error: 'Werknemer niet gevonden' })
         }
         throw userError
+      }
+
+      // ✅ VALIDATIE: Check of werkgever/team toegang heeft tot dit thema
+      const hasAccess = await hasThemeAccess(employerId, theme_id, user.team_id || null);
+      if (!hasAccess) {
+        return res.status(403).json({ 
+          error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
+        });
       }
       
       if (user && user.role !== 'superuser' && user.id !== '5bbfffe3-ad87-4ac8-bba4-112729868489') {
@@ -126,6 +135,37 @@ router.post('/', async (req, res) => {
       if (!afrondingsreden || !['MAX_ANTWOORDEN', 'VOLDENDE_DUIDELIJK'].includes(afrondingsreden)) {
         return res.status(400).json({ 
           error: 'Ongeldige afrondingsreden. Moet MAX_ANTWOORDEN of VOLDENDE_DUIDELIJK zijn.' 
+        });
+      }
+
+      // ✅ VALIDATIE: Check of gesprek bij juiste werkgever hoort en toegang tot thema
+      const { data: gesprekData, error: gesprekError } = await supabase
+        .from('gesprek')
+        .select('theme_id, werknemer_id')
+        .eq('id', gesprek_id)
+        .single();
+
+      if (gesprekError || !gesprekData) {
+        return res.status(404).json({ error: 'Gesprek niet gevonden' });
+      }
+
+      // Haal werknemer op om team_id te krijgen
+      const { data: werknemer, error: werknemerError } = await supabase
+        .from('users')
+        .select('employer_id, team_id')
+        .eq('id', gesprekData.werknemer_id)
+        .eq('employer_id', employerId)
+        .single();
+
+      if (werknemerError || !werknemer || werknemer.employer_id !== employerId) {
+        return res.status(403).json({ error: 'Geen toegang tot dit gesprek' });
+      }
+
+      // Check toegang tot thema
+      const hasAccess = await hasThemeAccess(employerId, gesprekData.theme_id, werknemer.team_id || null);
+      if (!hasAccess) {
+        return res.status(403).json({ 
+          error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
         });
       }
 
@@ -232,12 +272,17 @@ router.post('/', async (req, res) => {
           if (!werkgeverError && werkgever) {
             console.log(`🏢 [DEBUG] Werkgever ID: ${werkgever.employer_id}`);
             
-            // Thema's zijn globaal, niet per werkgever - filter alleen op actieve thema's
-            const { data: alleThemas, error: themaError } = await supabase
-              .from('themes')
-              .select('id')
-              .eq('klaar_voor_gebruik', true)
-              .eq('standaard_zichtbaar', true);
+            // Haal toegestane thema's op voor deze werkgever (gebruik nieuwe filtering)
+            const { getAllowedThemeIds } = require('./utils/themeAccessService');
+            const toegestaneThemeIds = await getAllowedThemeIds(werkgever.employer_id, null);
+            
+            if (!toegestaneThemeIds || toegestaneThemeIds.length === 0) {
+              console.log(`ℹ️ [DEBUG] Geen toegestane thema's gevonden voor werkgever ${werkgever.employer_id}`);
+            } else {
+              console.log(`📚 [DEBUG] ${toegestaneThemeIds.length} toegestane thema's gevonden voor werkgever ${werkgever.employer_id}`);
+            }
+
+            const alleThemas = toegestaneThemeIds.map(id => ({ id }));
 
             if (themaError) {
               console.error(`❌ [DEBUG] Fout bij ophalen thema's:`, themaError);
@@ -327,6 +372,37 @@ router.post('/', async (req, res) => {
 
     // 3️⃣ Toelichting/Reactie opslaan
     if (gesprek_id && toelichting_type && toelichting_inhoud) {
+      // ✅ VALIDATIE: Check of gesprek bij juiste werkgever hoort en toegang tot thema
+      const { data: gesprekData, error: gesprekError } = await supabase
+        .from('gesprek')
+        .select('theme_id, werknemer_id')
+        .eq('id', gesprek_id)
+        .single();
+
+      if (gesprekError || !gesprekData) {
+        return res.status(404).json({ error: 'Gesprek niet gevonden' });
+      }
+
+      // Haal werknemer op om team_id te krijgen
+      const { data: werknemer, error: werknemerError } = await supabase
+        .from('users')
+        .select('employer_id, team_id')
+        .eq('id', gesprekData.werknemer_id)
+        .eq('employer_id', employerId)
+        .single();
+
+      if (werknemerError || !werknemer || werknemer.employer_id !== employerId) {
+        return res.status(403).json({ error: 'Geen toegang tot dit gesprek' });
+      }
+
+      // Check toegang tot thema
+      const hasAccess = await hasThemeAccess(employerId, gesprekData.theme_id, werknemer.team_id || null);
+      if (!hasAccess) {
+        return res.status(403).json({ 
+          error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
+        });
+      }
+
       // Haal bestaande gespreksgeschiedenis op
       const { data: bestaandeData, error: fetchError } = await supabase
         .from('gesprekken_compleet')
@@ -403,6 +479,37 @@ router.post('/', async (req, res) => {
       if (check.flagged) {
         return res.status(400).json({
           error: check.reason
+        });
+      }
+
+      // ✅ VALIDATIE: Check of gesprek bij juiste werkgever hoort en toegang tot thema
+      const { data: gesprekData, error: gesprekError } = await supabase
+        .from('gesprek')
+        .select('theme_id, werknemer_id')
+        .eq('id', gesprek_id)
+        .single();
+
+      if (gesprekError || !gesprekData) {
+        return res.status(404).json({ error: 'Gesprek niet gevonden' });
+      }
+
+      // Haal werknemer op om team_id te krijgen
+      const { data: werknemer, error: werknemerError } = await supabase
+        .from('users')
+        .select('employer_id, team_id')
+        .eq('id', gesprekData.werknemer_id)
+        .eq('employer_id', employerId)
+        .single();
+
+      if (werknemerError || !werknemer || werknemer.employer_id !== employerId) {
+        return res.status(403).json({ error: 'Geen toegang tot dit gesprek' });
+      }
+
+      // Check toegang tot thema
+      const hasAccess = await hasThemeAccess(employerId, gesprekData.theme_id, werknemer.team_id || null);
+      if (!hasAccess) {
+        return res.status(403).json({ 
+          error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
         });
       }
 

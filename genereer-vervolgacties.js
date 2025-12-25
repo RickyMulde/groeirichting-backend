@@ -1,9 +1,9 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
-// 🔄 MIGRATIE: Azure → OpenAI Direct
-// Terug naar Azure: vervang 'openaiClient' door 'azureClient' en gebruik model 'gpt-4o', temperature 1, max_completion_tokens 4000
+// 🔄 MIGRATIE: Nu met Responses API voor GPT-5.2
 const openaiClient = require('./utils/openaiClient')
 const { authMiddleware } = require('./middleware/auth')
+const { hasThemeAccess } = require('./utils/themeAccessService')
 
 const router = express.Router()
 const supabase = createClient(
@@ -23,6 +23,33 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    // ✅ VALIDATIE: Haal werknemer op om team_id te krijgen en check toegang tot thema
+    const { data: werknemer, error: werknemerError } = await supabase
+      .from('users')
+      .select('employer_id, team_id')
+      .eq('id', werknemer_id)
+      .eq('employer_id', employerId)
+      .single()
+
+    if (werknemerError) {
+      if (werknemerError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Werknemer niet gevonden' })
+      }
+      throw werknemerError
+    }
+
+    if (!werknemer || werknemer.employer_id !== employerId) {
+      return res.status(403).json({ error: 'Geen toegang tot deze werknemer' })
+    }
+
+    // Check toegang tot thema
+    const hasAccess = await hasThemeAccess(employerId, theme_id, werknemer.team_id || null)
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        error: 'Dit thema is niet beschikbaar voor jouw organisatie of team' 
+      })
+    }
+
     // 0️⃣ Haal het thema op uit de themes-tabel
     const { data: thema, error: themaError } = await supabase
       .from('themes')
@@ -95,19 +122,23 @@ router.post('/', async (req, res) => {
       console.warn('Kon werkgever configuratie niet ophalen:', configError)
     }
 
-    // 2c. Haal werknemer context op voor functie-omschrijving en gender
-    const { data: werknemerContext, error: contextError } = await supabase
+    // 2c. Haal werknemer context op voor functie-omschrijving en gender (werknemer is al opgehaald, gebruik die data)
+    const werknemerContext = {
+      functie_omschrijving: werknemer.functie_omschrijving,
+      gender: werknemer.gender,
+      employer_id: werknemer.employer_id
+    }
+    
+    // Haal extra velden op die we nog nodig hebben
+    const { data: werknemerExtra, error: contextError } = await supabase
       .from('users')
-      .select('functie_omschrijving, gender, employer_id')
+      .select('functie_omschrijving, gender')
       .eq('id', werknemer_id)
-      .eq('employer_id', employerId)  // Voeg org-scope toe
       .single()
 
-    if (contextError) {
-      if (contextError.code === 'PGRST116') {
-        return res.status(404).json({ error: 'Werknemer niet gevonden' })
-      }
-      console.warn('Kon werknemer context niet ophalen:', contextError)
+    if (!contextError && werknemerExtra) {
+      werknemerContext.functie_omschrijving = werknemerExtra.functie_omschrijving
+      werknemerContext.gender = werknemerExtra.gender
     }
 
     const hoofdvraag = vasteVragenData.find(v => v.type === 'hoofd')?.tekst || ''
@@ -121,70 +152,116 @@ router.post('/', async (req, res) => {
       `Vraag: ${item.vraag_tekst}\nAntwoord: ${item.antwoord}`
     ).join('\n\n')
 
-    const prompt = `Je bent een HR-assistent die vervolgacties voorstelt voor een WERKNEMER.
+    // System instructions - De "Gouden Driehoek" met professionele toon
+    const systemInstructions = `Je bent een senior HR-adviseur voor de tool 'GroeiRichting'.
+Je analyseert gespreksverslagen en genereert precies 3 diverse, concreet uitvoerbare adviezen.
 
-Thema: ${thema.titel}
-${thema.beschrijving_werknemer ? `Beschrijving: ${thema.beschrijving_werknemer}` : ''}${werkgeverConfig?.organisatie_omschrijving ? `\n\nOrganisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}${werknemerContext?.functie_omschrijving ? `\n\nFunctie context: ${werknemerContext.functie_omschrijving}` : ''}${werknemerContext?.gender ? `\n\nGeslacht: ${werknemerContext.gender}` : ''}
+DOEL:
+Ondersteun de medewerker met adviezen die verschillen in insteek (Inhoudelijk, Persoonlijk, Sociaal).
 
+JE TOON EN STIJL:
+- Professioneel en nuchter (Geen marketingtaal, geen uitroeptekens in titels, voorkom moeilijke woorden).
+- Beschrijvend: De titel zegt wat je gaat DOEN.
+- Betrokken: De onderbouwing refereert aan wat de medewerker letterlijk heeft gezegd.
+
+BELANGRIJK: Genereer PRECIES 1 advies per onderstaande categorie:
+
+CATEGORIE 1: DE OPLOSSING (Structuur & Proces)
+- Focus: Het aanpakken van het praktische vraagstuk of de ambitie in het werkproces.
+- Doel: Een concrete verandering in *wat* je doet of *hoe* het geregeld is.
+- TOEPASSING PER THEMA:
+    * Bij Werkdruk: Slimmer werken, taken delegeren, processtappen schrappen.
+    * Bij Ontwikkeling: Een opleidingsplan maken, een project naar je toe trekken.
+    * Bij Samenwerking: Vergaderstructuur aanpassen, rollen verhelderen.
+- Voorbeeld Titel: "Maak een concreet ontwikkelplan" OF "Herzie de wekelijkse teamvergadering".
+
+CATEGORIE 2: DE PERSOON (Grip, Overzicht & Reflectie)
+- Focus: Hoe pakt de medewerker de regie over zichzelf (gedachten, planning, gedrag)?
+- WEL: Adviezen die zorgen voor overzicht, inzicht en kalmte.
+    * Bij Werkdruk: Lijstjes maken, prioriteren, nee-zeggen (doel: rust in het hoofd).
+    * Bij Ontwikkeling: Zelfreflectie, competenties in kaart brengen, focus bepalen (doel: inzicht in wensen).
+    * Bij Samenwerking: Reflecteren op eigen communicatiestijl, tot tien tellen (doel: professioneel gedrag).
+- NIET: Vage adviezen ("doe rustig aan") of opjagende adviezen.
+- Voorbeeld Titel: "Creëer overzicht met een dagstart" OF "Breng je kernkwaliteiten in kaart".
+
+CATEGORIE 3: DE VERBINDING (Sociaal & Support)
+- Focus: De relatie met de omgeving (collega's, manager, cultuur).
+- LOGICA:
+    * Situatie Positief (Veilig/Blij/Ambitieus): Adviseer om succes te delen, een mentor te zoeken of anderen te coachen.
+    * Situatie Negatief (Druk/Conflict/Onzeker): Adviseer om steun te zoeken, verwachtingen te managen of feedback te vragen.
+- Voorbeeld Titel: "Vraag feedback aan een senior collega" OF "Bespreek je ambitie met je leidinggevende".
+
+VORMVEREISTEN PER ADVIES:
+1. TITEL: Start met een werkwoord, beschrijvend, max 8 woorden. (Zakelijk & Actief).
+2. REDEN: Begin met "Je gaf aan dat..." of "Omdat je zei dat...".
+3. RESULTAAT: Eén zin over wat het oplevert (Rust, Groei, Plezier of Verbinding).
+
+Antwoord in JSON.`
+
+    // User input
+    const userInput = `Thema: ${thema.titel}
+${thema.beschrijving_werknemer ? `Beschrijving thema: ${thema.beschrijving_werknemer}` : ''}
+${werkgeverConfig?.organisatie_omschrijving ? `Organisatie context: ${werkgeverConfig.organisatie_omschrijving}` : ''}
+${werknemerContext?.functie_omschrijving ? `Functie context: ${werknemerContext.functie_omschrijving}` : ''}
+
+Context van het gesprek:
 Hoofdvraag: ${hoofdvraag}
 Doel van het gesprek: ${doelantwoord}
 
-Gespreksgeschiedenis:
+Volledige Gespreksgeschiedenis:
 ${inputJSON}
 
-Opdracht:
-Genereer 3 concrete en uitvoerbare vervolgacties die direct aansluiten op de inhoud van het gesprek.
+OPDRACHT:
+Genereer 3 adviezen volgens de categorieën (Oplossing, Persoon, Verbinding).
+Zorg dat ze inhoudelijk echt van elkaar verschillen en aansluiten bij de toon van een professionele adviseur, maar hou het niveau op MBO-niveau.
 
-De acties moeten voldoen aan deze regels:
-- Schrijf altijd in de tweede persoon ("jij/je/jouw")
-- Gericht op jou als werknemer, nooit op de werkgever
-- Acties die jij zelf kunt ondernemen en beïnvloeden
-- Aansluiten bij het thema en jouw antwoorden
-- Specifiek en praktisch, geen algemene adviezen
-- Geen suggesties die primair bij de werkgever horen
-- Als het gesprek positief en in balans is: formuleer acties die helpen om dit vast te houden of te versterken
-- BELANGRIJK: Verwijs NIET naar specifieke organisatie-onderdelen zoals "HR-afdeling", "interne workshops" of andere resources, tenzij deze expliciet in de organisatie context worden genoemd. Gebruik generieke termen zoals "je leidinggevende" of "beschikbare ondersteuning" als dat relevant is.
+Antwoord in JSON.`
 
-Voorbeelden van passende vervolgacties:
-- "Plan een gesprek met je leidinggevende over…"
-- "Zoek online naar workshops of trainingen over…" (niet "interne workshops")
-- "Maak een concreet actieplan voor…"
-- "Stel jezelf als doel om in de komende weken…"
-- "Blijf de gezamenlijke takenlijst gebruiken om overzicht te behouden."
-- "Blijf na werktijd bewust offline, dat zorgt voor een goede balans."
-- "Onderzoek welke ondersteuning beschikbaar is binnen je organisatie voor…"
-- "Reflecteer wekelijks op je voortgang met…"
-
-Antwoord in JSON-formaat (zonder markdown code blocks):
-{
-  "vervolgacties": [
-    "Concrete actie 1",
-    "Concrete actie 2", 
-    "Concrete actie 3"
-  ],
-  "vervolgacties_toelichting": "Korte uitleg waarom deze acties passend zijn voor de werknemer"
-}`
-
-    // ✅ 4. Stuur prompt naar OpenAI Direct
-    const completion = await openaiClient.createCompletion({
-      model: 'gpt-5', // Gebruik GPT-5 (nieuwste model)
-      messages: [{ role: 'user', content: prompt }],
-      // GPT-5 ondersteunt alleen temperature: 1 (wordt automatisch geforceerd door openaiClient)
-      // top_p, frequency_penalty, presence_penalty worden automatisch weggelaten voor GPT-5
-      // Voor gpt-4o zouden we gebruiken: temperature: 0.55, top_p: 0.9, frequency_penalty: 0.25, presence_penalty: 0.35
-      // BELANGRIJK: GPT-5 gebruikt "reasoning tokens" die meetellen in max_completion_tokens
-      // Bij lange gespreksgeschiedenis gebruikt GPT-5 meer reasoning tokens
-      // Verhoogd naar 5000 om ruimte te geven voor reasoning (2000-3000) + output (500-1000) bij lange prompts
-      max_completion_tokens: 5000, // Verhoogd van 2500 naar 5000 voor lange gespreksgeschiedenis
-      response_format: { type: 'json_object' }, // Garandeert geldige JSON
-      stream: false
+    // ✅ 4. Stuur prompt naar OpenAI Responses API
+    const response = await openaiClient.createResponse({
+      model: 'gpt-5.2', 
+      instructions: systemInstructions,
+      input: [{ role: 'user', content: userInput }],
+      max_output_tokens: 3000,
+      service_tier: 'default',
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'vervolgacties_output',
+          schema: {
+            type: 'object',
+            properties: {
+              vervolgacties_toelichting: { type: 'string', description: "Korte toelichting op de gekozen set adviezen." },
+              adviezen: {
+                type: 'array',
+                items: { 
+                  type: 'object',
+                  properties: {
+                    categorie: { type: 'string', description: "De gekozen categorie (Oplossing, Persoon of Verbinding)" },
+                    titel: { type: 'string', description: "De actieve, beschrijvende titel" },
+                    reden: { type: 'string', description: "De 'Je gaf aan dat...' tekst" },
+                    resultaat: { type: 'string', description: "Het voordeel/resultaat" }
+                  },
+                  required: ['categorie', 'titel', 'reden', 'resultaat'],
+                  additionalProperties: false
+                },
+                minItems: 3,
+                maxItems: 3
+              }
+            },
+            required: ['adviezen', 'vervolgacties_toelichting'],
+            additionalProperties: false
+          },
+          strict: true
+        }
+      }
     })
 
-    if (!completion.success) {
-      throw new Error(`OpenAI Direct fout: ${completion.error}`)
+    if (!response.success) {
+      throw new Error(`OpenAI Responses API fout: ${response.error}`)
     }
 
-    const gptResponse = completion.data.choices[0].message.content
+    const gptResponse = response.data.output_text
     
     // Verwijder markdown code blocks als die er zijn
     let cleanResponse = gptResponse
@@ -202,17 +279,7 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
       throw new Error('Fout bij parsen van GPT response')
     }
 
-    // ✅ 5. Haal werkgever op via werknemer
-    const { data: werknemer, error: werknemerError } = await supabase
-      .from('users')
-      .select('employer_id')
-      .eq('id', werknemer_id)
-      .single()
-
-    if (werknemerError) throw werknemerError
-    if (!werknemer) {
-      return res.status(404).json({ error: 'Werknemer niet gevonden' })
-    }
+    // ✅ 5. Werkgever is al opgehaald bij validatie (werknemer.employer_id)
 
     // ✅ 6. Bepaal gespreksronde en periode
     let gespreksronde = 1
@@ -250,7 +317,7 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
 
     // ✅ 7. Update gesprekresultaten met vervolgacties (met retry logica)
     const updateData = {
-      vervolgacties: parsed.vervolgacties || [],
+      vervolgacties: parsed.adviezen || [],
       vervolgacties_toelichting: parsed.vervolgacties_toelichting || '',
       vervolgacties_generatie_datum: new Date().toISOString()
     }
@@ -320,7 +387,7 @@ Antwoord in JSON-formaat (zonder markdown code blocks):
     }
 
     return res.json({
-      vervolgacties: parsed.vervolgacties || [],
+      adviezen: parsed.adviezen || [],
       vervolgacties_toelichting: parsed.vervolgacties_toelichting || ''
     })
   } catch (err) {
