@@ -53,7 +53,7 @@ router.post('/', async (req, res) => {
     }
 
     // 2. Lees brochure PDF van schijf
-    const brochurePath = path.join(__dirname, 'brochures', 'groeirichting-brochure.pdf');
+    const brochurePath = path.join(__dirname, 'brochures', 'groeiRichting-infodocu.pdf');
     
     if (!fs.existsSync(brochurePath)) {
       console.error('Brochure bestand niet gevonden:', brochurePath);
@@ -126,7 +126,7 @@ Schutstraat 145, 7906 AG Hoogeveen
       text: textContent,
       attachments: [{
         content: pdfBuffer,
-        filename: 'groeirichting-brochure.pdf',
+        filename: 'groeiRichting-infodocu.pdf',
         contentType: 'application/pdf'
       }],
       bcc: BCC_EMAIL,
