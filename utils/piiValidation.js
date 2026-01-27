@@ -15,12 +15,16 @@ const PII_VALIDATION_API_URL = 'https://avg-validation-api-main-l1rdhb.laravel.c
  */
 async function validatePII(text) {
   if (!text || typeof text !== 'string' || text.trim().length === 0) {
+    console.log('[piiValidation] ⏭️  Geen tekst om te valideren');
     return {
       isValid: true,
       violations: [],
       message: 'Geen tekst om te valideren'
     };
   }
+
+  console.log('[piiValidation] 🔍 Start PII validatie voor tekst:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
+  console.log('[piiValidation] 📡 API URL:', PII_VALIDATION_API_URL);
 
   try {
     const response = await fetch(PII_VALIDATION_API_URL, {
@@ -34,10 +38,12 @@ async function validatePII(text) {
       })
     });
 
+    console.log('[piiValidation] 📥 Response status:', response.status, response.statusText);
+
     if (!response.ok) {
       // Als de API niet beschikbaar is, loggen we dit maar blokkeren we niet
       // Dit voorkomt dat de hele flow stilvalt als de PII API down is
-      console.error('[piiValidation] API request failed:', response.status, response.statusText);
+      console.error('[piiValidation] ❌ API request failed:', response.status, response.statusText);
       return {
         isValid: true, // Bij API fouten gaan we door (fail-open voor beschikbaarheid)
         violations: [],
@@ -46,6 +52,7 @@ async function validatePII(text) {
     }
 
     const data = await response.json();
+    console.log('[piiValidation] 📋 Response data:', JSON.stringify(data, null, 2));
     
     // De API retourneert een array met validatieresultaten
     if (!Array.isArray(data) || data.length === 0) {
@@ -65,6 +72,11 @@ async function validatePII(text) {
       const reasons = violations.map(v => v.reason || 'Onbekende reden').join('; ');
       const articles = violations.flatMap(v => v.article ? [v.article] : []).filter((v, i, a) => a.indexOf(v) === i);
       
+      console.log('[piiValidation] ⚠️  PII GEDETECTEERD!');
+      console.log('[piiValidation] 🏷️  Labels:', labels);
+      console.log('[piiValidation] 📝 Reden:', reasons);
+      console.log('[piiValidation] 📚 Artikelen:', articles);
+      
       return {
         isValid: false,
         violations: violations,
@@ -76,6 +88,7 @@ async function validatePII(text) {
     }
 
     // Geen violations gevonden
+    console.log('[piiValidation] ✅ Geen PII gedetecteerd - tekst is veilig');
     return {
       isValid: true,
       violations: [],
