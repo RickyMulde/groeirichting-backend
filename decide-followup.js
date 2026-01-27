@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 // 🔄 MIGRATIE: Nu met Responses API voor GPT-5.2-instant
 const openaiClient = require('./utils/openaiClient');
+const { validatePII } = require('./utils/piiValidation');
 const dotenv = require('dotenv');
 
 dotenv.config({ path: '.env.test' });
@@ -27,6 +28,24 @@ router.post('/', async (req, res) => {
     return res.json({
       doorgaan: true,
       vervolgvraag: 'Zou je iets uitgebreider kunnen toelichten wat je precies bedoelt?'
+    });
+  }
+
+  // 2. PII Validatie - controleer op gevoelige persoonsgegevens
+  const piiValidation = await validatePII(laatsteAntwoord);
+  if (!piiValidation.isValid) {
+    // Er zijn gevoelige gegevens gedetecteerd - blokkeer de request
+    const labels = piiValidation.labels || [];
+    const reason = piiValidation.reason || 'Gevoelige persoonsgegevens gedetecteerd';
+    const articles = piiValidation.articles || [];
+    
+    return res.status(400).json({
+      error: 'PII_DETECTED',
+      message: piiValidation.message,
+      labels: labels,
+      reason: reason,
+      articles: articles,
+      details: 'Je antwoord bevat gevoelige persoonsgegevens. Pas je antwoord aan en probeer het opnieuw.'
     });
   }
 
