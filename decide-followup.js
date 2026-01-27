@@ -53,7 +53,8 @@ router.post('/', async (req, res) => {
       labels: labels,
       reason: reason,
       articles: articles,
-      details: 'Je antwoord bevat gevoelige persoonsgegevens. Pas je antwoord aan en probeer het opnieuw.'
+      details: 'Je antwoord bevat gevoelige persoonsgegevens. Pas je antwoord aan en probeer het opnieuw.',
+      rawApiResponse: piiValidation.rawResponse // Voeg volledige API response toe
     });
   }
   
@@ -68,7 +69,8 @@ router.post('/', async (req, res) => {
         error: 'PII_DETECTED',
         message: check.reason,
         details: 'Je antwoord bevat gevoelige persoonsgegevens. Pas je antwoord aan en probeer het opnieuw.',
-        fallback: true
+        fallback: true,
+        rawApiResponse: null // Geen API response omdat we fallback gebruiken
       });
     }
     console.log('[decide-followup] ✅ Lokale fallback check geslaagd');

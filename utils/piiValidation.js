@@ -52,19 +52,28 @@ async function validatePII(text) {
     }
 
     const data = await response.json();
-    console.log('[piiValidation] 📋 Response data:', JSON.stringify(data, null, 2));
+    console.log('[piiValidation] 📋 Volledige API response:', JSON.stringify(data, null, 2));
     
     // De API retourneert een array met validatieresultaten
     if (!Array.isArray(data) || data.length === 0) {
+      console.log('[piiValidation] ⚠️  Geen validatieresultaten ontvangen (lege array)');
       return {
         isValid: true,
         violations: [],
-        message: 'Geen validatieresultaten ontvangen'
+        message: 'Geen validatieresultaten ontvangen',
+        rawResponse: data // Voeg raw response toe voor debugging
       };
     }
 
     // Check of er violations zijn (voldoet: false)
     const violations = data.filter(item => item.voldoet === false);
+    const allValid = data.every(item => item.voldoet === true);
+    
+    console.log('[piiValidation] 📊 Validatie resultaten:');
+    console.log('[piiValidation]   - Totaal items:', data.length);
+    console.log('[piiValidation]   - Violations:', violations.length);
+    console.log('[piiValidation]   - Alle items valide:', allValid);
+    console.log('[piiValidation]   - Volledige data:', JSON.stringify(data, null, 2));
     
     if (violations.length > 0) {
       // Er zijn gevoelige gegevens gedetecteerd
@@ -83,16 +92,19 @@ async function validatePII(text) {
         labels: labels,
         reason: reasons,
         articles: articles,
-        message: `Je antwoord bevat gevoelige persoonsgegevens: ${labels.join(', ')}. ${reasons}`
+        message: `Je antwoord bevat gevoelige persoonsgegevens: ${labels.join(', ')}. ${reasons}`,
+        rawResponse: data // Voeg raw response toe voor debugging
       };
     }
 
     // Geen violations gevonden
     console.log('[piiValidation] ✅ Geen PII gedetecteerd - tekst is veilig');
+    console.log('[piiValidation] 📋 Volledige validatie resultaten:', JSON.stringify(data, null, 2));
     return {
       isValid: true,
       violations: [],
-      message: 'Geen gevoelige gegevens gedetecteerd'
+      message: 'Geen gevoelige gegevens gedetecteerd',
+      rawResponse: data // Voeg raw response toe voor debugging
     };
 
   } catch (error) {
