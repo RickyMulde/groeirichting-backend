@@ -8,6 +8,9 @@ const fetch = require('node-fetch');
 
 const PII_VALIDATION_API_URL = 'https://avg-validation-api-main-l1rdhb.laravel.cloud/api/pii/validate-public';
 
+// Model voor LLM-validatie (hardcoded voor testen)
+const PII_VALIDATION_MODEL = 'qwen2.5:3b-instruct';
+
 /**
  * Valideert tekst op gevoelige persoonsgegevens
  * @param {string} text - De tekst die gevalideerd moet worden
@@ -26,6 +29,12 @@ async function validatePII(text) {
   console.log('[piiValidation] 🔍 Start PII validatie voor tekst:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
   console.log('[piiValidation] 📡 API URL:', PII_VALIDATION_API_URL);
 
+  const body = { text: text };
+  if (PII_VALIDATION_MODEL) {
+    body.model = PII_VALIDATION_MODEL;
+    console.log('[piiValidation] 🤖 Model:', PII_VALIDATION_MODEL);
+  }
+
   try {
     const response = await fetch(PII_VALIDATION_API_URL, {
       method: 'POST',
@@ -33,9 +42,7 @@ async function validatePII(text) {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        text: text
-      })
+      body: JSON.stringify(body)
     });
 
     console.log('[piiValidation] 📥 Response status:', response.status, response.statusText);
