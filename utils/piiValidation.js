@@ -35,6 +35,14 @@ async function validatePII(text) {
     console.log('[piiValidation] 🤖 Model:', PII_VALIDATION_MODEL);
   }
 
+  // Timeout voor PII API call (maximaal 7 seconden wachten)
+  const controller = new AbortController();
+  const timeoutMs = 7000;
+  const timeoutId = setTimeout(() => {
+    console.warn('[piiValidation] ⏱️  Timeout na', timeoutMs, 'ms - PII API wordt afgebroken');
+    controller.abort();
+  }, timeoutMs);
+
   try {
     const response = await fetch(PII_VALIDATION_API_URL, {
       method: 'POST',
@@ -42,8 +50,11 @@ async function validatePII(text) {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     console.log('[piiValidation] 📥 Response status:', response.status, response.statusText);
 
@@ -115,6 +126,17 @@ async function validatePII(text) {
     };
 
   } catch (error) {
+    clearTimeout(timeoutId);
+
+    if (error.name === 'AbortError') {
+      console.error('[piiValidation] ⏱️  PII validatie geannuleerd wegens timeout (', timeoutMs, 'ms )');
+      return {
+        isValid: true, // Bij timeout gaan we door (fail-open voor beschikbaarheid)
+        violations: [],
+        message: 'PII validatie API niet beschikbaar (timeout), validatie overgeslagen'
+      };
+    }
+
     // Bij netwerkfouten of andere errors, loggen we dit maar blokkeren we niet
     // Dit voorkomt dat de hele flow stilvalt als de PII API problemen heeft
     console.error('[piiValidation] Error during validation:', error.message);
