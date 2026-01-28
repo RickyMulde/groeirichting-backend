@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const { containsSensitiveInfo } = require('./utils/filterInput.js');
+const { validatePII } = require('./utils/piiValidation');
 const { authMiddleware } = require('./middleware/auth');
 const { generateTopActions } = require('./generate-top-actions'); // Importeer functie voor direct gebruik
 const { hasThemeAccess } = require('./utils/themeAccessService');
@@ -475,12 +476,50 @@ router.post('/', async (req, res) => {
 
     // 4️⃣ Antwoord opslaan in nieuwe structuur
     if (gesprek_id && antwoord !== undefined) {
-      const check = containsSensitiveInfo(antwoord);
-      if (check.flagged) {
+      // 🔒 EXTERNE PII VALIDATIE - controleer via AVG validatie API
+      console.log('[save-conversation] 🔒 Start externe PII validatie voor antwoord');
+      const piiValidation = await validatePII(antwoord);
+      console.log('[save-conversation] 🔒 PII validatie resultaat:', piiValidation.isValid ? '✅ VALIDE' : '❌ GEBLOKKEERD');
+      
+      if (!piiValidation.isValid) {
+        // PII gedetecteerd door externe API - blokkeer opslaan
+        const labels = piiValidation.labels || [];
+        const reason = piiValidation.reason || 'Gevoelige persoonsgegevens gedetecteerd';
+        const articles = piiValidation.articles || [];
+        
+        console.log('[save-conversation] ⚠️  PII gedetecteerd door externe API - antwoord wordt NIET opgeslagen');
+        console.log('[save-conversation] 🏷️  Labels:', labels);
+        console.log('[save-conversation] 📝 Reden:', reason);
+        
         return res.status(400).json({
-          error: check.reason
+          error: 'PII_DETECTED',
+          message: piiValidation.message,
+          labels: labels,
+          reason: reason,
+          articles: articles,
+          details: 'Je antwoord bevat gevoelige persoonsgegevens. Pas je antwoord aan en probeer het opnieuw.',
+          rawApiResponse: piiValidation.rawResponse // Voeg volledige API response toe
         });
       }
+      
+      // 🔄 FALLBACK: Als externe API niet beschikbaar was, gebruik lokale check als backup
+      if (piiValidation.message && piiValidation.message.includes('niet beschikbaar')) {
+        console.log('[save-conversation] ⚠️  Externe API niet beschikbaar - gebruik lokale check als fallback');
+        const check = containsSensitiveInfo(antwoord);
+        if (check.flagged) {
+          console.log('[save-conversation] ⚠️  Lokale fallback check heeft gevoelige data gedetecteerd:', check.reason);
+          return res.status(400).json({
+            error: 'PII_DETECTED',
+            message: check.reason,
+            details: 'Je antwoord bevat gevoelige persoonsgegevens. Pas je antwoord aan en probeer het opnieuw.',
+            fallback: true,
+            rawApiResponse: null // Geen API response omdat we fallback gebruiken
+          });
+        }
+        console.log('[save-conversation] ✅ Lokale fallback check geslaagd');
+      }
+      
+      console.log('[save-conversation] ✅ PII validatie geslaagd - antwoord wordt opgeslagen');
 
       // ✅ VALIDATIE: Check of gesprek bij juiste werkgever hoort en toegang tot thema
       const { data: gesprekData, error: gesprekError } = await supabase

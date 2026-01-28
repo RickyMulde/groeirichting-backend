@@ -1183,6 +1183,7 @@ export const voornamenSet = new Set([
   'joris',
   'jort',
   'jos',
+  'joshua',
   'jou',
   'joy',
   'joyce',

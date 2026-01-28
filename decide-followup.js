@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 // 🔄 MIGRATIE: Nu met Responses API voor GPT-5.2-instant
 const openaiClient = require('./utils/openaiClient');
+const { validatePII } = require('./utils/piiValidation');
 const dotenv = require('dotenv');
 
 dotenv.config({ path: '.env.test' });
@@ -28,6 +29,51 @@ router.post('/', async (req, res) => {
       doorgaan: true,
       vervolgvraag: 'Zou je iets uitgebreider kunnen toelichten wat je precies bedoelt?'
     });
+  }
+
+  // 2. PII Validatie - controleer op gevoelige persoonsgegevens via externe API
+  // Opmerking: Deze check is eigenlijk al gedaan in save-conversation, maar we doen het hier
+  // nogmaals als extra beveiliging voordat we naar GPT sturen
+  console.log('[decide-followup] 🔒 Start PII validatie voor laatste antwoord (extra check voor GPT)');
+  const piiValidation = await validatePII(laatsteAntwoord);
+  console.log('[decide-followup] 🔒 PII validatie resultaat:', piiValidation.isValid ? '✅ VALIDE' : '❌ GEBLOKKEERD');
+  
+  if (!piiValidation.isValid) {
+    // Er zijn gevoelige gegevens gedetecteerd - blokkeer de request naar GPT
+    const labels = piiValidation.labels || [];
+    const reason = piiValidation.reason || 'Gevoelige persoonsgegevens gedetecteerd';
+    const articles = piiValidation.articles || [];
+    
+    console.log('[decide-followup] ⚠️  PII gedetecteerd - GPT call wordt NIET uitgevoerd');
+    console.log('[decide-followup] 🏷️  Labels:', labels);
+    
+    return res.status(400).json({
+      error: 'PII_DETECTED',
+      message: piiValidation.message,
+      labels: labels,
+      reason: reason,
+      articles: articles,
+      details: 'Je antwoord bevat gevoelige persoonsgegevens. Pas je antwoord aan en probeer het opnieuw.',
+      rawApiResponse: piiValidation.rawResponse // Voeg volledige API response toe
+    });
+  }
+  
+  // 🔄 FALLBACK: Als externe API niet beschikbaar was, gebruik lokale check als backup
+  if (piiValidation.message && piiValidation.message.includes('niet beschikbaar')) {
+    console.log('[decide-followup] ⚠️  Externe API niet beschikbaar - gebruik lokale check als fallback');
+    const { containsSensitiveInfo } = require('./utils/filterInput');
+    const check = containsSensitiveInfo(laatsteAntwoord);
+    if (check.flagged) {
+      console.log('[decide-followup] ⚠️  Lokale fallback check heeft gevoelige data gedetecteerd:', check.reason);
+      return res.status(400).json({
+        error: 'PII_DETECTED',
+        message: check.reason,
+        details: 'Je antwoord bevat gevoelige persoonsgegevens. Pas je antwoord aan en probeer het opnieuw.',
+        fallback: true,
+        rawApiResponse: null // Geen API response omdat we fallback gebruiken
+      });
+    }
+    console.log('[decide-followup] ✅ Lokale fallback check geslaagd');
   }
 
   // Genereer de contextstring voor GPT
