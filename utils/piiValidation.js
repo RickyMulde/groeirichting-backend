@@ -9,7 +9,7 @@ const fetch = require('node-fetch');
 const PII_VALIDATION_API_URL = 'https://avg-validation-api-main-l1rdhb.laravel.cloud/api/pii/validate-public';
 
 // Model voor LLM-validatie (hardcoded voor testen)
-const PII_VALIDATION_MODEL = 'gpt-oss:20b';
+const PII_VALIDATION_MODEL = 'qwen2.5:7b-instruct';
 
 /**
  * Valideert tekst op gevoelige persoonsgegevens
