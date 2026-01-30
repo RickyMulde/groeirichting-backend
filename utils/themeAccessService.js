@@ -282,9 +282,10 @@ async function hasThemeAccess(employerId, themeId, teamId = null) {
  * @param {string} themeId - UUID van het thema
  * @param {boolean} zichtbaar - Of het thema zichtbaar is (default true)
  * @param {string|null} teamId - UUID van het team (optioneel, null = organisatie-breed)
+ * @param {string|null} gpt_doelstelling - Optionele override voor GPT-doelstelling (null = niet zetten)
  * @returns {Promise<object>} - Het aangemaakte of bijgewerkte record
  */
-async function ensureEmployerThemeRecord(employerId, themeId, zichtbaar = true, teamId = null) {
+async function ensureEmployerThemeRecord(employerId, themeId, zichtbaar = true, teamId = null, gpt_doelstelling = null) {
   try {
     // Check of record al bestaat
     let query = supabase
@@ -313,12 +314,19 @@ async function ensureEmployerThemeRecord(employerId, themeId, zichtbaar = true, 
       team_id: teamId,
       zichtbaar: zichtbaar
     };
+    if (gpt_doelstelling !== undefined) {
+      record.gpt_doelstelling = gpt_doelstelling || null;
+    }
 
     if (existing) {
       // Update bestaand record
+      const updateData = { zichtbaar };
+      if (gpt_doelstelling !== undefined) {
+        updateData.gpt_doelstelling = gpt_doelstelling || null;
+      }
       const { data, error } = await supabase
         .from('employer_themes')
-        .update({ zichtbaar: zichtbaar })
+        .update(updateData)
         .eq('id', existing.id)
         .select()
         .single();
@@ -350,9 +358,39 @@ async function ensureEmployerThemeRecord(employerId, themeId, zichtbaar = true, 
   }
 }
 
+/**
+ * Bepaalt de effectieve gpt_doelstelling voor een werkgever + thema.
+ * Override in employer_themes (team_id null) heeft voorrang; anders themes.gpt_doelstelling.
+ * @param {string} employerId - UUID van de werkgever
+ * @param {string} themeId - UUID van het thema
+ * @returns {Promise<string>} - De te gebruiken gpt_doelstelling (kan lege string zijn)
+ */
+async function getEffectiveGptDoelstelling(employerId, themeId) {
+  const { data: overrideRow } = await supabase
+    .from('employer_themes')
+    .select('gpt_doelstelling')
+    .eq('employer_id', employerId)
+    .eq('theme_id', themeId)
+    .is('team_id', null)
+    .maybeSingle();
+
+  if (overrideRow?.gpt_doelstelling != null && overrideRow.gpt_doelstelling.trim() !== '') {
+    return overrideRow.gpt_doelstelling;
+  }
+
+  const { data: theme } = await supabase
+    .from('themes')
+    .select('gpt_doelstelling')
+    .eq('id', themeId)
+    .single();
+
+  return theme?.gpt_doelstelling ?? '';
+}
+
 module.exports = {
   getAllowedThemeIds,
   hasThemeAccess,
-  ensureEmployerThemeRecord
+  ensureEmployerThemeRecord,
+  getEffectiveGptDoelstelling
 };
 
