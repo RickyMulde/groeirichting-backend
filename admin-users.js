@@ -1,6 +1,7 @@
 const express = require('express')
 const { createClient } = require('@supabase/supabase-js')
 const { authMiddleware } = require('./middleware/auth')
+const { ensureEmployerThemeRecord } = require('./utils/themeAccessService')
 
 const router = express.Router()
 const supabase = createClient(
@@ -167,6 +168,105 @@ router.post('/generate-magic-link', async (req, res) => {
       error: 'Fout bij genereren magic link',
       details: err.message 
     })
+  }
+})
+
+// GET /api/admin/werkgevers/:werkgeverId/instellingen
+// Haalt voor een werkgever alle thema's op met standaard + override gpt_doelstelling (superuser)
+router.get('/werkgevers/:werkgeverId/instellingen', async (req, res) => {
+  try {
+    const { werkgeverId } = req.params
+
+    const { data: werkgever, error: empError } = await supabase
+      .from('employers')
+      .select('id, company_name, contact_email')
+      .eq('id', werkgeverId)
+      .single()
+
+    if (empError || !werkgever) {
+      return res.status(404).json({ error: 'Werkgever niet gevonden' })
+    }
+
+    const { data: themes, error: themesError } = await supabase
+      .from('themes')
+      .select('id, titel, gpt_doelstelling')
+      .eq('klaar_voor_gebruik', true)
+      .order('volgorde_index', { ascending: true })
+
+    if (themesError) throw themesError
+
+    const { data: overrides } = await supabase
+      .from('employer_themes')
+      .select('theme_id, gpt_doelstelling')
+      .eq('employer_id', werkgeverId)
+      .is('team_id', null)
+
+    const overridesByTheme = (overrides || []).reduce((acc, row) => {
+      acc[row.theme_id] = row.gpt_doelstelling
+      return acc
+    }, {})
+
+    const themas = (themes || []).map(t => ({
+      theme_id: t.id,
+      titel: t.titel,
+      gpt_doelstelling_standaard: t.gpt_doelstelling ?? '',
+      gpt_doelstelling_override: overridesByTheme[t.id] ?? null,
+      gpt_doelstelling_effectief: (overridesByTheme[t.id] != null && String(overridesByTheme[t.id]).trim() !== '')
+        ? overridesByTheme[t.id]
+        : (t.gpt_doelstelling ?? '')
+    }))
+
+    res.json({
+      success: true,
+      werkgever: { id: werkgever.id, company_name: werkgever.company_name, contact_email: werkgever.contact_email },
+      themas
+    })
+  } catch (err) {
+    console.error('❌ [ADMIN] Error in werkgevers/instellingen:', err)
+    res.status(500).json({ error: 'Fout bij ophalen instellingen', details: err.message })
+  }
+})
+
+// PUT /api/admin/werkgevers/:werkgeverId/instellingen/thema/:themeId
+// Zet of wis override gpt_doelstelling voor werkgever + thema (superuser). Wijzigt alleen gpt_doelstelling, niet zichtbaar.
+router.put('/werkgevers/:werkgeverId/instellingen/thema/:themeId', async (req, res) => {
+  try {
+    const { werkgeverId, themeId } = req.params
+    const { gpt_doelstelling } = req.body
+
+    const { data: theme } = await supabase
+      .from('themes')
+      .select('id')
+      .eq('id', themeId)
+      .single()
+
+    if (!theme) {
+      return res.status(404).json({ error: 'Thema niet gevonden' })
+    }
+
+    const { data: existing } = await supabase
+      .from('employer_themes')
+      .select('id, zichtbaar')
+      .eq('employer_id', werkgeverId)
+      .eq('theme_id', themeId)
+      .is('team_id', null)
+      .maybeSingle()
+
+    const value = gpt_doelstelling != null && String(gpt_doelstelling).trim() !== '' ? String(gpt_doelstelling).trim() : null
+
+    if (existing) {
+      await supabase
+        .from('employer_themes')
+        .update({ gpt_doelstelling: value })
+        .eq('id', existing.id)
+    } else {
+      await ensureEmployerThemeRecord(werkgeverId, themeId, true, null, value)
+    }
+
+    res.json({ success: true, gpt_doelstelling: value })
+  } catch (err) {
+    console.error('❌ [ADMIN] Error in werkgevers/instellingen/thema:', err)
+    res.status(500).json({ error: 'Fout bij opslaan doelstelling', details: err.message })
   }
 })
 
