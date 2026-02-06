@@ -118,7 +118,7 @@ GroeiRichting B.V.
 Schutstraat 145, 7906 AG Hoogeveen
     `.trim();
 
-    // 4. Verstuur email met attachment
+    // 4. Verstuur brochure naar lead (zonder BCC – Resend levert BCC niet betrouwbaar)
     const emailResult = await sendEmail({
       to: email.trim().toLowerCase(),
       subject: 'Je GroeiRichting informatiebrochure',
@@ -129,13 +129,34 @@ Schutstraat 145, 7906 AG Hoogeveen
         filename: 'groeiRichting-infodocu.pdf',
         contentType: 'application/pdf'
       }],
-      bcc: BCC_EMAIL,
       tag: 'BROCHURE_REQUEST',
       metadata: {
         source: 'brochure_download',
         lead_id: lead?.id || null
       }
     });
+
+    // 4b. Aparte meldingsmail naar jou (zonder bijlage) – BCC bij Resend komt vaak niet aan
+    const notifHtml = `
+      <p>Er is een nieuwe brochure-aanvraag:</p>
+      <ul>
+        <li><strong>Naam:</strong> ${naam}</li>
+        <li><strong>E-mail:</strong> ${email.trim().toLowerCase()}</li>
+      </ul>
+      <p>De brochure is naar de lead gestuurd.</p>
+    `;
+    try {
+      await sendEmail({
+        to: BCC_EMAIL,
+        subject: '[GroeiRichting] Nieuwe brochure-aanvraag: ' + naam,
+        html: notifHtml,
+        text: `Nieuwe brochure-aanvraag: ${naam} (${email.trim().toLowerCase()}). De brochure is naar de lead gestuurd.`,
+        tag: 'BROCHURE_NOTIFY',
+        metadata: { source: 'brochure_download', lead_id: lead?.id || null }
+      });
+    } catch (notifErr) {
+      console.error('Brochure-meldingsmail naar jou mislukt (lead kreeg wel brochure):', notifErr.message);
+    }
 
     // 5. Update lead status in database
     if (lead?.id) {
