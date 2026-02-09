@@ -290,7 +290,7 @@ Kijk naar de gemiddelde score (${avgScore}) en kies je 'Tone of Voice':
 ---
 
 STAP 2: DE SAMENVATTING
-Schrijf een samenvatting (max 80 woorden) in de toon van het gekozen scenario.
+Schrijf een samenvatting (max 150 woorden) in de toon van het gekozen scenario.
 ${heeftAlarmSignalen ? `
 ⚠️ ALARM-PRIORITEIT: Als er alarm-signalen zijn, moet je deze BENOEMEN in de samenvatting!
 - Start met het alarm-signaal en WEES KWANTITATIEF:
@@ -464,7 +464,7 @@ Antwoord strikt in JSON.`
               },
               samenvatting: {
                 type: 'string',
-                description: 'Samenvatting (max 80 woorden) in de toon van het scenario'
+                description: 'Samenvatting (max 150 woorden) in de toon van het scenario'
               },
               adviezen: {
                 type: 'array',
