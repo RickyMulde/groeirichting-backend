@@ -151,6 +151,8 @@ async function generateTopActions(werknemer_id, periode, employerId) {
   // 6️⃣ Bouw GPT prompt
   const systemInstructions = `TAAK: Selecteer exact 3 adviezen uit de dataset.
 
+BELANG WORKGEVER: Kies alleen adviezen die in het belang zijn van de werkgever/organisatie. Sla adviezen over die de werkrelatie ondermijnen (bijv. eerder stoppen, andere baan zoeken, inzet verminderen zonder afspraak). Geen adviezen die alleen het individuele belang buiten het werk dienen.
+
 INPUT: Thema's met scores (1-10) en adviezen (gelabeld met categorie: 'Oplossing', 'Persoon', 'Verbinding').
 
 ANALYSE STAPPEN:
@@ -189,7 +191,7 @@ JSON object met 'geselecteerde_adviezen' (array van precies 3 items) en 'toelich
 Neem de advies-teksten EXACT en ONGEWIJZIGD over uit de input.
 
 MICRO-ADVIEZEN:
-Voor elk geselecteerd advies, genereer precies 3 eenvoudige, direct uitvoerbare micro-adviezen die helpen om het doel van dit advies te behalen.
+Voor elk geselecteerd advies, genereer precies 3 eenvoudige, direct uitvoerbare micro-adviezen die helpen om het doel van dit advies te behalen. Micro-adviezen moeten in het belang van de werkgever zijn: gericht op beter presteren, samenwerken of ontwikkelen binnen de organisatie. Geen adviezen om eerder te stoppen, minder te doen of de baan op te zeggen.
 Elke micro-advies bestaat uit:
 - Een korte, actiegerichte titel (max 8 woorden) die direct duidelijk maakt wat te doen
 - Een korte toelichting in kleine letters die uitlegt waarom of hoe (max 15 woorden)
@@ -197,8 +199,8 @@ Voorbeelden:
 * "Maak een weekplanning" (toelichting: "Dit geeft overzicht en voorkomt dat taken vergeten worden")
 * "Plan wekelijkse 1-op-1 gesprekken" (toelichting: "Geeft ruimte voor persoonlijke aandacht en feedback")
 * "Organiseer maandelijkse teamuitjes" (toelichting: "Versterkt de onderlinge banden en verbetert de sfeer")
-❌ NIET: Vage adviezen zoals "Verbeter de communicatie" of "Wees proactief"
-✅ WEL: Concrete, uitvoerbare acties die direct opgepakt kunnen worden`
+❌ NIET: Vage adviezen zoals "Verbeter de communicatie" of "Wees proactief"; ook niet: eerder stoppen, minder uren, andere baan zoeken.
+✅ WEL: Concrete, uitvoerbare acties die direct opgepakt kunnen worden en de inzet voor de organisatie versterken`
 
   const userInput = `THEMA DATA:
 ${JSON.stringify(themasData, null, 2)}
