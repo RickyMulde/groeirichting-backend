@@ -476,13 +476,14 @@ router.post('/', async (req, res) => {
 
     // 4️⃣ Antwoord opslaan in nieuwe structuur
     if (gesprek_id && antwoord !== undefined) {
-      // 🔒 EXTERNE PII VALIDATIE - controleer via AVG validatie API
+      // 🔒 PII VALIDATIE - TIJDELIJK UITGEZET voor test (externe AVG-API vertraagt de chat)
+      // Uncomment onderstaande block om weer te activeren.
+      /*
       console.log('[save-conversation] 🔒 Start externe PII validatie voor antwoord');
       const piiValidation = await validatePII(antwoord);
       console.log('[save-conversation] 🔒 PII validatie resultaat:', piiValidation.isValid ? '✅ VALIDE' : '❌ GEBLOKKEERD');
       
       if (!piiValidation.isValid) {
-        // PII gedetecteerd door externe API - blokkeer opslaan
         const labels = piiValidation.labels || [];
         const reason = piiValidation.reason || 'Gevoelige persoonsgegevens gedetecteerd';
         const articles = piiValidation.articles || [];
@@ -498,11 +499,10 @@ router.post('/', async (req, res) => {
           reason: reason,
           articles: articles,
           details: 'Je antwoord bevat gevoelige persoonsgegevens. Pas je antwoord aan en probeer het opnieuw.',
-          rawApiResponse: piiValidation.rawResponse // Voeg volledige API response toe
+          rawApiResponse: piiValidation.rawResponse
         });
       }
       
-      // 🔄 FALLBACK: Als externe API niet beschikbaar was, gebruik lokale check als backup
       if (piiValidation.message && piiValidation.message.includes('niet beschikbaar')) {
         console.log('[save-conversation] ⚠️  Externe API niet beschikbaar - gebruik lokale check als fallback');
         const check = containsSensitiveInfo(antwoord);
@@ -513,13 +513,15 @@ router.post('/', async (req, res) => {
             message: check.reason,
             details: 'Je antwoord bevat gevoelige persoonsgegevens. Pas je antwoord aan en probeer het opnieuw.',
             fallback: true,
-            rawApiResponse: null // Geen API response omdat we fallback gebruiken
+            rawApiResponse: null
           });
         }
         console.log('[save-conversation] ✅ Lokale fallback check geslaagd');
       }
       
       console.log('[save-conversation] ✅ PII validatie geslaagd - antwoord wordt opgeslagen');
+      */
+      console.log('[save-conversation] ⏭️  PII validatie overgeslagen (tijdelijk uit) - antwoord wordt opgeslagen');
 
       // ✅ VALIDATIE: Check of gesprek bij juiste werkgever hoort en toegang tot thema
       const { data: gesprekData, error: gesprekError } = await supabase

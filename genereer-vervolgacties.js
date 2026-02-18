@@ -196,10 +196,6 @@ CATEGORIE 3: DE VERBINDING (Sociaal & Support)
     * Situatie Negatief (Druk/Conflict/Onzeker): Adviseer om steun te zoeken, verwachtingen te managen of feedback te vragen.
 - Voorbeeld Titel: "Vraag feedback aan een senior collega" OF "Bespreek je ambitie met je leidinggevende".
 
-VORMVEREISTEN PER ADVIES:
-1. TITEL: Start met een werkwoord, beschrijvend, max 8 woorden. (Zakelijk & Actief).
-2. REDEN: Begin met "Je gaf aan dat..." of "Omdat je zei dat...".
-3. RESULTAAT: Eén zin over wat het oplevert (Rust, Groei, Plezier of Verbinding).
 
 Antwoord in JSON.`
 
