@@ -107,7 +107,7 @@ const registrationLimiter = rateLimit({
 // Matige limiter voor verificatie en uitnodigingen
 const verificationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 uur
-  max: 20, // 20 requests per uur per IP
+  max: 120, // 120 requests per uur per IP
   message: {
     error: 'Te veel verificatiepogingen, probeer het over een uur opnieuw.'
   },
@@ -356,7 +356,7 @@ app.post('/api/debug/process-triggers', healthLimiter, async (req, res) => {
 
 // Resend is nu vervangen door de mailer service
 
-app.post('/api/send-invite', verificationLimiter, async (req, res) => {
+app.post('/api/send-invite', inviteLimiter, async (req, res) => {
   const { to, name, employerId, token, functieOmschrijving, teamId, inviteRole, isTeamleider } = req.body;
 
   if (!to || !name || !employerId || !token) {
