@@ -356,7 +356,7 @@ app.post('/api/debug/process-triggers', healthLimiter, async (req, res) => {
 
 // Resend is nu vervangen door de mailer service
 
-app.post('/api/send-invite', inviteLimiter, async (req, res) => {
+app.post('/api/send-invite', verificationLimiter, async (req, res) => {
   const { to, name, employerId, token, functieOmschrijving, teamId, inviteRole, isTeamleider } = req.body;
 
   if (!to || !name || !employerId || !token) {
