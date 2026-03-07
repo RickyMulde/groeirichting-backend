@@ -40,6 +40,7 @@ const emailQueue = require('./email-queue'); // ✅ Nieuw toegevoegd voor email 
 const testEmail = require('./test-email'); // ✅ Nieuw toegevoegd voor test emails
 const adminUsers = require('./admin-users'); // ✅ Nieuw toegevoegd voor admin gebruikersbeheer
 const effectiveGptDoelstelling = require('./effective-gpt-doelstelling');
+const groeiCockpit = require('./groei-cockpit'); // Fase 5: OpenClaw-koppeling
 const { processEmailQueue, processEmailTriggers } = require('./cron-jobs'); // ✅ Nieuw toegevoegd voor queue processing
 // const auth = require('./auth'); // Uitgeschakeld - frontend gebruikt direct Supabase Auth
 
@@ -172,6 +173,7 @@ app.use('/api/email-queue', emailQueue); // ✅ Nieuwe route toegevoegd voor ema
 app.use('/api/test-email', testEmail); // ✅ Nieuwe route toegevoegd voor test emails
 app.use('/api/admin', adminUsers); // ✅ Nieuwe route toegevoegd voor admin gebruikersbeheer
 app.use('/api/effective-gpt-doelstelling', effectiveGptDoelstelling);
+app.use('/api/groei-cockpit', groeiCockpit);
 
 // 🔧 Provision employer endpoint - wordt aangeroepen na email verificatie
 app.post('/api/provision-employer', async (req, res) => {
