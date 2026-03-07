@@ -29,6 +29,8 @@ const ALLOWED_AGENT_IDS = (process.env.OPENCLAW_ALLOWED_AGENTS || 'main,nieuwe-t
 
 /** Max aantal tool-call rondes per request (voorkomt oneindige loops). */
 const MAX_TOOL_ROUNDS = 3
+/** Tools alleen meesturen als de Gateway ze ondersteunt; zet GROEI_COCKPIT_TOOLS_ENABLED=true in env. */
+const TOOLS_ENABLED = process.env.GROEI_COCKPIT_TOOLS_ENABLED === 'true'
 /** Max grootte bestandsinhoud (bytes) die we aan de agent teruggeven. */
 const MAX_ARTIFACT_CONTENT_BYTES = 500 * 1024
 
@@ -244,9 +246,9 @@ router.post('/process', processLimiter, async (req, res) => {
       const body = {
         model: `openclaw:${agentId}`,
         input: currentInput,
-        tools: GROEI_COCKPIT_TOOLS,
         stream: false
       }
+      if (TOOLS_ENABLED) body.tools = GROEI_COCKPIT_TOOLS
       const response = await fetch(url, {
         method: 'POST',
         headers: {
