@@ -57,6 +57,9 @@ if (process.env.CONFIRM_PRODUCTION === 'YES') {
 
 const app = express();
 
+// Achter een proxy (Render): laat rate-limit de echte client-IP uit X-Forwarded-For gebruiken
+app.set('trust proxy', 1);
+
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'https://groeirichting-frontend.onrender.com',
   'https://groeirichting.nl',

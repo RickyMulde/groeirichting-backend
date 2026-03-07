@@ -104,7 +104,11 @@ router.post('/process', processLimiter, async (req, res) => {
 
   for (const m of recentMessages) {
     if (['system', 'developer', 'user', 'assistant'].includes(m.role)) {
-      inputItems.push({ type: 'message', role: m.role, content: [{ type: 'text', text: m.content || '' }] })
+      inputItems.push({
+        type: 'message',
+        role: m.role,
+        content: [{ type: 'input_text', text: m.content || '' }]
+      })
     }
   }
 
@@ -147,7 +151,7 @@ router.post('/process', processLimiter, async (req, res) => {
   const url = `${gatewayUrl.replace(/\/$/, '')}/v1/responses`
   const body = {
     model: `openclaw:${agentId}`,
-    input: inputItems.length ? inputItems : [{ type: 'message', role: 'user', content: [{ type: 'text', text: lastUserContent || '(lege vraag)' }] }],
+    input: inputItems.length ? inputItems : [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: lastUserContent || '(lege vraag)' }] }],
     stream: false
   }
 
