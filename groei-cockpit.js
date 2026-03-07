@@ -181,6 +181,16 @@ router.post('/process', processLimiter, async (req, res) => {
 
     const data = await response.json()
     const text = extractAssistantText(data)
+    if (!text) {
+      console.log('GroeiCockpit OpenClaw response (geen tekst geëxtraheerd)', {
+        conversation_id: conversationId,
+        outputIsArray: Array.isArray(data?.output),
+        outputLength: data?.output?.length,
+        firstItemType: data?.output?.[0]?.type,
+        firstItemKeys: data?.output?.[0] ? Object.keys(data.output[0]) : [],
+        sample: JSON.stringify(data?.output?.slice(0, 2)).slice(0, 600)
+      })
+    }
     if (text) {
       const nextSeq = await getNextSeq(supabase, conversationId)
       await supabase.from('groei_cockpit_messages').insert({
@@ -193,7 +203,7 @@ router.post('/process', processLimiter, async (req, res) => {
       })
     }
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== 'production' && text) {
       console.log('GroeiCockpit process', { conversation_id: conversationId, agent_id: agentId, duration, usage: data?.usage })
     }
     return res.status(200).json({ ok: true })
@@ -215,13 +225,21 @@ router.post('/process', processLimiter, async (req, res) => {
 
 function extractAssistantText(data) {
   if (!data || !Array.isArray(data.output)) return ''
+  let result = ''
   for (const item of data.output) {
     if (item.type === 'output_text' && item.content) {
       const parts = Array.isArray(item.content) ? item.content : [item.content]
-      return parts.map((c) => (c && c.text) || '').join('')
+      result += parts.map((c) => (c && c.text) || '').join('')
+    }
+    if (item.type === 'message' && item.role === 'assistant' && Array.isArray(item.content)) {
+      for (const part of item.content) {
+        if (part && (part.type === 'output_text' || part.type === 'text') && part.text) {
+          result += part.text
+        }
+      }
     }
   }
-  return ''
+  return result.trim()
 }
 
 async function getNextSeq(supabase, conversationId) {
