@@ -27,6 +27,87 @@ const FALLBACK_MESSAGE = 'Ik liep vast, probeer het later opnieuw.'
 /** Agent-whitelist: alleen deze ids zijn toegestaan (handmatig bijhouden). */
 const ALLOWED_AGENT_IDS = (process.env.OPENCLAW_ALLOWED_AGENTS || 'main,nieuwe-technieken,prive').split(',').map((s) => s.trim()).filter(Boolean)
 
+/** Max aantal tool-call rondes per request (voorkomt oneindige loops). */
+const MAX_TOOL_ROUNDS = 3
+/** Max grootte bestandsinhoud (bytes) die we aan de agent teruggeven. */
+const MAX_ARTIFACT_CONTENT_BYTES = 500 * 1024
+
+/** Tools voor de agent: alleen eigen artifacts (owner_id = userId). */
+const GROEI_COCKPIT_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'get_user_artifacts',
+      description: 'Lijst van bestanden en grafieken die de gebruiker heeft geüpload in GroeiCockpit. Gebruik dit om te zien welke bestanden beschikbaar zijn. Alleen metadata (id, titel, type); geen inhoud.',
+      parameters: { type: 'object', properties: {}, additionalProperties: false }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_artifact_content',
+      description: 'Inhoud van één specifiek bestand ophalen op basis van het artifact-id (uit get_user_artifacts). Alleen voor bestanden van type "file" met een storage_path. Gebruik alleen artifact-ids uit de lijst van deze gebruiker.',
+      parameters: {
+        type: 'object',
+        properties: {
+          artifact_id: { type: 'string', description: 'UUID van het artifact (uit get_user_artifacts)' }
+        },
+        required: ['artifact_id'],
+        additionalProperties: false
+      }
+    }
+  }
+]
+
+/**
+ * Voer een tool uit. Alle toegang strikt beperkt tot owner_id = userId.
+ * Gebruiker X ziet nooit data van gebruiker Y: elke query filtert op owner_id.
+ * @returns {Promise<string>} JSON-string met resultaat of fout.
+ */
+async function executeTool(name, args, userId, supabase) {
+  if (name === 'get_user_artifacts') {
+    const { data, error } = await supabase
+      .from('groei_cockpit_artifacts')
+      .select('id, title, type')
+      .eq('owner_id', userId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (error) return JSON.stringify({ error: 'Kon lijst niet ophalen' })
+    return JSON.stringify({ artifacts: (data || []).map((a) => ({ id: a.id, title: a.title || '(geen titel)', type: a.type })) })
+  }
+
+  if (name === 'get_artifact_content') {
+    const artifactId = args && typeof args.artifact_id === 'string' ? args.artifact_id.trim() : null
+    if (!artifactId) return JSON.stringify({ error: 'artifact_id is verplicht' })
+
+    const { data: art, error: artError } = await supabase
+      .from('groei_cockpit_artifacts')
+      .select('id, storage_path, mime_type, title, owner_id, type')
+      .eq('id', artifactId)
+      .eq('owner_id', userId)
+      .is('deleted_at', null)
+      .single()
+
+    if (artError || !art) return JSON.stringify({ error: 'Niet gevonden' })
+    if (art.owner_id !== userId) return JSON.stringify({ error: 'Niet gevonden' })
+    if (art.type !== 'file' || !art.storage_path) return JSON.stringify({ error: 'Geen bestand of geen inhoud' })
+
+    const { data: fileData, error: downloadErr } = await supabase.storage.from(BUCKET).download(art.storage_path)
+    if (downloadErr || !fileData) return JSON.stringify({ error: 'Bestand kon niet worden geladen' })
+    if (fileData.length > MAX_ARTIFACT_CONTENT_BYTES) return JSON.stringify({ error: 'Bestand te groot om te tonen (max 500 KB)' })
+
+    const mime = (art.mime_type || '').toLowerCase()
+    const textOnly = mime.startsWith('text/') || mime === 'application/json' || mime === 'application/csv' || mime === ''
+    if (!textOnly) return JSON.stringify({ error: 'Alleen tekstbestanden (txt, md, json, csv) kunnen als inhoud worden opgehaald. Gebruik voor andere bestanden de "Koppel"-knop in de chat.' })
+
+    const text = fileData.toString('utf8')
+    return JSON.stringify({ title: art.title, mime_type: art.mime_type, content: text })
+  }
+
+  return JSON.stringify({ error: 'Onbekende tool' })
+}
+
 function getSupabaseService() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
 }
@@ -149,47 +230,73 @@ router.post('/process', processLimiter, async (req, res) => {
   }
 
   const url = `${gatewayUrl.replace(/\/$/, '')}/v1/responses`
-  const body = {
-    model: `openclaw:${agentId}`,
-    input: inputItems.length ? inputItems : [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: lastUserContent || '(lege vraag)' }] }],
-    stream: false
-  }
+  let currentInput = inputItems.length ? inputItems : [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: lastUserContent || '(lege vraag)' }] }]
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), OPENCLAW_TIMEOUT_MS)
 
   console.log('GroeiCockpit OpenClaw calling', { url, agentId, conversation_id: conversationId })
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${gatewayToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    })
-    clearTimeout(timeoutId)
+    let data = null
+    let round = 0
+    while (round < MAX_TOOL_ROUNDS) {
+      round++
+      const body = {
+        model: `openclaw:${agentId}`,
+        input: currentInput,
+        tools: GROEI_COCKPIT_TOOLS,
+        stream: false
+      }
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${gatewayToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      })
 
-    const duration = Date.now() - startTime
-    if (!response.ok) {
-      const errText = await response.text()
-      console.error('GroeiCockpit OpenClaw error', { conversation_id: conversationId, status: response.status, body: errText, duration })
-      await insertFallbackMessage(supabase, conversationId, userId, FALLBACK_MESSAGE)
-      return res.status(200).json({ ok: true })
+      const duration = Date.now() - startTime
+      if (!response.ok) {
+        const errText = await response.text()
+        console.error('GroeiCockpit OpenClaw error', { conversation_id: conversationId, status: response.status, body: errText, duration })
+        await insertFallbackMessage(supabase, conversationId, userId, FALLBACK_MESSAGE)
+        return res.status(200).json({ ok: true })
+      }
+
+      data = await response.json()
+      if (round === 1) {
+        console.log('GroeiCockpit OpenClaw response body', {
+          conversation_id: conversationId,
+          topLevelKeys: data ? Object.keys(data) : [],
+          outputLength: data?.output?.length,
+          firstOutputType: data?.output?.[0]?.type,
+          sample: JSON.stringify(data?.output?.slice(0, 2)).slice(0, 600)
+        })
+      }
+
+      const functionCalls = (data?.output || []).filter((item) => item.type === 'function_call')
+      if (functionCalls.length === 0) break
+
+      const functionCallOutputs = []
+      for (const fc of functionCalls) {
+        let args = {}
+        try {
+          if (fc.arguments && typeof fc.arguments === 'string') args = JSON.parse(fc.arguments)
+        } catch (_) {}
+        const result = await executeTool(fc.name, args, userId, supabase)
+        functionCallOutputs.push({
+          type: 'function_call_output',
+          call_id: fc.call_id || fc.id || `call_${round}_${functionCalls.indexOf(fc)}`,
+          output: result
+        })
+      }
+      currentInput = [...(currentInput || []), ...(data.output || []), ...functionCallOutputs]
     }
 
-    const data = await response.json()
-    // Altijd loggen wat de Gateway teruggeeft (voor debug)
-    console.log('GroeiCockpit OpenClaw response body', {
-      conversation_id: conversationId,
-      topLevelKeys: data ? Object.keys(data) : [],
-      outputIsArray: Array.isArray(data?.output),
-      outputLength: data?.output?.length,
-      firstOutputType: data?.output?.[0]?.type,
-      firstOutputKeys: data?.output?.[0] ? Object.keys(data.output[0]) : [],
-      sample: JSON.stringify(data?.output?.slice(0, 2)).slice(0, 800)
-    })
+    clearTimeout(timeoutId)
+
     const text = extractAssistantText(data)
     if (!text) {
       console.log('GroeiCockpit: geen tekst uit response gehaald – controleer sample hierboven')
