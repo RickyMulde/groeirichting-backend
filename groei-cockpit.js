@@ -180,20 +180,23 @@ router.post('/process', processLimiter, async (req, res) => {
     }
 
     const data = await response.json()
+    // Altijd loggen wat de Gateway teruggeeft (voor debug)
+    console.log('GroeiCockpit OpenClaw response body', {
+      conversation_id: conversationId,
+      topLevelKeys: data ? Object.keys(data) : [],
+      outputIsArray: Array.isArray(data?.output),
+      outputLength: data?.output?.length,
+      firstOutputType: data?.output?.[0]?.type,
+      firstOutputKeys: data?.output?.[0] ? Object.keys(data.output[0]) : [],
+      sample: JSON.stringify(data?.output?.slice(0, 2)).slice(0, 800)
+    })
     const text = extractAssistantText(data)
     if (!text) {
-      console.log('GroeiCockpit OpenClaw response (geen tekst geëxtraheerd)', {
-        conversation_id: conversationId,
-        outputIsArray: Array.isArray(data?.output),
-        outputLength: data?.output?.length,
-        firstItemType: data?.output?.[0]?.type,
-        firstItemKeys: data?.output?.[0] ? Object.keys(data.output[0]) : [],
-        sample: JSON.stringify(data?.output?.slice(0, 2)).slice(0, 600)
-      })
+      console.log('GroeiCockpit: geen tekst uit response gehaald – controleer sample hierboven')
     }
     if (text) {
       const nextSeq = await getNextSeq(supabase, conversationId)
-      await supabase.from('groei_cockpit_messages').insert({
+      const { error: insertErr } = await supabase.from('groei_cockpit_messages').insert({
         conversation_id: conversationId,
         seq: nextSeq,
         role: 'assistant',
@@ -201,10 +204,11 @@ router.post('/process', processLimiter, async (req, res) => {
         content_type: 'plain',
         created_by: null
       })
-    }
-
-    if (process.env.NODE_ENV !== 'production' && text) {
-      console.log('GroeiCockpit process', { conversation_id: conversationId, agent_id: agentId, duration, usage: data?.usage })
+      if (insertErr) {
+        console.error('GroeiCockpit insert assistant message failed', { conversation_id: conversationId, error: insertErr.message })
+      } else {
+        console.log('GroeiCockpit assistant message written', { conversation_id: conversationId, contentLength: text.length })
+      }
     }
     return res.status(200).json({ ok: true })
   } catch (err) {
