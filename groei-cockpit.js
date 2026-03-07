@@ -154,6 +154,7 @@ router.post('/process', processLimiter, async (req, res) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), OPENCLAW_TIMEOUT_MS)
 
+  console.log('GroeiCockpit OpenClaw calling', { url, agentId, conversation_id: conversationId })
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -195,9 +196,10 @@ router.post('/process', processLimiter, async (req, res) => {
   } catch (err) {
     clearTimeout(timeoutId)
     if (err.name === 'AbortError') {
+      console.error('GroeiCockpit OpenClaw timeout', { conversation_id: conversationId, agentId, timeoutMs: OPENCLAW_TIMEOUT_MS })
       await insertFallbackMessage(supabase, conversationId, userId, FALLBACK_MESSAGE)
     } else {
-      console.error('GroeiCockpit process error', err)
+      console.error('GroeiCockpit OpenClaw request failed', { conversation_id: conversationId, message: err.message, code: err.code })
       await insertFallbackMessage(supabase, conversationId, userId, FALLBACK_MESSAGE)
     }
     return res.status(200).json({ ok: true })
