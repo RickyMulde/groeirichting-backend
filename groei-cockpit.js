@@ -45,6 +45,9 @@ const ALLOWED_AGENT_IDS = (process.env.OPENCLAW_ALLOWED_AGENTS || 'main,nieuwe-t
 const MAX_TOOL_ROUNDS = 3
 /** Tools alleen meesturen als de Gateway ze ondersteunt; zet GROEI_COCKPIT_TOOLS_ENABLED=true in env. */
 const TOOLS_ENABLED = process.env.GROEI_COCKPIT_TOOLS_ENABLED === 'true'
+/** Bestanden als download-URL meesturen i.p.v. base64; Gateway haalt dan zelf op. Zet GROEI_COCKPIT_FILE_VIA_URL=true. Gateway moet het Supabase-domein in files.urlAllowlist hebben. */
+const FILE_VIA_URL = process.env.GROEI_COCKPIT_FILE_VIA_URL === 'true'
+const SIGNED_URL_EXPIRES_SEC = 600
 /** Max grootte bestandsinhoud (bytes) die we aan de agent teruggeven. */
 const MAX_ARTIFACT_CONTENT_BYTES = 500 * 1024
 
@@ -212,7 +215,7 @@ router.post('/process', processLimiter, async (req, res) => {
     }
   }
 
-  // input_file als aparte items in de input-array (niet in message content). Gateway plakt ze in de system prompt.
+  // Bestanden: ofwel als signed URL (Gateway haalt zelf op) ofwel als base64 in de request.
   if (referencedArtifactIds && referencedArtifactIds.length > 0) {
     const { data: artifacts } = await supabase
       .from('groei_cockpit_artifacts')
@@ -224,6 +227,38 @@ router.post('/process', processLimiter, async (req, res) => {
 
     if (artifacts) {
       for (const art of artifacts) {
+        const mediaType = art.mime_type || 'text/plain'
+        const filename = art.title || 'bestand'
+
+        if (FILE_VIA_URL) {
+          const path = (art.storage_path || '').trim()
+          if (!path) {
+            console.warn('GroeiCockpit file skip (URL): geen storage_path', { artifactId: art.id })
+            continue
+          }
+          const { data: signed, error: signErr } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_EXPIRES_SEC)
+          if (signErr) {
+            console.warn('GroeiCockpit file skip (signed URL)', { artifactId: art.id, error: signErr.message })
+            continue
+          }
+          const signedUrl = signed?.signedUrl || signed?.signed_url
+          if (!signedUrl || typeof signedUrl !== 'string') {
+            console.warn('GroeiCockpit file skip (signed URL): geen url in response', { artifactId: art.id })
+            continue
+          }
+          console.log('GroeiCockpit attaching file via URL', { filename, urlLength: signedUrl.length })
+          inputItems.push({
+            type: 'input_file',
+            source: {
+              type: 'url',
+              url: signedUrl,
+              filename,
+              media_type: mediaType
+            }
+          })
+          continue
+        }
+
         const { data: fileData, error: downloadErr } = await supabase.storage.from(BUCKET).download(art.storage_path)
         if (downloadErr || !fileData) {
           console.warn('GroeiCockpit file skip', { artifactId: art.id, error: downloadErr?.message, hasData: !!fileData })
@@ -243,19 +278,18 @@ router.post('/process', processLimiter, async (req, res) => {
           console.warn('GroeiCockpit file skip (onbekend type)', { filename: art.title, type: typeof fileData })
           continue
         }
-        const mediaType = art.mime_type || 'text/plain'
         if (base64.length > 200 * 1024) {
           console.warn('GroeiCockpit file skip (te groot)', { filename: art.title, base64Length: base64.length })
           continue
         }
-        console.log('GroeiCockpit attaching file', { filename: art.title, base64Length: base64.length, bytes: byteLength, media_type: mediaType })
+        console.log('GroeiCockpit attaching file (base64)', { filename: art.title, base64Length: base64.length, bytes: byteLength, media_type: mediaType })
         inputItems.push({
           type: 'input_file',
           source: {
             type: 'base64',
             media_type: mediaType,
             data: base64,
-            filename: art.title || 'bestand'
+            filename
           }
         })
       }
@@ -293,8 +327,10 @@ router.post('/process', processLimiter, async (req, res) => {
             })
           }
         }
-        if (item.type === 'input_file' && item.source?.data) {
-          return { type: item.type, source: { ...item.source, data: `<base64, ${item.source.data.length} chars>` } }
+        if (item.type === 'input_file' && item.source) {
+          const s = item.source
+          if (s.data) return { type: item.type, source: { ...s, data: `<base64, ${s.data.length} chars>` } }
+          if (s.url) return { type: item.type, source: { ...s, url: '<signed url>' } }
         }
         return item
       })
