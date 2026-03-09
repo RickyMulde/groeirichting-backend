@@ -229,13 +229,26 @@ router.post('/process', processLimiter, async (req, res) => {
           console.warn('GroeiCockpit file skip', { artifactId: art.id, error: downloadErr?.message, hasData: !!fileData })
           continue
         }
-        const base64 = fileData.toString('base64')
+        let base64
+        let byteLength
+        if (Buffer.isBuffer(fileData)) {
+          base64 = fileData.toString('base64')
+          byteLength = fileData.length
+        } else if (typeof fileData.arrayBuffer === 'function') {
+          const ab = await fileData.arrayBuffer()
+          const buf = Buffer.from(ab)
+          base64 = buf.toString('base64')
+          byteLength = buf.length
+        } else {
+          console.warn('GroeiCockpit file skip (onbekend type)', { filename: art.title, type: typeof fileData })
+          continue
+        }
         const mediaType = art.mime_type || 'text/plain'
         if (base64.length > 200 * 1024) {
           console.warn('GroeiCockpit file skip (te groot)', { filename: art.title, base64Length: base64.length })
           continue
         }
-        console.log('GroeiCockpit attaching file', { filename: art.title, base64Length: base64.length, bytes: fileData.length, media_type: mediaType })
+        console.log('GroeiCockpit attaching file', { filename: art.title, base64Length: base64.length, bytes: byteLength, media_type: mediaType })
         inputItems.push({
           type: 'input_file',
           source: {
