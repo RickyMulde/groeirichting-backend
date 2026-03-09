@@ -196,18 +196,7 @@ router.post('/process', processLimiter, async (req, res) => {
   const recentMessages = (messages || []).slice(-MAX_HISTORY_MESSAGES)
   const lastUserContent = recentMessages.filter((m) => m.role === 'user').pop()?.content || ''
 
-  const inputItems = []
-
-  for (const m of recentMessages) {
-    if (['system', 'developer', 'user', 'assistant'].includes(m.role)) {
-      inputItems.push({
-        type: 'message',
-        role: m.role,
-        content: [{ type: 'input_text', text: m.content || '' }]
-      })
-    }
-  }
-
+  const fileContentParts = []
   if (referencedArtifactIds && referencedArtifactIds.length > 0) {
     const { data: artifacts } = await supabase
       .from('groei_cockpit_artifacts')
@@ -224,7 +213,7 @@ router.post('/process', processLimiter, async (req, res) => {
         const base64 = fileData.toString('base64')
         const mediaType = art.mime_type || 'text/plain'
         if (base64.length > 200 * 1024) continue
-        inputItems.push({
+        fileContentParts.push({
           type: 'input_file',
           source: {
             type: 'base64',
@@ -234,6 +223,16 @@ router.post('/process', processLimiter, async (req, res) => {
           }
         })
       }
+    }
+  }
+
+  const inputItems = []
+  for (const m of recentMessages) {
+    if (['system', 'developer', 'user', 'assistant'].includes(m.role)) {
+      const isLastUser = m.role === 'user' && m === recentMessages[recentMessages.length - 1]
+      const content = [{ type: 'input_text', text: m.content || '' }]
+      if (isLastUser && fileContentParts.length > 0) content.push(...fileContentParts)
+      inputItems.push({ type: 'message', role: m.role, content })
     }
   }
 
