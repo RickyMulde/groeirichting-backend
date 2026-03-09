@@ -23,6 +23,19 @@ const processLimiter = rateLimit({
 const MAX_HISTORY_MESSAGES = 12
 const OPENCLAW_TIMEOUT_MS = Number(process.env.OPENCLAW_TIMEOUT_MS) || 45000
 const FALLBACK_MESSAGE = 'Ik liep vast, probeer het later opnieuw.'
+const MAX_GATEWAY_ERROR_DISPLAY = 2000
+
+/** Haal bruikbare fouttekst uit Gateway response-body; voor in chat en logs. */
+function parseGatewayError(status, bodyText) {
+  let message = ''
+  try {
+    const parsed = JSON.parse(bodyText)
+    if (parsed?.error?.message) message = String(parsed.error.message)
+  } catch (_) {}
+  if (!message && bodyText) message = bodyText.trim()
+  if (message.length > MAX_GATEWAY_ERROR_DISPLAY) message = message.slice(0, MAX_GATEWAY_ERROR_DISPLAY) + '…'
+  return message || `HTTP ${status}`
+}
 
 /** Agent-whitelist: alleen deze ids zijn toegestaan (handmatig bijhouden). */
 const ALLOWED_AGENT_IDS = (process.env.OPENCLAW_ALLOWED_AGENTS || 'main,nieuwe-technieken,prive').split(',').map((s) => s.trim()).filter(Boolean)
@@ -262,8 +275,10 @@ router.post('/process', processLimiter, async (req, res) => {
       const duration = Date.now() - startTime
       if (!response.ok) {
         const errText = await response.text()
-        console.error('GroeiCockpit OpenClaw error', { conversation_id: conversationId, status: response.status, body: errText, duration })
-        await insertFallbackMessage(supabase, conversationId, userId, FALLBACK_MESSAGE)
+        const gatewayMessage = parseGatewayError(response.status, errText)
+        console.error('GroeiCockpit OpenClaw error', { conversation_id: conversationId, status: response.status, statusText: response.statusText, body: errText, duration })
+        const messageForUser = gatewayMessage ? `Gateway-fout: ${gatewayMessage}` : FALLBACK_MESSAGE
+        await insertFallbackMessage(supabase, conversationId, userId, messageForUser)
         return res.status(200).json({ ok: true })
       }
 
@@ -324,10 +339,11 @@ router.post('/process', processLimiter, async (req, res) => {
     clearTimeout(timeoutId)
     if (err.name === 'AbortError') {
       console.error('GroeiCockpit OpenClaw timeout', { conversation_id: conversationId, agentId, timeoutMs: OPENCLAW_TIMEOUT_MS })
-      await insertFallbackMessage(supabase, conversationId, userId, FALLBACK_MESSAGE)
+      await insertFallbackMessage(supabase, conversationId, userId, 'Gateway reageerde niet in tijd. Probeer het later opnieuw.')
     } else {
       console.error('GroeiCockpit OpenClaw request failed', { conversation_id: conversationId, message: err.message, code: err.code })
-      await insertFallbackMessage(supabase, conversationId, userId, FALLBACK_MESSAGE)
+      const detail = err.message ? ` (${err.message})` : ''
+      await insertFallbackMessage(supabase, conversationId, userId, `${FALLBACK_MESSAGE}${detail}`)
     }
     return res.status(200).json({ ok: true })
   }
