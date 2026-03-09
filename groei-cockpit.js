@@ -196,7 +196,18 @@ router.post('/process', processLimiter, async (req, res) => {
   const recentMessages = (messages || []).slice(-MAX_HISTORY_MESSAGES)
   const lastUserContent = recentMessages.filter((m) => m.role === 'user').pop()?.content || ''
 
-  const fileContentParts = []
+  const inputItems = []
+  for (const m of recentMessages) {
+    if (['system', 'developer', 'user', 'assistant'].includes(m.role)) {
+      inputItems.push({
+        type: 'message',
+        role: m.role,
+        content: [{ type: 'input_text', text: m.content || '' }]
+      })
+    }
+  }
+
+  // input_file als aparte items in de input-array (niet in message content). Gateway plakt ze in de system prompt.
   if (referencedArtifactIds && referencedArtifactIds.length > 0) {
     const { data: artifacts } = await supabase
       .from('groei_cockpit_artifacts')
@@ -213,7 +224,7 @@ router.post('/process', processLimiter, async (req, res) => {
         const base64 = fileData.toString('base64')
         const mediaType = art.mime_type || 'text/plain'
         if (base64.length > 200 * 1024) continue
-        fileContentParts.push({
+        inputItems.push({
           type: 'input_file',
           source: {
             type: 'base64',
@@ -223,16 +234,6 @@ router.post('/process', processLimiter, async (req, res) => {
           }
         })
       }
-    }
-  }
-
-  const inputItems = []
-  for (const m of recentMessages) {
-    if (['system', 'developer', 'user', 'assistant'].includes(m.role)) {
-      const isLastUser = m.role === 'user' && m === recentMessages[recentMessages.length - 1]
-      const content = [{ type: 'input_text', text: m.content || '' }]
-      if (isLastUser && fileContentParts.length > 0) content.push(...fileContentParts)
-      inputItems.push({ type: 'message', role: m.role, content })
     }
   }
 
@@ -249,6 +250,35 @@ router.post('/process', processLimiter, async (req, res) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), OPENCLAW_TIMEOUT_MS)
 
+  /** Maak een kopie van body geschikt voor logging: base64 e.d. afkappen. */
+  function bodyForLog(body) {
+    const out = { model: body.model, stream: body.stream }
+    if (body.tools) out.tools = body.tools
+    if (Array.isArray(body.input)) {
+      out.input = body.input.map((item) => {
+        if (item.type === 'message') {
+          return {
+            type: item.type,
+            role: item.role,
+            content: (item.content || []).map((c) => {
+              if (c.type === 'input_file' && c.source?.data) {
+                return { type: c.type, source: { ...c.source, data: `<base64, ${c.source.data.length} chars>` } }
+              }
+              return c
+            })
+          }
+        }
+        if (item.type === 'input_file' && item.source?.data) {
+          return { type: item.type, source: { ...item.source, data: `<base64, ${item.source.data.length} chars>` } }
+        }
+        return item
+      })
+    } else {
+      out.input = body.input
+    }
+    return out
+  }
+
   console.log('GroeiCockpit OpenClaw calling', { url, agentId, conversation_id: conversationId })
   try {
     let data = null
@@ -261,6 +291,9 @@ router.post('/process', processLimiter, async (req, res) => {
         stream: false
       }
       if (TOOLS_ENABLED) body.tools = GROEI_COCKPIT_TOOLS
+      if (round === 1) {
+        console.log('GroeiCockpit request body (structure):', JSON.stringify(bodyForLog(body), null, 2))
+      }
       const response = await fetch(url, {
         method: 'POST',
         headers: {
