@@ -21,6 +21,7 @@ const processLimiter = rateLimit({
   legacyHeaders: false
 })
 const MAX_HISTORY_MESSAGES = 12
+const MAX_MESSAGE_CONTENT_LENGTH = Number(process.env.GROEI_COCKPIT_MAX_MESSAGE_LENGTH) || 6000
 const OPENCLAW_TIMEOUT_MS = Number(process.env.OPENCLAW_TIMEOUT_MS) || 45000
 const FALLBACK_MESSAGE = 'Ik liep vast, probeer het later opnieuw.'
 const MAX_GATEWAY_ERROR_DISPLAY = 2000
@@ -199,10 +200,14 @@ router.post('/process', processLimiter, async (req, res) => {
   const inputItems = []
   for (const m of recentMessages) {
     if (['system', 'developer', 'user', 'assistant'].includes(m.role)) {
+      let text = m.content || ''
+      if (text.length > MAX_MESSAGE_CONTENT_LENGTH) {
+        text = text.slice(0, MAX_MESSAGE_CONTENT_LENGTH) + '\n[... afgekapt]'
+      }
       inputItems.push({
         type: 'message',
         role: m.role,
-        content: [{ type: 'input_text', text: m.content || '' }]
+        content: [{ type: 'input_text', text }]
       })
     }
   }
@@ -220,10 +225,17 @@ router.post('/process', processLimiter, async (req, res) => {
     if (artifacts) {
       for (const art of artifacts) {
         const { data: fileData, error: downloadErr } = await supabase.storage.from(BUCKET).download(art.storage_path)
-        if (downloadErr || !fileData) continue
+        if (downloadErr || !fileData) {
+          console.warn('GroeiCockpit file skip', { artifactId: art.id, error: downloadErr?.message, hasData: !!fileData })
+          continue
+        }
         const base64 = fileData.toString('base64')
         const mediaType = art.mime_type || 'text/plain'
-        if (base64.length > 200 * 1024) continue
+        if (base64.length > 200 * 1024) {
+          console.warn('GroeiCockpit file skip (te groot)', { filename: art.title, base64Length: base64.length })
+          continue
+        }
+        console.log('GroeiCockpit attaching file', { filename: art.title, base64Length: base64.length, bytes: fileData.length, media_type: mediaType })
         inputItems.push({
           type: 'input_file',
           source: {
