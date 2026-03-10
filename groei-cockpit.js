@@ -50,6 +50,8 @@ const FILE_VIA_URL = process.env.GROEI_COCKPIT_FILE_VIA_URL !== 'false'
 const SIGNED_URL_EXPIRES_SEC = 600
 /** Max grootte bestandsinhoud (bytes) die we aan de agent teruggeven. */
 const MAX_ARTIFACT_CONTENT_BYTES = 500 * 1024
+/** Geschatte wachttijd (seconden) voor agent bij bijlagen: signed-URL-generatie + marge. createSignedUrl ~100–400 ms per bestand. */
+const ATTACHMENT_WAIT_SEC = Number(process.env.GROEI_COCKPIT_ATTACHMENT_WAIT_SEC) || 5
 
 /** Tools voor de agent: alleen eigen artifacts (owner_id = userId). */
 const GROEI_COCKPIT_TOOLS = [
@@ -307,6 +309,10 @@ router.post('/process', processLimiter, async (req, res) => {
     console.log('GroeiCockpit fileParts toegevoegd aan request', { count: fileParts.length, viaUrl: FILE_VIA_URL })
   }
   // Koppel alle fileParts aan de content van het laatste user-bericht (of maak er één aan).
+  // Bij bijlagen: instructie voor de agent om te wachten tot hij de signed URL/bijlage heeft ontvangen en gelezen.
+  const attachmentWaitInstruction = fileParts.length > 0
+    ? `[Instructie: wacht minimaal ${ATTACHMENT_WAIT_SEC} seconden tot je de bijlage(s) hebt ontvangen en gelezen voordat je antwoordt.]\n\n`
+    : ''
   if (fileParts.length > 0) {
     let lastUserIndex = -1
     for (let i = inputItems.length - 1; i >= 0; i--) {
@@ -317,7 +323,7 @@ router.post('/process', processLimiter, async (req, res) => {
       }
     }
     if (lastUserIndex === -1) {
-      const text = lastUserContent || '(lege vraag)'
+      const text = attachmentWaitInstruction + (lastUserContent || '(lege vraag)')
       inputItems.push({
         type: 'message',
         role: 'user',
@@ -326,6 +332,13 @@ router.post('/process', processLimiter, async (req, res) => {
     } else {
       const msg = inputItems[lastUserIndex]
       if (!Array.isArray(msg.content)) msg.content = []
+      // Prepend wacht-instructie aan bestaande tekst van het user-bericht
+      const textPart = msg.content.find((c) => c.type === 'input_text')
+      if (textPart && textPart.text != null) {
+        textPart.text = attachmentWaitInstruction + textPart.text
+      } else if (textPart) {
+        textPart.text = attachmentWaitInstruction
+      }
       msg.content = [...msg.content, ...fileParts]
     }
   }
