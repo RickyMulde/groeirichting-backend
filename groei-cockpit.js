@@ -216,6 +216,8 @@ router.post('/process', processLimiter, async (req, res) => {
   }
 
   // Bestanden: ofwel als signed URL (Gateway haalt zelf op) ofwel als base64 in de request.
+  // Volgens de laatste OpenClaw-spec horen input_file parts binnen de content-array van het user-bericht.
+  const fileParts = []
   if (referencedArtifactIds && referencedArtifactIds.length > 0) {
     const { data: artifacts } = await supabase
       .from('groei_cockpit_artifacts')
@@ -247,7 +249,7 @@ router.post('/process', processLimiter, async (req, res) => {
             continue
           }
           console.log('GroeiCockpit attaching file via URL', { filename, urlLength: signedUrl.length })
-          inputItems.push({
+          fileParts.push({
             type: 'input_file',
             source: {
               type: 'url',
@@ -283,7 +285,7 @@ router.post('/process', processLimiter, async (req, res) => {
           continue
         }
         console.log('GroeiCockpit attaching file (base64)', { filename: art.title, base64Length: base64.length, bytes: byteLength, media_type: mediaType })
-        inputItems.push({
+        fileParts.push({
           type: 'input_file',
           source: {
             type: 'base64',
@@ -296,6 +298,30 @@ router.post('/process', processLimiter, async (req, res) => {
     }
   }
 
+  // Koppel alle fileParts aan de content van het laatste user-bericht (of maak er één aan).
+  if (fileParts.length > 0) {
+    let lastUserIndex = -1
+    for (let i = inputItems.length - 1; i >= 0; i--) {
+      const item = inputItems[i]
+      if (item.type === 'message' && item.role === 'user') {
+        lastUserIndex = i
+        break
+      }
+    }
+    if (lastUserIndex === -1) {
+      const text = lastUserContent || '(lege vraag)'
+      inputItems.push({
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text }, ...fileParts]
+      })
+    } else {
+      const msg = inputItems[lastUserIndex]
+      if (!Array.isArray(msg.content)) msg.content = []
+      msg.content = [...msg.content, ...fileParts]
+    }
+  }
+
   const gatewayUrl = process.env.OPENCLAW_GATEWAY_URL
   const gatewayToken = process.env.OPENCLAW_GATEWAY_TOKEN
   if (!gatewayUrl || !gatewayToken) {
@@ -304,7 +330,15 @@ router.post('/process', processLimiter, async (req, res) => {
   }
 
   const url = `${gatewayUrl.replace(/\/$/, '')}/v1/responses`
-  let currentInput = inputItems.length ? inputItems : [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: lastUserContent || '(lege vraag)' }] }]
+  let currentInput = inputItems.length
+    ? inputItems
+    : [
+        {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: lastUserContent || 'hoi' }]
+        }
+      ]
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), OPENCLAW_TIMEOUT_MS)
