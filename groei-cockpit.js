@@ -45,8 +45,8 @@ const ALLOWED_AGENT_IDS = (process.env.OPENCLAW_ALLOWED_AGENTS || 'main,nieuwe-t
 const MAX_TOOL_ROUNDS = 3
 /** Tools alleen meesturen als de Gateway ze ondersteunt; zet GROEI_COCKPIT_TOOLS_ENABLED=true in env. */
 const TOOLS_ENABLED = process.env.GROEI_COCKPIT_TOOLS_ENABLED === 'true'
-/** Bestanden als download-URL meesturen i.p.v. base64; Gateway haalt dan zelf op. Zet GROEI_COCKPIT_FILE_VIA_URL=true. Gateway moet het Supabase-domein in files.urlAllowlist hebben. */
-const FILE_VIA_URL = process.env.GROEI_COCKPIT_FILE_VIA_URL === 'true'
+/** Bestanden als signed URL meesturen (Gateway haalt zelf op). Zet GROEI_COCKPIT_FILE_VIA_URL=false om base64 te gebruiken. */
+const FILE_VIA_URL = process.env.GROEI_COCKPIT_FILE_VIA_URL !== 'false'
 const SIGNED_URL_EXPIRES_SEC = 600
 /** Max grootte bestandsinhoud (bytes) die we aan de agent teruggeven. */
 const MAX_ARTIFACT_CONTENT_BYTES = 500 * 1024
@@ -215,18 +215,23 @@ router.post('/process', processLimiter, async (req, res) => {
     }
   }
 
-  // Bestanden: ofwel als signed URL (Gateway haalt zelf op) ofwel als base64 in de request.
-  // Volgens de laatste OpenClaw-spec horen input_file parts binnen de content-array van het user-bericht.
+  // Bestanden: standaard als signed URL (Gateway haalt zelf op); optioneel base64 via env.
+  // Volgens OpenClaw-spec horen input_file parts binnen de content-array van het user-bericht.
   const fileParts = []
-  if (referencedArtifactIds && referencedArtifactIds.length > 0) {
+  const refIds = Array.isArray(referencedArtifactIds) ? referencedArtifactIds : []
+  if (refIds.length > 0) {
+    console.log('GroeiCockpit referenced_artifact_ids', { refIds, fileViaUrl: FILE_VIA_URL })
     const { data: artifacts } = await supabase
       .from('groei_cockpit_artifacts')
       .select('id, storage_path, mime_type, title, owner_id')
-      .in('id', referencedArtifactIds)
+      .in('id', refIds)
       .eq('owner_id', userId)
       .eq('type', 'file')
       .not('storage_path', 'is', null)
 
+    if (!artifacts || artifacts.length === 0) {
+      console.warn('GroeiCockpit geen artifacts gevonden voor refIds', { refIds })
+    }
     if (artifacts) {
       for (const art of artifacts) {
         const mediaType = art.mime_type || 'text/plain'
@@ -298,6 +303,9 @@ router.post('/process', processLimiter, async (req, res) => {
     }
   }
 
+  if (fileParts.length > 0) {
+    console.log('GroeiCockpit fileParts toegevoegd aan request', { count: fileParts.length, viaUrl: FILE_VIA_URL })
+  }
   // Koppel alle fileParts aan de content van het laatste user-bericht (of maak er één aan).
   if (fileParts.length > 0) {
     let lastUserIndex = -1
@@ -466,7 +474,12 @@ router.post('/process', processLimiter, async (req, res) => {
     clearTimeout(timeoutId)
     if (err.name === 'AbortError') {
       console.error('GroeiCockpit OpenClaw timeout', { conversation_id: conversationId, agentId, timeoutMs: OPENCLAW_TIMEOUT_MS })
-      await insertFallbackMessage(supabase, conversationId, userId, 'Gateway reageerde niet in tijd. Probeer het later opnieuw.')
+      await insertFallbackMessage(
+        supabase,
+        conversationId,
+        userId,
+        'De AI reageerde niet op tijd. Probeer het later opnieuw of met een kortere vraag.'
+      )
     } else {
       console.error('GroeiCockpit OpenClaw request failed', { conversation_id: conversationId, message: err.message, code: err.code })
       const detail = err.message ? ` (${err.message})` : ''
