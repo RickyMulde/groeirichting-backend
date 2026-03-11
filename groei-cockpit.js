@@ -401,6 +401,8 @@ router.post('/process', processLimiter, async (req, res) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), OPENCLAW_TIMEOUT_MS)
 
+  const openclawRequestId = `gr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
   /** Maak een kopie van body geschikt voor logging: base64 e.d. afkappen. */
   function bodyForLog(body) {
     const out = { model: body.model, stream: body.stream }
@@ -446,18 +448,20 @@ router.post('/process', processLimiter, async (req, res) => {
       if (TOOLS_ENABLED) body.tools = GROEI_COCKPIT_TOOLS
       if (round === 1) {
         const maskedBody = bodyForLog(body)
-        console.log('GroeiCockpit request body (structure):', JSON.stringify(maskedBody, null, 2))
-        console.log('GroeiCockpit [DEEL MET OPENCLAW] Payload vóór fetch (URL/base64 gemaskeerd, veilig om te delen):', JSON.stringify(maskedBody, null, 2))
+        const payloadJson = JSON.stringify(maskedBody)
+        console.log('GroeiCockpit [OPENCLAW_REQUEST_ID] %s', openclawRequestId)
+        console.log('GroeiCockpit [OPENCLAW_TIMESTAMP] %s', new Date().toISOString())
+        console.log('GroeiCockpit [OPENCLAW_PAYLOAD_JSON] %s', payloadJson)
         if (fileParts.length > 0) {
           debugInputFileParts(body.input)
-          console.log('GroeiCockpit [DEBUG] body.input dat naar OpenClaw gaat bevat bovenstaande input_file(s) met url')
         }
       }
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${gatewayToken}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Request-ID': openclawRequestId
         },
         body: JSON.stringify(body),
         signal: controller.signal
