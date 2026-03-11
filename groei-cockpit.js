@@ -255,7 +255,13 @@ router.post('/process', processLimiter, async (req, res) => {
             console.warn('GroeiCockpit file skip (signed URL): geen url in response', { artifactId: art.id })
             continue
           }
-          console.log('GroeiCockpit attaching file via URL', { filename, urlLength: signedUrl.length })
+          console.log('GroeiCockpit [DEBUG] signed URL aangemaakt', {
+            artifactId: art.id,
+            filename,
+            media_type: mediaType,
+            urlPrefix: signedUrl.slice(0, 80) + (signedUrl.length > 80 ? '…' : ''),
+            urlLength: signedUrl.length
+          })
           fileParts.push({
             type: 'input_file',
             source: {
@@ -308,6 +314,30 @@ router.post('/process', processLimiter, async (req, res) => {
   if (fileParts.length > 0) {
     console.log('GroeiCockpit fileParts toegevoegd aan request', { count: fileParts.length, viaUrl: FILE_VIA_URL })
   }
+
+  // Debug: controleer of input_file met url daadwerkelijk in de payload zit (zelfde endpoint met/zonder bijlage)
+  function debugInputFileParts(items) {
+    if (!items || !Array.isArray(items)) return
+    items.forEach((item, i) => {
+      if (item.type === 'message' && Array.isArray(item.content)) {
+        item.content.forEach((c, j) => {
+          if (c.type === 'input_file' && c.source) {
+            console.log('GroeiCockpit [DEBUG] input_file in payload', {
+              messageIndex: i,
+              role: item.role,
+              contentIndex: j,
+              sourceType: c.source.type,
+              hasUrl: Boolean(c.source.url),
+              urlLength: c.source.url ? c.source.url.length : 0,
+              filename: c.source.filename,
+              media_type: c.source.media_type
+            })
+          }
+        })
+      }
+    })
+  }
+
   // Koppel alle fileParts aan de content van het laatste user-bericht (of maak er één aan).
   // Bij bijlagen: instructie voor de agent om te wachten tot hij de signed URL/bijlage heeft ontvangen en gelezen.
   const attachmentWaitInstruction = fileParts.length > 0
@@ -351,6 +381,11 @@ router.post('/process', processLimiter, async (req, res) => {
   }
 
   const url = `${gatewayUrl.replace(/\/$/, '')}/v1/responses`
+  console.log('GroeiCockpit [DEBUG] endpoint (zelfde met of zonder bijlage)', { url, hasFileParts: fileParts.length > 0 })
+  if (fileParts.length > 0) {
+    debugInputFileParts(inputItems)
+  }
+
   let currentInput = inputItems.length
     ? inputItems
     : [
@@ -409,6 +444,10 @@ router.post('/process', processLimiter, async (req, res) => {
       if (TOOLS_ENABLED) body.tools = GROEI_COCKPIT_TOOLS
       if (round === 1) {
         console.log('GroeiCockpit request body (structure):', JSON.stringify(bodyForLog(body), null, 2))
+        if (fileParts.length > 0) {
+          debugInputFileParts(body.input)
+          console.log('GroeiCockpit [DEBUG] body.input dat naar OpenClaw gaat bevat bovenstaande input_file(s) met url')
+        }
       }
       const response = await fetch(url, {
         method: 'POST',
