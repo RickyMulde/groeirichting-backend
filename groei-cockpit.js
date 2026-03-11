@@ -339,7 +339,7 @@ router.post('/process', processLimiter, async (req, res) => {
   // Gateway-schema: input_file mag ALLEEN binnen de content-array van een message (geen top-level).
   // We zetten instructie + usertekst in input_text en voegen fileParts toe aan de content van het laatste user-bericht.
   const attachmentWaitInstruction = fileParts.length > 0
-    ? `[Instructie: wacht minimaal ${ATTACHMENT_WAIT_SEC} seconden tot je de bijlage(s) hebt ontvangen en gelezen voordat je antwoordt.]\n\n`
+    ? `[Instructie: geef een samenvatting van de bijlage, tenzij de gebruiker specifiek om iets anders vraagt.]\n\n`
     : ''
   if (fileParts.length > 0) {
     let lastUserIndex = -1
