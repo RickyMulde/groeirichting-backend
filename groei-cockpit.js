@@ -443,7 +443,9 @@ router.post('/process', processLimiter, async (req, res) => {
       }
       if (TOOLS_ENABLED) body.tools = GROEI_COCKPIT_TOOLS
       if (round === 1) {
-        console.log('GroeiCockpit request body (structure):', JSON.stringify(bodyForLog(body), null, 2))
+        const maskedBody = bodyForLog(body)
+        console.log('GroeiCockpit request body (structure):', JSON.stringify(maskedBody, null, 2))
+        console.log('GroeiCockpit [DEEL MET OPENCLAW] Payload vóór fetch (URL/base64 gemaskeerd, veilig om te delen):', JSON.stringify(maskedBody, null, 2))
         if (fileParts.length > 0) {
           debugInputFileParts(body.input)
           console.log('GroeiCockpit [DEBUG] body.input dat naar OpenClaw gaat bevat bovenstaande input_file(s) met url')
