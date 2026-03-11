@@ -315,32 +315,29 @@ router.post('/process', processLimiter, async (req, res) => {
     console.log('GroeiCockpit fileParts toegevoegd aan request', { count: fileParts.length, viaUrl: FILE_VIA_URL })
   }
 
-  // Debug: controleer of input_file (top-level of in content) in de payload zit
+  // Debug: controleer of input_file in message.content zit
   function debugInputFileParts(items) {
     if (!items || !Array.isArray(items)) return
     items.forEach((item, i) => {
-      if (item.type === 'input_file' && item.source) {
-        console.log('GroeiCockpit [DEBUG] input_file (top-level) in payload', {
-          index: i,
-          sourceType: item.source.type,
-          hasUrl: Boolean(item.source.url),
-          urlLength: item.source.url ? item.source.url.length : 0,
-          filename: item.source.filename,
-          media_type: item.source.media_type
-        })
-      }
       if (item.type === 'message' && Array.isArray(item.content)) {
         item.content.forEach((c, j) => {
           if (c.type === 'input_file' && c.source) {
-            console.log('GroeiCockpit [DEBUG] input_file in message.content (oude structuur)', { messageIndex: i, contentIndex: j })
+            console.log('GroeiCockpit [DEBUG] input_file in message.content', {
+              messageIndex: i,
+              role: item.role,
+              contentIndex: j,
+              sourceType: c.source.type,
+              hasUrl: Boolean(c.source.url),
+              filename: c.source.filename
+            })
           }
         })
       }
     })
   }
 
-  // OpenResponses-schema: input_file moet top-level in input staan, NIET in message.content.
-  // We voegen alleen de wacht-instructie toe aan de tekst van het laatste user-bericht; bijlagen komen als aparte items in input.
+  // Gateway-schema: input_file mag ALLEEN binnen de content-array van een message (geen top-level).
+  // We zetten instructie + usertekst in input_text en voegen fileParts toe aan de content van het laatste user-bericht.
   const attachmentWaitInstruction = fileParts.length > 0
     ? `[Instructie: wacht minimaal ${ATTACHMENT_WAIT_SEC} seconden tot je de bijlage(s) hebt ontvangen en gelezen voordat je antwoordt.]\n\n`
     : ''
@@ -358,7 +355,7 @@ router.post('/process', processLimiter, async (req, res) => {
       inputItems.push({
         type: 'message',
         role: 'user',
-        content: [{ type: 'input_text', text }]
+        content: [{ type: 'input_text', text }, ...fileParts]
       })
     } else {
       const msg = inputItems[lastUserIndex]
@@ -369,6 +366,7 @@ router.post('/process', processLimiter, async (req, res) => {
       } else if (textPart) {
         textPart.text = attachmentWaitInstruction
       }
+      msg.content = [...msg.content, ...fileParts]
     }
   }
 
@@ -382,18 +380,11 @@ router.post('/process', processLimiter, async (req, res) => {
   const url = `${gatewayUrl.replace(/\/$/, '')}/v1/responses`
   console.log('GroeiCockpit [DEBUG] endpoint (zelfde met of zonder bijlage)', { url, hasFileParts: fileParts.length > 0 })
 
-  // input = [ ...messages, ...input_file items ]. Bijlagen als top-level, niet in message.content.
-  let currentInput
-  if (inputItems.length > 0) {
-    currentInput = fileParts.length > 0 ? [...inputItems, ...fileParts] : inputItems
-  } else {
-    const fallbackMessage = {
-      type: 'message',
-      role: 'user',
-      content: [{ type: 'input_text', text: lastUserContent || 'hoi' }]
-    }
-    currentInput = fileParts.length > 0 ? [fallbackMessage, ...fileParts] : [fallbackMessage]
-  }
+  let currentInput = inputItems.length > 0 ? inputItems : [{
+    type: 'message',
+    role: 'user',
+    content: [{ type: 'input_text', text: lastUserContent || 'hoi' }]
+  }]
   if (fileParts.length > 0) {
     debugInputFileParts(currentInput)
   }
