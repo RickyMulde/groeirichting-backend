@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit')
 const router = express.Router()
 const { createClient } = require('@supabase/supabase-js')
 const fetch = require('node-fetch')
+const crypto = require('crypto')
 
 const BUCKET = 'groei-cockpit-uploads'
 
@@ -45,9 +46,29 @@ const ALLOWED_AGENT_IDS = (process.env.OPENCLAW_ALLOWED_AGENTS || 'main,nieuwe-t
 const MAX_TOOL_ROUNDS = 3
 /** Tools alleen meesturen als de Gateway ze ondersteunt; zet GROEI_COCKPIT_TOOLS_ENABLED=true in env. */
 const TOOLS_ENABLED = process.env.GROEI_COCKPIT_TOOLS_ENABLED === 'true'
-/** Bestanden als signed URL meesturen (Gateway haalt zelf op). Zet GROEI_COCKPIT_FILE_VIA_URL=false om base64 te gebruiken. */
+/** Bestanden als signed URL meesturen (Gateway haalt zelf op). Zet GROEI_COCKPIT_FILE_VIA_URL=false om base64 (inline) te gebruiken. */
 const FILE_VIA_URL = process.env.GROEI_COCKPIT_FILE_VIA_URL !== 'false'
 const SIGNED_URL_EXPIRES_SEC = 600
+/** Max grootte bestand voor inline versturen naar OpenClaw (5 MB). */
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
+/** Toegestane mime-types voor bijlagen richting OpenClaw (moet matchen met gateway.files.allowedMimes). */
+const ALLOWED_ATTACHMENT_MIMES = new Set([
+  'text/plain',
+  'text/markdown',
+  'text/html',
+  'text/csv',
+  'application/json',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'application/vnd.oasis.opendocument.presentation'
+])
 /** Max grootte bestandsinhoud (bytes) die we aan de agent teruggeven. */
 const MAX_ARTIFACT_CONTENT_BYTES = 500 * 1024
 /** Geschatte wachttijd (seconden) voor agent bij bijlagen: signed-URL-generatie + marge. createSignedUrl ~100–400 ms per bestand. */
@@ -220,7 +241,19 @@ router.post('/process', processLimiter, async (req, res) => {
   // Bestanden: standaard als signed URL (Gateway haalt zelf op); optioneel base64 via env.
   // Volgens OpenClaw-spec horen input_file parts binnen de content-array van het user-bericht.
   const fileParts = []
+  const attachmentsMeta = [] // voor inline base64: { fileId, filename, mediaType, base64, sizeBytes, sha256 }
   const refIds = Array.isArray(referencedArtifactIds) ? referencedArtifactIds : []
+  if (refIds.length > 2) {
+    console.warn('GroeiCockpit: te veel bijlagen in één bericht', { refIdsCount: refIds.length })
+    await insertFallbackMessage(
+      supabase,
+      conversationId,
+      userId,
+      'Je kunt maximaal 2 bijlagen per bericht meesturen. Verwijder een deel en probeer het opnieuw.'
+    )
+    return res.status(200).json({ ok: true })
+  }
+  let totalAttachmentBytes = 0
   if (refIds.length > 0) {
     console.log('GroeiCockpit referenced_artifact_ids', { refIds, fileViaUrl: FILE_VIA_URL })
     const { data: artifacts } = await supabase
@@ -236,7 +269,17 @@ router.post('/process', processLimiter, async (req, res) => {
     }
     if (artifacts) {
       for (const art of artifacts) {
-        const mediaType = art.mime_type || 'text/plain'
+        const mediaType = (art.mime_type || 'application/octet-stream').toLowerCase()
+        if (!ALLOWED_ATTACHMENT_MIMES.has(mediaType)) {
+          console.warn('GroeiCockpit file skip (mime niet toegestaan)', { artifactId: art.id, mime_type: mediaType })
+          await insertFallbackMessage(
+            supabase,
+            conversationId,
+            userId,
+            'Dit bestandstype wordt nog niet ondersteund voor analyse. Kies een van de toegestane typen (pdf, Word, Excel, PowerPoint, txt, md).'
+          )
+          return res.status(200).json({ ok: true })
+        }
         const filename = art.title || 'bestand'
 
         if (FILE_VIA_URL) {
@@ -280,40 +323,62 @@ router.post('/process', processLimiter, async (req, res) => {
           console.warn('GroeiCockpit file skip', { artifactId: art.id, error: downloadErr?.message, hasData: !!fileData })
           continue
         }
-        let base64
-        let byteLength
+        let buf
         if (Buffer.isBuffer(fileData)) {
-          base64 = fileData.toString('base64')
-          byteLength = fileData.length
+          buf = fileData
         } else if (typeof fileData.arrayBuffer === 'function') {
           const ab = await fileData.arrayBuffer()
-          const buf = Buffer.from(ab)
-          base64 = buf.toString('base64')
-          byteLength = buf.length
+          buf = Buffer.from(ab)
         } else {
           console.warn('GroeiCockpit file skip (onbekend type)', { filename: art.title, type: typeof fileData })
           continue
         }
-        if (base64.length > 200 * 1024) {
-          console.warn('GroeiCockpit file skip (te groot)', { filename: art.title, base64Length: base64.length })
-          continue
+        const sizeBytes = buf.length
+        if (sizeBytes > MAX_ATTACHMENT_BYTES) {
+          console.warn('GroeiCockpit file skip (te groot voor inline versturen)', {
+            filename: art.title,
+            sizeBytes,
+            maxBytes: MAX_ATTACHMENT_BYTES
+          })
+          await insertFallbackMessage(
+            supabase,
+            conversationId,
+            userId,
+            'Een bijlage is te groot om mee te sturen (maximaal 5 MB per bestand). Verklein het bestand en probeer het opnieuw.'
+          )
+          return res.status(200).json({ ok: true })
         }
-        console.log('GroeiCockpit attaching file (base64)', { filename: art.title, base64Length: base64.length, bytes: byteLength, media_type: mediaType })
-        fileParts.push({
-          type: 'input_file',
-          source: {
-            type: 'base64',
-            media_type: mediaType,
-            data: base64,
-            filename
-          }
+        const sha256 = crypto.createHash('sha256').update(buf).digest('hex')
+        totalAttachmentBytes += sizeBytes
+        const base64 = buf.toString('base64')
+        const fileId = `artifact_${art.id}`
+        console.log('GroeiCockpit attaching file (inline base64)', {
+          artifactId: art.id,
+          fileId,
+          filename: art.title,
+          bytes: sizeBytes,
+          base64Length: base64.length,
+          media_type: mediaType,
+          sha256
+        })
+        attachmentsMeta.push({
+          fileId,
+          filename: art.title || 'bestand',
+          mediaType,
+          base64,
+          sizeBytes,
+          sha256
         })
       }
     }
   }
 
-  if (fileParts.length > 0) {
-    console.log('GroeiCockpit fileParts toegevoegd aan request', { count: fileParts.length, viaUrl: FILE_VIA_URL })
+  if (fileParts.length > 0 || attachmentsMeta.length > 0) {
+    console.log('GroeiCockpit fileParts toegevoegd aan request', {
+      count: fileParts.length + attachmentsMeta.length,
+      viaUrl: FILE_VIA_URL,
+      totalAttachmentBytes
+    })
   }
 
   // Debug: controleer of input_file in message.content zit
@@ -339,10 +404,10 @@ router.post('/process', processLimiter, async (req, res) => {
 
   // Gateway-schema: input_file mag ALLEEN binnen de content-array van een message (geen top-level).
   // We zetten instructie + usertekst in input_text en voegen fileParts toe aan de content van het laatste user-bericht.
-  const attachmentWaitInstruction = fileParts.length > 0
+  const attachmentWaitInstruction = (fileParts.length > 0 || attachmentsMeta.length > 0)
     ? `[Instructie: geef een samenvatting van de bijlage, tenzij de gebruiker specifiek om iets anders vraagt.]\n\n`
     : ''
-  if (fileParts.length > 0) {
+  if (fileParts.length > 0 || attachmentsMeta.length > 0) {
     let lastUserIndex = -1
     for (let i = inputItems.length - 1; i >= 0; i--) {
       const item = inputItems[i]
@@ -351,14 +416,16 @@ router.post('/process', processLimiter, async (req, res) => {
         break
       }
     }
-    if (lastUserIndex === -1) {
-      const text = attachmentWaitInstruction + (lastUserContent || '(lege vraag)')
-      inputItems.push({
-        type: 'message',
-        role: 'user',
-        content: [{ type: 'input_text', text }, ...fileParts]
-      })
-    } else {
+    const ensureUserMessage = () => {
+      if (lastUserIndex === -1) {
+        const text = attachmentWaitInstruction + (lastUserContent || '(lege vraag)')
+        inputItems.push({
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text }]
+        })
+        return inputItems.length - 1
+      }
       const msg = inputItems[lastUserIndex]
       if (!Array.isArray(msg.content)) msg.content = []
       const textPart = msg.content.find((c) => c.type === 'input_text')
@@ -367,7 +434,26 @@ router.post('/process', processLimiter, async (req, res) => {
       } else if (textPart) {
         textPart.text = attachmentWaitInstruction
       }
-      msg.content = [...msg.content, ...fileParts]
+      return lastUserIndex
+    }
+
+    const targetIndex = ensureUserMessage()
+    const targetMsg = inputItems[targetIndex]
+    if (!Array.isArray(targetMsg.content)) targetMsg.content = []
+
+    // Bij signed-URL pad blijven we input_file in content gebruiken
+    if (fileParts.length > 0 && FILE_VIA_URL) {
+      targetMsg.content = [...targetMsg.content, ...fileParts]
+    }
+
+    // Bij inline pad voegen we alleen file_reference blocks toe
+    if (attachmentsMeta.length > 0 && !FILE_VIA_URL) {
+      for (const a of attachmentsMeta) {
+        targetMsg.content.push({
+          type: 'file_reference',
+          file_id: a.fileId
+        })
+      }
     }
   }
 
@@ -398,6 +484,15 @@ router.post('/process', processLimiter, async (req, res) => {
   /** Maak een kopie van body geschikt voor logging: base64 e.d. afkappen. */
   function bodyForLog(body) {
     const out = { model: body.model, stream: body.stream }
+    if (body.files && Array.isArray(body.files)) {
+      out.files = body.files.map((f) => {
+        const copy = { ...f }
+        if (copy.data && typeof copy.data === 'string') {
+          copy.data = `<base64, ${copy.data.length} chars>`
+        }
+        return copy
+      })
+    }
     if (body.tools) out.tools = body.tools
     if (Array.isArray(body.input)) {
       out.input = body.input.map((item) => {
@@ -432,11 +527,21 @@ router.post('/process', processLimiter, async (req, res) => {
     let round = 0
     while (round < MAX_TOOL_ROUNDS) {
       round++
+      let filesForBody
+      if (!FILE_VIA_URL && attachmentsMeta.length > 0) {
+        filesForBody = attachmentsMeta.map((a) => ({
+          id: a.fileId,
+          filename: a.filename,
+          media_type: a.mediaType,
+          data: a.base64
+        }))
+      }
       const body = {
         model: `openclaw:${agentId}`,
         input: currentInput,
         stream: false
       }
+      if (filesForBody) body.files = filesForBody
       if (TOOLS_ENABLED) body.tools = GROEI_COCKPIT_TOOLS
       if (round === 1) {
         const maskedBody = bodyForLog(body)
