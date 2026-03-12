@@ -241,7 +241,6 @@ router.post('/process', processLimiter, async (req, res) => {
   // Bestanden: standaard als signed URL (Gateway haalt zelf op); optioneel base64 via env.
   // Volgens OpenClaw-spec horen input_file parts binnen de content-array van het user-bericht.
   const fileParts = []
-  const attachmentsMeta = [] // voor inline base64: { fileId, filename, mediaType, base64, sizeBytes, sha256 }
   const refIds = Array.isArray(referencedArtifactIds) ? referencedArtifactIds : []
   if (refIds.length > 2) {
     console.warn('GroeiCockpit: te veel bijlagen in één bericht', { refIdsCount: refIds.length })
@@ -351,31 +350,30 @@ router.post('/process', processLimiter, async (req, res) => {
         const sha256 = crypto.createHash('sha256').update(buf).digest('hex')
         totalAttachmentBytes += sizeBytes
         const base64 = buf.toString('base64')
-        const fileId = `artifact_${art.id}`
         console.log('GroeiCockpit attaching file (inline base64)', {
           artifactId: art.id,
-          fileId,
           filename: art.title,
           bytes: sizeBytes,
           base64Length: base64.length,
           media_type: mediaType,
           sha256
         })
-        attachmentsMeta.push({
-          fileId,
-          filename: art.title || 'bestand',
-          mediaType,
-          base64,
-          sizeBytes,
-          sha256
+        fileParts.push({
+          type: 'input_file',
+          source: {
+            type: 'base64',
+            media_type: mediaType,
+            data: base64,
+            filename
+          }
         })
       }
     }
   }
 
-  if (fileParts.length > 0 || attachmentsMeta.length > 0) {
+  if (fileParts.length > 0) {
     console.log('GroeiCockpit fileParts toegevoegd aan request', {
-      count: fileParts.length + attachmentsMeta.length,
+      count: fileParts.length,
       viaUrl: FILE_VIA_URL,
       totalAttachmentBytes
     })
@@ -404,10 +402,10 @@ router.post('/process', processLimiter, async (req, res) => {
 
   // Gateway-schema: input_file mag ALLEEN binnen de content-array van een message (geen top-level).
   // We zetten instructie + usertekst in input_text en voegen fileParts toe aan de content van het laatste user-bericht.
-  const attachmentWaitInstruction = (fileParts.length > 0 || attachmentsMeta.length > 0)
+  const attachmentWaitInstruction = fileParts.length > 0
     ? `[Instructie: geef een samenvatting van de bijlage, tenzij de gebruiker specifiek om iets anders vraagt.]\n\n`
     : ''
-  if (fileParts.length > 0 || attachmentsMeta.length > 0) {
+  if (fileParts.length > 0) {
     let lastUserIndex = -1
     for (let i = inputItems.length - 1; i >= 0; i--) {
       const item = inputItems[i]
@@ -416,16 +414,14 @@ router.post('/process', processLimiter, async (req, res) => {
         break
       }
     }
-    const ensureUserMessage = () => {
-      if (lastUserIndex === -1) {
-        const text = attachmentWaitInstruction + (lastUserContent || '(lege vraag)')
-        inputItems.push({
-          type: 'message',
-          role: 'user',
-          content: [{ type: 'input_text', text }]
-        })
-        return inputItems.length - 1
-      }
+    if (lastUserIndex === -1) {
+      const text = attachmentWaitInstruction + (lastUserContent || '(lege vraag)')
+      inputItems.push({
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text }, ...fileParts]
+      })
+    } else {
       const msg = inputItems[lastUserIndex]
       if (!Array.isArray(msg.content)) msg.content = []
       const textPart = msg.content.find((c) => c.type === 'input_text')
@@ -434,26 +430,7 @@ router.post('/process', processLimiter, async (req, res) => {
       } else if (textPart) {
         textPart.text = attachmentWaitInstruction
       }
-      return lastUserIndex
-    }
-
-    const targetIndex = ensureUserMessage()
-    const targetMsg = inputItems[targetIndex]
-    if (!Array.isArray(targetMsg.content)) targetMsg.content = []
-
-    // Bij signed-URL pad blijven we input_file in content gebruiken
-    if (fileParts.length > 0 && FILE_VIA_URL) {
-      targetMsg.content = [...targetMsg.content, ...fileParts]
-    }
-
-    // Bij inline pad voegen we alleen file_reference blocks toe
-    if (attachmentsMeta.length > 0 && !FILE_VIA_URL) {
-      for (const a of attachmentsMeta) {
-        targetMsg.content.push({
-          type: 'file_reference',
-          file_id: a.fileId
-        })
-      }
+      msg.content = [...msg.content, ...fileParts]
     }
   }
 
@@ -484,15 +461,6 @@ router.post('/process', processLimiter, async (req, res) => {
   /** Maak een kopie van body geschikt voor logging: base64 e.d. afkappen. */
   function bodyForLog(body) {
     const out = { model: body.model, stream: body.stream }
-    if (body.files && Array.isArray(body.files)) {
-      out.files = body.files.map((f) => {
-        const copy = { ...f }
-        if (copy.data && typeof copy.data === 'string') {
-          copy.data = `<base64, ${copy.data.length} chars>`
-        }
-        return copy
-      })
-    }
     if (body.tools) out.tools = body.tools
     if (Array.isArray(body.input)) {
       out.input = body.input.map((item) => {
@@ -527,21 +495,11 @@ router.post('/process', processLimiter, async (req, res) => {
     let round = 0
     while (round < MAX_TOOL_ROUNDS) {
       round++
-      let filesForBody
-      if (!FILE_VIA_URL && attachmentsMeta.length > 0) {
-        filesForBody = attachmentsMeta.map((a) => ({
-          id: a.fileId,
-          filename: a.filename,
-          media_type: a.mediaType,
-          data: a.base64
-        }))
-      }
       const body = {
         model: `openclaw:${agentId}`,
         input: currentInput,
         stream: false
       }
-      if (filesForBody) body.files = filesForBody
       if (TOOLS_ENABLED) body.tools = GROEI_COCKPIT_TOOLS
       if (round === 1) {
         const maskedBody = bodyForLog(body)
