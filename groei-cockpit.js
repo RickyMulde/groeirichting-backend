@@ -459,6 +459,13 @@ router.post('/process', processLimiter, async (req, res) => {
       })
 
       const duration = Date.now() - startTime
+      console.log('GroeiCockpit OpenClaw response ontvangen', {
+        requestId: openclawRequestId,
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        durationMs: duration
+      })
       if (!response.ok) {
         const errText = await response.text()
         const gatewayMessage = parseGatewayError(response.status, errText)
@@ -524,7 +531,7 @@ router.post('/process', processLimiter, async (req, res) => {
   } catch (err) {
     clearTimeout(timeoutId)
     if (err.name === 'AbortError') {
-      console.error('GroeiCockpit OpenClaw timeout', { conversation_id: conversationId, agentId, timeoutMs: OPENCLAW_TIMEOUT_MS })
+      console.error('GroeiCockpit OpenClaw timeout', { conversation_id: conversationId, agentId, timeoutMs: OPENCLAW_TIMEOUT_MS, requestId: openclawRequestId })
       await insertFallbackMessage(
         supabase,
         conversationId,
@@ -532,7 +539,7 @@ router.post('/process', processLimiter, async (req, res) => {
         'De AI reageerde niet op tijd. Probeer het later opnieuw of met een kortere vraag.'
       )
     } else {
-      console.error('GroeiCockpit OpenClaw request failed', { conversation_id: conversationId, message: err.message, code: err.code })
+      console.error('GroeiCockpit OpenClaw request failed', { conversation_id: conversationId, message: err.message, code: err.code, requestId: openclawRequestId })
       const detail = err.message ? ` (${err.message})` : ''
       await insertFallbackMessage(supabase, conversationId, userId, `${FALLBACK_MESSAGE}${detail}`)
     }
