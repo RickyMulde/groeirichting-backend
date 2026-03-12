@@ -260,7 +260,8 @@ router.post('/process', processLimiter, async (req, res) => {
             filename,
             media_type: mediaType,
             urlPrefix: signedUrl.slice(0, 80) + (signedUrl.length > 80 ? '…' : ''),
-            urlLength: signedUrl.length
+            urlLength: signedUrl.length,
+            geldigSeconden: SIGNED_URL_EXPIRES_SEC
           })
           fileParts.push({
             type: 'input_file',
@@ -440,9 +441,11 @@ router.post('/process', processLimiter, async (req, res) => {
       if (round === 1) {
         const maskedBody = bodyForLog(body)
         const payloadJson = JSON.stringify(maskedBody)
+        const bodyBytes = Buffer.byteLength(JSON.stringify(body), 'utf8')
         console.log('GroeiCockpit [OPENCLAW_REQUEST_ID] %s', openclawRequestId)
         console.log('GroeiCockpit [OPENCLAW_TIMESTAMP] %s', new Date().toISOString())
         console.log('GroeiCockpit [OPENCLAW_PAYLOAD_JSON] %s', payloadJson)
+        console.log('GroeiCockpit [OPENCLAW] url=%s bodySizeBytes=%s', url, bodyBytes)
         if (fileParts.length > 0) {
           debugInputFileParts(body.input)
         }
