@@ -46,8 +46,15 @@ const ALLOWED_AGENT_IDS = (process.env.OPENCLAW_ALLOWED_AGENTS || 'main,nieuwe-t
 const MAX_TOOL_ROUNDS = 3
 /** Tools alleen meesturen als de Gateway ze ondersteunt; zet GROEI_COCKPIT_TOOLS_ENABLED=true in env. */
 const TOOLS_ENABLED = process.env.GROEI_COCKPIT_TOOLS_ENABLED === 'true'
-/** Bestanden als signed URL meesturen (Gateway haalt zelf op). Zet GROEI_COCKPIT_FILE_VIA_URL=false om base64 (inline) te gebruiken. */
-const FILE_VIA_URL = process.env.GROEI_COCKPIT_FILE_VIA_URL !== 'false'
+/**
+ * Bestanden als signed URL meesturen (Gateway haalt zelf op) vs base64 inline.
+ * Aanbevolen: GROEI_COCKPIT_FILE_VIA_URL=false.
+ * Bij true stuurt de backend een Supabase signed URL; wanneer de Gateway die later ophaalt
+ * kan de JWT verlopen zijn → 400 InvalidJWT / "signature verification failed".
+ * Met false haalt de backend het bestand zelf op (service role) en stuurt de bytes inline;
+ * dan hoeft de Gateway geen URL te fetchen en treedt dit probleem niet op.
+ */
+const FILE_VIA_URL = process.env.GROEI_COCKPIT_FILE_VIA_URL === 'true'
 const SIGNED_URL_EXPIRES_SEC = 600
 /** Max grootte bestand voor inline versturen naar OpenClaw (5 MB). */
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
@@ -160,7 +167,22 @@ function getSupabaseAnon() {
 
 router.post('/process', processLimiter, async (req, res) => {
   const startTime = Date.now()
-  const { conversation_id: conversationId, message_id: messageId, referenced_artifact_ids: referencedArtifactIds = [] } = req.body || {}
+  const body = req.body || {}
+  // Ondersteun zowel snake_case (frontend) als camelCase (sommige proxies)
+  const referencedArtifactIds = Array.isArray(body.referenced_artifact_ids)
+    ? body.referenced_artifact_ids
+    : Array.isArray(body.referencedArtifactIds)
+      ? body.referencedArtifactIds
+      : []
+  const conversationId = body.conversation_id || body.conversationId
+  const messageId = body.message_id || body.messageId
+
+  console.log('GroeiCockpit process ontvangen', {
+    conversation_id: conversationId,
+    refIds: referencedArtifactIds,
+    refIdsLength: referencedArtifactIds.length,
+    bodyKeys: Object.keys(body)
+  })
 
   if (!conversationId) {
     return res.status(400).json({ error: 'conversation_id is verplicht' })
@@ -264,7 +286,7 @@ router.post('/process', processLimiter, async (req, res) => {
       .not('storage_path', 'is', null)
 
     if (!artifacts || artifacts.length === 0) {
-      console.warn('GroeiCockpit geen artifacts gevonden voor refIds', { refIds })
+      console.warn('GroeiCockpit geen artifacts gevonden voor refIds – hasFileParts blijft false', { refIds, userId, hint: 'Controleer: owner_id, type=file, storage_path niet null' })
     }
     if (artifacts) {
       for (const art of artifacts) {
@@ -369,6 +391,9 @@ router.post('/process', processLimiter, async (req, res) => {
         })
       }
     }
+    if (refIds.length > 0 && fileParts.length === 0) {
+      console.warn('GroeiCockpit refIds aanwezig maar geen fileParts – alle bestanden overgeslagen (mime, signed URL of download)', { refIds, artifactsCount: artifacts?.length })
+    }
   }
 
   if (fileParts.length > 0) {
@@ -442,7 +467,8 @@ router.post('/process', processLimiter, async (req, res) => {
   }
 
   const url = `${gatewayUrl.replace(/\/$/, '')}/v1/responses`
-  console.log('GroeiCockpit [DEBUG] endpoint (zelfde met of zonder bijlage)', { url, hasFileParts: fileParts.length > 0 })
+  const hasFileParts = fileParts.length > 0
+  console.log('GroeiCockpit [DEBUG] endpoint', { url, hasFileParts, filePartsCount: fileParts.length, refIdsOntvangen: refIds.length })
 
   let currentInput = inputItems.length > 0 ? inputItems : [{
     type: 'message',
