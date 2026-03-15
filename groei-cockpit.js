@@ -23,7 +23,9 @@ const processLimiter = rateLimit({
 })
 const MAX_HISTORY_MESSAGES = 12
 const MAX_MESSAGE_CONTENT_LENGTH = Number(process.env.GROEI_COCKPIT_MAX_MESSAGE_LENGTH) || 6000
-const OPENCLAW_TIMEOUT_MS = Number(process.env.OPENCLAW_TIMEOUT_MS) || 45000
+/** Timeout OpenClaw-call (zonder en met bijlage). Agent kan configuratie e.d. doen, dus ruim 120 s. */
+const OPENCLAW_TIMEOUT_MS = Number(process.env.OPENCLAW_TIMEOUT_MS) || 120000
+const OPENCLAW_TIMEOUT_ATTACHMENT_MS = Number(process.env.OPENCLAW_TIMEOUT_ATTACHMENT_MS) || 120000
 const FALLBACK_MESSAGE = 'Ik liep vast, probeer het later opnieuw.'
 const MAX_GATEWAY_ERROR_DISPLAY = 2000
 
@@ -46,15 +48,8 @@ const ALLOWED_AGENT_IDS = (process.env.OPENCLAW_ALLOWED_AGENTS || 'main,nieuwe-t
 const MAX_TOOL_ROUNDS = 3
 /** Tools alleen meesturen als de Gateway ze ondersteunt; zet GROEI_COCKPIT_TOOLS_ENABLED=true in env. */
 const TOOLS_ENABLED = process.env.GROEI_COCKPIT_TOOLS_ENABLED === 'true'
-/**
- * Bestanden als signed URL meesturen (Gateway haalt zelf op) vs base64 inline.
- * Aanbevolen: GROEI_COCKPIT_FILE_VIA_URL=false.
- * Bij true stuurt de backend een Supabase signed URL; wanneer de Gateway die later ophaalt
- * kan de JWT verlopen zijn → 400 InvalidJWT / "signature verification failed".
- * Met false haalt de backend het bestand zelf op (service role) en stuurt de bytes inline;
- * dan hoeft de Gateway geen URL te fetchen en treedt dit probleem niet op.
- */
-const FILE_VIA_URL = process.env.GROEI_COCKPIT_FILE_VIA_URL === 'true'
+/** Bestanden als signed URL meesturen (Gateway haalt zelf op). Zet GROEI_COCKPIT_FILE_VIA_URL=false voor base64 (inline). */
+const FILE_VIA_URL = process.env.GROEI_COCKPIT_FILE_VIA_URL !== 'false'
 const SIGNED_URL_EXPIRES_SEC = 600
 /** Max grootte bestand voor inline versturen naar OpenClaw (5 MB). */
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
@@ -479,8 +474,9 @@ router.post('/process', processLimiter, async (req, res) => {
     debugInputFileParts(currentInput)
   }
 
+  const timeoutMs = fileParts.length > 0 ? OPENCLAW_TIMEOUT_ATTACHMENT_MS : OPENCLAW_TIMEOUT_MS
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), OPENCLAW_TIMEOUT_MS)
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
   const openclawRequestId = `gr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -623,7 +619,7 @@ router.post('/process', processLimiter, async (req, res) => {
   } catch (err) {
     clearTimeout(timeoutId)
     if (err.name === 'AbortError') {
-      console.error('GroeiCockpit OpenClaw timeout', { conversation_id: conversationId, agentId, timeoutMs: OPENCLAW_TIMEOUT_MS, requestId: openclawRequestId })
+      console.error('GroeiCockpit OpenClaw timeout', { conversation_id: conversationId, agentId, timeoutMs, requestId: openclawRequestId })
       await insertFallbackMessage(
         supabase,
         conversationId,
