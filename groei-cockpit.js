@@ -6,8 +6,9 @@ const express = require('express')
 const rateLimit = require('express-rate-limit')
 const router = express.Router()
 const { createClient } = require('@supabase/supabase-js')
-const fetch = require('node-fetch')
-const crypto = require('crypto')
+const { fetchArtifactStream } = require('./lib/supabaseAttachmentProxy')
+const { uploadMedia } = require('./lib/openclawMediaClient')
+const { postResponses } = require('./lib/openclawResponsesClient')
 
 const BUCKET = 'groei-cockpit-uploads'
 
@@ -23,9 +24,7 @@ const processLimiter = rateLimit({
 })
 const MAX_HISTORY_MESSAGES = 12
 const MAX_MESSAGE_CONTENT_LENGTH = Number(process.env.GROEI_COCKPIT_MAX_MESSAGE_LENGTH) || 6000
-/** Timeout OpenClaw-call (zonder en met bijlage). Agent kan configuratie e.d. doen, dus ruim 120 s. */
-const OPENCLAW_TIMEOUT_MS = Number(process.env.OPENCLAW_TIMEOUT_MS) || 120000
-const OPENCLAW_TIMEOUT_ATTACHMENT_MS = Number(process.env.OPENCLAW_TIMEOUT_ATTACHMENT_MS) || 120000
+/** Timeout OpenClaw-call wordt in openclawResponsesClient toegepast (env OPENCLAW_TIMEOUT_MS). */
 const FALLBACK_MESSAGE = 'Ik liep vast, probeer het later opnieuw.'
 const MAX_GATEWAY_ERROR_DISPLAY = 2000
 
@@ -48,33 +47,9 @@ const ALLOWED_AGENT_IDS = (process.env.OPENCLAW_ALLOWED_AGENTS || 'main,nieuwe-t
 const MAX_TOOL_ROUNDS = 3
 /** Tools alleen meesturen als de Gateway ze ondersteunt; zet GROEI_COCKPIT_TOOLS_ENABLED=true in env. */
 const TOOLS_ENABLED = process.env.GROEI_COCKPIT_TOOLS_ENABLED === 'true'
-/** Bestanden als signed URL meesturen (Gateway haalt zelf op). Zet GROEI_COCKPIT_FILE_VIA_URL=false voor base64 (inline). */
-const FILE_VIA_URL = process.env.GROEI_COCKPIT_FILE_VIA_URL !== 'false'
-const SIGNED_URL_EXPIRES_SEC = 600
-/** Max grootte bestand voor inline versturen naar OpenClaw (5 MB). */
-const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
-/** Toegestane mime-types voor bijlagen richting OpenClaw (moet matchen met gateway.files.allowedMimes). */
-const ALLOWED_ATTACHMENT_MIMES = new Set([
-  'text/plain',
-  'text/markdown',
-  'text/html',
-  'text/csv',
-  'application/json',
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-excel',
-  'application/vnd.oasis.opendocument.text',
-  'application/vnd.oasis.opendocument.spreadsheet',
-  'application/vnd.oasis.opendocument.presentation'
-])
-/** Max grootte bestandsinhoud (bytes) die we aan de agent teruggeven. */
+/** Max grootte bestandsinhoud (bytes) die we aan de agent teruggeven (get_artifact_content). */
 const MAX_ARTIFACT_CONTENT_BYTES = 500 * 1024
-/** Geschatte wachttijd (seconden) voor agent bij bijlagen: signed-URL-generatie + marge. createSignedUrl ~100–400 ms per bestand. */
-const ATTACHMENT_WAIT_SEC = Number(process.env.GROEI_COCKPIT_ATTACHMENT_WAIT_SEC) || 5
+/** Bijlagen gaan via /v1/media: backend haalt op uit Supabase, uploadt naar Gateway, verwijst met media_id in /v1/responses. Geen signed URLs naar Gateway/client. */
 
 /** Tools voor de agent: alleen eigen artifacts (owner_id = userId). */
 const GROEI_COCKPIT_TOOLS = [
@@ -255,9 +230,7 @@ router.post('/process', processLimiter, async (req, res) => {
     }
   }
 
-  // Bestanden: standaard als signed URL (Gateway haalt zelf op); optioneel base64 via env.
-  // Volgens OpenClaw-spec horen input_file parts binnen de content-array van het user-bericht.
-  const fileParts = []
+  // Bijlagen: via media-API. Backend haalt op uit Supabase, uploadt naar /v1/media, verwijst met media_id in /v1/responses.
   const refIds = Array.isArray(referencedArtifactIds) ? referencedArtifactIds : []
   if (refIds.length > 2) {
     console.warn('GroeiCockpit: te veel bijlagen in één bericht', { refIdsCount: refIds.length })
@@ -269,188 +242,71 @@ router.post('/process', processLimiter, async (req, res) => {
     )
     return res.status(200).json({ ok: true })
   }
-  let totalAttachmentBytes = 0
+
+  let mediaRefs = []
   if (refIds.length > 0) {
-    console.log('GroeiCockpit referenced_artifact_ids', { refIds, fileViaUrl: FILE_VIA_URL })
-    const { data: artifacts } = await supabase
-      .from('groei_cockpit_artifacts')
-      .select('id, storage_path, mime_type, title, owner_id')
-      .in('id', refIds)
-      .eq('owner_id', userId)
-      .eq('type', 'file')
-      .not('storage_path', 'is', null)
-
-    if (!artifacts || artifacts.length === 0) {
-      console.warn('GroeiCockpit geen artifacts gevonden voor refIds – hasFileParts blijft false', { refIds, userId, hint: 'Controleer: owner_id, type=file, storage_path niet null' })
-    }
-    if (artifacts) {
-      for (const art of artifacts) {
-        const mediaType = (art.mime_type || 'application/octet-stream').toLowerCase()
-        if (!ALLOWED_ATTACHMENT_MIMES.has(mediaType)) {
-          console.warn('GroeiCockpit file skip (mime niet toegestaan)', { artifactId: art.id, mime_type: mediaType })
-          await insertFallbackMessage(
-            supabase,
-            conversationId,
-            userId,
-            'Dit bestandstype wordt nog niet ondersteund voor analyse. Kies een van de toegestane typen (pdf, Word, Excel, PowerPoint, txt, md).'
-          )
-          return res.status(200).json({ ok: true })
-        }
-        const filename = art.title || 'bestand'
-
-        if (FILE_VIA_URL) {
-          const path = (art.storage_path || '').trim()
-          if (!path) {
-            console.warn('GroeiCockpit file skip (URL): geen storage_path', { artifactId: art.id })
-            continue
-          }
-          const { data: signed, error: signErr } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_EXPIRES_SEC)
-          if (signErr) {
-            console.warn('GroeiCockpit file skip (signed URL)', { artifactId: art.id, error: signErr.message })
-            continue
-          }
-          const signedUrl = signed?.signedUrl || signed?.signed_url
-          if (!signedUrl || typeof signedUrl !== 'string') {
-            console.warn('GroeiCockpit file skip (signed URL): geen url in response', { artifactId: art.id })
-            continue
-          }
-          console.log('GroeiCockpit [DEBUG] signed URL aangemaakt', {
-            artifactId: art.id,
-            filename,
-            media_type: mediaType,
-            urlPrefix: signedUrl.slice(0, 80) + (signedUrl.length > 80 ? '…' : ''),
-            urlLength: signedUrl.length,
-            geldigSeconden: SIGNED_URL_EXPIRES_SEC
-          })
-          fileParts.push({
-            type: 'input_file',
-            source: {
-              type: 'url',
-              url: signedUrl,
-              filename,
-              media_type: mediaType
-            }
-          })
-          continue
-        }
-
-        const { data: fileData, error: downloadErr } = await supabase.storage.from(BUCKET).download(art.storage_path)
-        if (downloadErr || !fileData) {
-          console.warn('GroeiCockpit file skip', { artifactId: art.id, error: downloadErr?.message, hasData: !!fileData })
-          continue
-        }
-        let buf
-        if (Buffer.isBuffer(fileData)) {
-          buf = fileData
-        } else if (typeof fileData.arrayBuffer === 'function') {
-          const ab = await fileData.arrayBuffer()
-          buf = Buffer.from(ab)
-        } else {
-          console.warn('GroeiCockpit file skip (onbekend type)', { filename: art.title, type: typeof fileData })
-          continue
-        }
-        const sizeBytes = buf.length
-        if (sizeBytes > MAX_ATTACHMENT_BYTES) {
-          console.warn('GroeiCockpit file skip (te groot voor inline versturen)', {
-            filename: art.title,
-            sizeBytes,
-            maxBytes: MAX_ATTACHMENT_BYTES
-          })
-          await insertFallbackMessage(
-            supabase,
-            conversationId,
-            userId,
-            'Een bijlage is te groot om mee te sturen (maximaal 5 MB per bestand). Verklein het bestand en probeer het opnieuw.'
-          )
-          return res.status(200).json({ ok: true })
-        }
-        const sha256 = crypto.createHash('sha256').update(buf).digest('hex')
-        totalAttachmentBytes += sizeBytes
-        const base64 = buf.toString('base64')
-        console.log('GroeiCockpit attaching file (inline base64)', {
-          artifactId: art.id,
-          filename: art.title,
-          bytes: sizeBytes,
-          base64Length: base64.length,
-          media_type: mediaType,
-          sha256
+    console.log('GroeiCockpit referenced_artifact_ids (media-API)', { refIds })
+    for (const artifactId of refIds) {
+      try {
+        const payload = await fetchArtifactStream({ artifactId, userId, supabase })
+        const { mediaId } = await uploadMedia({
+          buffer: payload.buffer,
+          filename: payload.filename,
+          mediaType: payload.mediaType,
+          sha256: payload.sha256
         })
-        fileParts.push({
-          type: 'input_file',
-          source: {
-            type: 'base64',
-            media_type: mediaType,
-            data: base64,
-            filename
-          }
+        mediaRefs.push({
+          mediaId,
+          filename: payload.filename,
+          mediaType: payload.mediaType
         })
+      } catch (err) {
+        console.warn('GroeiCockpit attachment failed', { artifactId, message: err.message })
+        await insertFallbackMessage(
+          supabase,
+          conversationId,
+          userId,
+          err.message || 'Bijlage kon niet worden meegestuurd. Controleer grootte (max 5 MB) en bestandstype.'
+        )
+        return res.status(200).json({ ok: true })
       }
     }
-    if (refIds.length > 0 && fileParts.length === 0) {
-      console.warn('GroeiCockpit refIds aanwezig maar geen fileParts – alle bestanden overgeslagen (mime, signed URL of download)', { refIds, artifactsCount: artifacts?.length })
-    }
+    console.log('GroeiCockpit mediaRefs', { count: mediaRefs.length, mediaIds: mediaRefs.map((m) => m.mediaId) })
   }
 
-  if (fileParts.length > 0) {
-    console.log('GroeiCockpit fileParts toegevoegd aan request', {
-      count: fileParts.length,
-      viaUrl: FILE_VIA_URL,
-      totalAttachmentBytes
-    })
-  }
-
-  // Debug: controleer of input_file in message.content zit
-  function debugInputFileParts(items) {
-    if (!items || !Array.isArray(items)) return
-    items.forEach((item, i) => {
-      if (item.type === 'message' && Array.isArray(item.content)) {
-        item.content.forEach((c, j) => {
-          if (c.type === 'input_file' && c.source) {
-            console.log('GroeiCockpit [DEBUG] input_file in message.content', {
-              messageIndex: i,
-              role: item.role,
-              contentIndex: j,
-              sourceType: c.source.type,
-              hasUrl: Boolean(c.source.url),
-              filename: c.source.filename
-            })
-          }
-        })
-      }
-    })
-  }
-
-  // Gateway-schema: input_file mag ALLEEN binnen de content-array van een message (geen top-level).
-  // We zetten instructie + usertekst in input_text en voegen fileParts toe aan de content van het laatste user-bericht.
-  const attachmentWaitInstruction = fileParts.length > 0
+  // Laatste user-bericht: instructie + tekst en optioneel attachments (media_id-referenties).
+  const attachmentInstruction = mediaRefs.length > 0
     ? `[Instructie: geef een samenvatting van de bijlage, tenzij de gebruiker specifiek om iets anders vraagt.]\n\n`
     : ''
-  if (fileParts.length > 0) {
-    let lastUserIndex = -1
-    for (let i = inputItems.length - 1; i >= 0; i--) {
-      const item = inputItems[i]
-      if (item.type === 'message' && item.role === 'user') {
-        lastUserIndex = i
-        break
-      }
+  const attachmentRefs = mediaRefs.map(({ mediaId, filename, mediaType }) => ({
+    id: mediaId,
+    media_id: mediaId,
+    name: filename,
+    content_type: mediaType
+  }))
+
+  let lastUserIndex = -1
+  for (let i = inputItems.length - 1; i >= 0; i--) {
+    if (inputItems[i].type === 'message' && inputItems[i].role === 'user') {
+      lastUserIndex = i
+      break
     }
+  }
+  if (attachmentRefs.length > 0) {
     if (lastUserIndex === -1) {
-      const text = attachmentWaitInstruction + (lastUserContent || '(lege vraag)')
       inputItems.push({
         type: 'message',
         role: 'user',
-        content: [{ type: 'input_text', text }, ...fileParts]
+        content: [{ type: 'input_text', text: attachmentInstruction + (lastUserContent || '(lege vraag)') }],
+        attachments: attachmentRefs
       })
     } else {
       const msg = inputItems[lastUserIndex]
-      if (!Array.isArray(msg.content)) msg.content = []
-      const textPart = msg.content.find((c) => c.type === 'input_text')
+      const textPart = Array.isArray(msg.content) ? msg.content.find((c) => c.type === 'input_text') : null
       if (textPart && textPart.text != null) {
-        textPart.text = attachmentWaitInstruction + textPart.text
-      } else if (textPart) {
-        textPart.text = attachmentWaitInstruction
+        textPart.text = attachmentInstruction + textPart.text
       }
-      msg.content = [...msg.content, ...fileParts]
+      msg.attachments = attachmentRefs
     }
   }
 
@@ -461,109 +317,35 @@ router.post('/process', processLimiter, async (req, res) => {
     return res.status(200).json({ ok: true })
   }
 
-  const url = `${gatewayUrl.replace(/\/$/, '')}/v1/responses`
-  const hasFileParts = fileParts.length > 0
-  console.log('GroeiCockpit [DEBUG] endpoint', { url, hasFileParts, filePartsCount: fileParts.length, refIdsOntvangen: refIds.length })
-
   let currentInput = inputItems.length > 0 ? inputItems : [{
     type: 'message',
     role: 'user',
     content: [{ type: 'input_text', text: lastUserContent || 'hoi' }]
   }]
-  if (fileParts.length > 0) {
-    debugInputFileParts(currentInput)
-  }
 
-  const timeoutMs = fileParts.length > 0 ? OPENCLAW_TIMEOUT_ATTACHMENT_MS : OPENCLAW_TIMEOUT_MS
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
-  const openclawRequestId = `gr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-
-  /** Maak een kopie van body geschikt voor logging: base64 e.d. afkappen. */
-  function bodyForLog(body) {
-    const out = { model: body.model, stream: body.stream }
-    if (body.tools) out.tools = body.tools
-    if (Array.isArray(body.input)) {
-      out.input = body.input.map((item) => {
-        if (item.type === 'message') {
-          return {
-            type: item.type,
-            role: item.role,
-            content: (item.content || []).map((c) => {
-              if (c.type === 'input_file' && c.source?.data) {
-                return { type: c.type, source: { ...c.source, data: `<base64, ${c.source.data.length} chars>` } }
-              }
-              return c
-            })
-          }
-        }
-        if (item.type === 'input_file' && item.source) {
-          const s = item.source
-          if (s.data) return { type: item.type, source: { ...s, data: `<base64, ${s.data.length} chars>` } }
-          if (s.url) return { type: item.type, source: { ...s, url: '<signed url>' } }
-        }
-        return item
-      })
-    } else {
-      out.input = body.input
-    }
-    return out
-  }
-
-  console.log('GroeiCockpit OpenClaw calling', { url, agentId, conversation_id: conversationId })
+  console.log('GroeiCockpit OpenClaw calling', { agentId, conversation_id: conversationId, attachmentsCount: attachmentRefs.length })
+  let lastRequestId
   try {
     let data = null
     let round = 0
     while (round < MAX_TOOL_ROUNDS) {
       round++
-      const body = {
-        model: `openclaw:${agentId}`,
+      const { data: responseData, requestId } = await postResponses({
+        conversationId,
         input: currentInput,
-        stream: false
-      }
-      if (TOOLS_ENABLED) body.tools = GROEI_COCKPIT_TOOLS
-      if (round === 1) {
-        const maskedBody = bodyForLog(body)
-        const payloadJson = JSON.stringify(maskedBody)
-        const bodyBytes = Buffer.byteLength(JSON.stringify(body), 'utf8')
-        console.log('GroeiCockpit [OPENCLAW_REQUEST_ID] %s', openclawRequestId)
-        console.log('GroeiCockpit [OPENCLAW_TIMESTAMP] %s', new Date().toISOString())
-        console.log('GroeiCockpit [OPENCLAW_PAYLOAD_JSON] %s', payloadJson)
-        console.log('GroeiCockpit [OPENCLAW] url=%s bodySizeBytes=%s', url, bodyBytes)
-        if (fileParts.length > 0) {
-          debugInputFileParts(body.input)
-        }
-      }
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${gatewayToken}`,
-          'Content-Type': 'application/json',
-          'X-Request-ID': openclawRequestId
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal
+        agentId,
+        tools: TOOLS_ENABLED ? GROEI_COCKPIT_TOOLS : undefined
       })
+      data = responseData
+      lastRequestId = requestId
 
       const duration = Date.now() - startTime
-      console.log('GroeiCockpit OpenClaw response ontvangen', {
-        requestId: openclawRequestId,
-        status: response.status,
-        statusText: response.statusText,
-        url,
+      console.log('GroeiCockpit OpenClaw response', {
+        requestId,
+        conversation_id: conversationId,
+        outputLength: data?.output?.length,
         durationMs: duration
       })
-      if (!response.ok) {
-        const errText = await response.text()
-        const gatewayMessage = parseGatewayError(response.status, errText)
-        console.error('GroeiCockpit OpenClaw error', { conversation_id: conversationId, status: response.status, statusText: response.statusText, body: errText, duration })
-        const messageForUser = gatewayMessage ? `Gateway-fout: ${gatewayMessage}` : FALLBACK_MESSAGE
-        await insertFallbackMessage(supabase, conversationId, userId, messageForUser)
-        return res.status(200).json({ ok: true })
-      }
-
-      data = await response.json()
       if (round === 1) {
         console.log('GroeiCockpit OpenClaw response body', {
           conversation_id: conversationId,
@@ -593,8 +375,6 @@ router.post('/process', processLimiter, async (req, res) => {
       currentInput = [...(currentInput || []), ...(data.output || []), ...functionCallOutputs]
     }
 
-    clearTimeout(timeoutId)
-
     const text = extractAssistantText(data)
     if (!text) {
       console.log('GroeiCockpit: geen tekst uit response gehaald – controleer sample hierboven')
@@ -617,9 +397,8 @@ router.post('/process', processLimiter, async (req, res) => {
     }
     return res.status(200).json({ ok: true })
   } catch (err) {
-    clearTimeout(timeoutId)
-    if (err.name === 'AbortError') {
-      console.error('GroeiCockpit OpenClaw timeout', { conversation_id: conversationId, agentId, timeoutMs, requestId: openclawRequestId })
+    if (err.name === 'AbortError' || (err.message && err.message.includes('timeout'))) {
+      console.error('GroeiCockpit OpenClaw timeout', { conversation_id: conversationId, agentId })
       await insertFallbackMessage(
         supabase,
         conversationId,
@@ -627,9 +406,11 @@ router.post('/process', processLimiter, async (req, res) => {
         'De AI reageerde niet op tijd. Probeer het later opnieuw of met een kortere vraag.'
       )
     } else {
-      console.error('GroeiCockpit OpenClaw request failed', { conversation_id: conversationId, message: err.message, code: err.code, requestId: openclawRequestId })
-      const detail = err.message ? ` (${err.message})` : ''
-      await insertFallbackMessage(supabase, conversationId, userId, `${FALLBACK_MESSAGE}${detail}`)
+      const requestId = typeof lastRequestId !== 'undefined' ? lastRequestId : 'n/a'
+      console.error('GroeiCockpit OpenClaw request failed', { conversation_id: conversationId, message: err.message, code: err.code, requestId })
+      const gatewayMsg = err.body ? parseGatewayError(err.status || 500, err.body) : ''
+      const detail = gatewayMsg || err.message ? ` (${err.message})` : ''
+      await insertFallbackMessage(supabase, conversationId, userId, gatewayMsg ? `Gateway-fout: ${gatewayMsg}` : `${FALLBACK_MESSAGE}${detail}`)
     }
     return res.status(200).json({ ok: true })
   }
