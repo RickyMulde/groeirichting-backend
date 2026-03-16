@@ -7,7 +7,6 @@ const rateLimit = require('express-rate-limit')
 const router = express.Router()
 const { createClient } = require('@supabase/supabase-js')
 const { fetchArtifactStream } = require('./lib/supabaseAttachmentProxy')
-const { uploadMedia } = require('./lib/openclawMediaClient')
 const { postResponses } = require('./lib/openclawResponsesClient')
 
 const BUCKET = 'groei-cockpit-uploads'
@@ -230,7 +229,8 @@ router.post('/process', processLimiter, async (req, res) => {
     }
   }
 
-  // Bijlagen: via media-API. Backend haalt op uit Supabase, uploadt naar /v1/media, verwijst met media_id in /v1/responses.
+  // Bijlagen: via input_file base64 in /v1/responses. Backend haalt bestanden op uit Supabase en stuurt de bytes inline
+  // (geen signed URLs of /v1/media-endpoint nodig).
   const refIds = Array.isArray(referencedArtifactIds) ? referencedArtifactIds : []
   if (refIds.length > 2) {
     console.warn('GroeiCockpit: te veel bijlagen in één bericht', { refIdsCount: refIds.length })
@@ -243,25 +243,17 @@ router.post('/process', processLimiter, async (req, res) => {
     return res.status(200).json({ ok: true })
   }
 
-  let mediaRefs = []
+  // Eerst alle artifacts ophalen en valideren; daarna base64 input_file-parts bouwen.
+  let filePartsBase64 = []
   if (refIds.length > 0) {
-    console.log('GroeiCockpit referenced_artifact_ids (media-API)', { refIds })
+    console.log('GroeiCockpit referenced_artifact_ids', { refIds })
+    const payloads = []
     for (const artifactId of refIds) {
       try {
         const payload = await fetchArtifactStream({ artifactId, userId, supabase })
-        const { mediaId } = await uploadMedia({
-          buffer: payload.buffer,
-          filename: payload.filename,
-          mediaType: payload.mediaType,
-          sha256: payload.sha256
-        })
-        mediaRefs.push({
-          mediaId,
-          filename: payload.filename,
-          mediaType: payload.mediaType
-        })
+        payloads.push(payload)
       } catch (err) {
-        console.warn('GroeiCockpit attachment failed', { artifactId, message: err.message })
+        console.warn('GroeiCockpit attachment fetch failed', { artifactId, message: err.message })
         await insertFallbackMessage(
           supabase,
           conversationId,
@@ -271,20 +263,25 @@ router.post('/process', processLimiter, async (req, res) => {
         return res.status(200).json({ ok: true })
       }
     }
-    console.log('GroeiCockpit mediaRefs', { count: mediaRefs.length, mediaIds: mediaRefs.map((m) => m.mediaId) })
+    if (payloads.length > 0) {
+      filePartsBase64 = payloads.map((p) => ({
+        type: 'input_file',
+        source: {
+          type: 'base64',
+          media_type: p.mediaType,
+          data: p.buffer.toString('base64'),
+          filename: p.filename
+        }
+      }))
+    }
+    if (filePartsBase64.length > 0) {
+      console.log('GroeiCockpit input_file base64 parts', { count: filePartsBase64.length })
+    }
   }
 
-  // Laatste user-bericht: instructie + tekst en optioneel attachments (media_id-referenties).
-  const attachmentInstruction = mediaRefs.length > 0
+  const attachmentInstruction = filePartsBase64.length > 0
     ? `[Instructie: geef een samenvatting van de bijlage, tenzij de gebruiker specifiek om iets anders vraagt.]\n\n`
     : ''
-  const attachmentRefs = mediaRefs.map(({ mediaId, filename, mediaType }) => ({
-    id: mediaId,
-    media_id: mediaId,
-    name: filename,
-    content_type: mediaType
-  }))
-
   let lastUserIndex = -1
   for (let i = inputItems.length - 1; i >= 0; i--) {
     if (inputItems[i].type === 'message' && inputItems[i].role === 'user') {
@@ -292,13 +289,13 @@ router.post('/process', processLimiter, async (req, res) => {
       break
     }
   }
-  if (attachmentRefs.length > 0) {
+
+  if (filePartsBase64.length > 0) {
     if (lastUserIndex === -1) {
       inputItems.push({
         type: 'message',
         role: 'user',
-        content: [{ type: 'input_text', text: attachmentInstruction + (lastUserContent || '(lege vraag)') }],
-        attachments: attachmentRefs
+        content: [{ type: 'input_text', text: attachmentInstruction + (lastUserContent || '(lege vraag)') }]
       })
     } else {
       const msg = inputItems[lastUserIndex]
@@ -306,7 +303,6 @@ router.post('/process', processLimiter, async (req, res) => {
       if (textPart && textPart.text != null) {
         textPart.text = attachmentInstruction + textPart.text
       }
-      msg.attachments = attachmentRefs
     }
   }
 
@@ -322,8 +318,12 @@ router.post('/process', processLimiter, async (req, res) => {
     role: 'user',
     content: [{ type: 'input_text', text: lastUserContent || 'hoi' }]
   }]
+  if (filePartsBase64.length > 0) {
+    currentInput = [...currentInput, ...filePartsBase64]
+  }
 
-  console.log('GroeiCockpit OpenClaw calling', { agentId, conversation_id: conversationId, attachmentsCount: attachmentRefs.length })
+  const totalAttachments = filePartsBase64.length
+  console.log('GroeiCockpit OpenClaw calling', { agentId, conversation_id: conversationId, attachmentsCount: totalAttachments })
   let lastRequestId
   try {
     let data = null

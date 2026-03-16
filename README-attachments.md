@@ -26,6 +26,7 @@ Bijlagen gaan via de **media-API**: backend haalt bestanden server-side uit Supa
 | `OPENCLAW_GATEWAY_TOKEN` | Bearer token voor de Gateway |
 | `OPENCLAW_AGENT_ID` | Optioneel; default komt uit conversatie-metadata |
 | `OPENCLAW_TIMEOUT_MS` | Timeout voor /v1/responses (default 120000) |
+| `OPENCLAW_MEDIA_API_ENABLED` | Niet meer gebruikt; bijlagen gaan altijd als base64 `input_file` mee in `POST /v1/responses`. |
 
 ## Limieten
 
