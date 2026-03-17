@@ -216,26 +216,7 @@ router.post('/process', processLimiter, async (req, res) => {
   const recentMessages = (messages || []).slice(-MAX_HISTORY_MESSAGES)
   const lastUserContent = recentMessages.filter((m) => m.role === 'user').pop()?.content || ''
 
-  const inputItems = []
-  for (const m of recentMessages) {
-    if (['system', 'developer', 'user', 'assistant'].includes(m.role)) {
-      let text = m.content || ''
-      if (text.length > MAX_MESSAGE_CONTENT_LENGTH) {
-        text = text.slice(0, MAX_MESSAGE_CONTENT_LENGTH) + '\n[... afgekapt]'
-      }
-      inputItems.push({
-        type: 'message',
-        role: m.role,
-        content: [{ type: 'input_text', text }]
-      })
-    }
-  }
-
-  // Zorg dat de conversatie altijd begint met een user/system/developer-bericht.
-  // Een assistant-bericht als allereerste item is volgens OpenResponses ongeldig.
-  while (inputItems.length > 0 && inputItems[0].type === 'message' && inputItems[0].role === 'assistant') {
-    inputItems.shift()
-  }
+  let inputItems = []
 
   // Bijlagen: ofwel via input_file base64 in /v1/responses (backend haalt bestanden op uit Supabase en stuurt de bytes inline),
   // of via input_file met signed URL (Gateway haalt zelf op), afhankelijk van GROEI_COCKPIT_FILE_VIA_URL.
@@ -368,20 +349,18 @@ router.post('/process', processLimiter, async (req, res) => {
     }
   }
 
+  // Voor nu sturen we GEEN geschiedenis mee bij een request met bijlage:
+  // alleen één user-bericht met instructie + tekst + input_file parts.
   if (filePartsBase64.length > 0 || filePartsUrl.length > 0) {
-    if (lastUserIndex === -1) {
-      inputItems.push({
-        type: 'message',
-        role: 'user',
-        content: [{ type: 'input_text', text: attachmentInstruction + (lastUserContent || '(lege vraag)') }]
-      })
-    } else {
-      const msg = inputItems[lastUserIndex]
-      const textPart = Array.isArray(msg.content) ? msg.content.find((c) => c.type === 'input_text') : null
-      if (textPart && textPart.text != null) {
-        textPart.text = attachmentInstruction + textPart.text
-      }
-    }
+    inputItems = [{
+      type: 'message',
+      role: 'user',
+      content: [
+        { type: 'input_text', text: attachmentInstruction + (lastUserContent || '(lege vraag)') },
+        ...filePartsBase64,
+        ...filePartsUrl
+      ]
+    }]
   }
 
   const gatewayUrl = process.env.OPENCLAW_GATEWAY_URL
@@ -396,9 +375,6 @@ router.post('/process', processLimiter, async (req, res) => {
     role: 'user',
     content: [{ type: 'input_text', text: lastUserContent || 'hoi' }]
   }]
-  if (filePartsBase64.length > 0 || filePartsUrl.length > 0) {
-    currentInput = [...currentInput, ...filePartsBase64, ...filePartsUrl]
-  }
 
   const totalAttachments = filePartsBase64.length + filePartsUrl.length
   console.log('GroeiCockpit OpenClaw calling', { agentId, conversation_id: conversationId, attachmentsCount: totalAttachments })
