@@ -48,7 +48,9 @@ const MAX_TOOL_ROUNDS = 3
 const TOOLS_ENABLED = process.env.GROEI_COCKPIT_TOOLS_ENABLED === 'true'
 /** Max grootte bestandsinhoud (bytes) die we aan de agent teruggeven (get_artifact_content). */
 const MAX_ARTIFACT_CONTENT_BYTES = 500 * 1024
-/** Bijlagen gaan via /v1/media: backend haalt op uit Supabase, uploadt naar Gateway, verwijst met media_id in /v1/responses. Geen signed URLs naar Gateway/client. */
+/** Bijlagen: ofwel als input_file met base64 (inline) of als input_file met signed URL, afhankelijk van GROEI_COCKPIT_FILE_VIA_URL. */
+const FILE_VIA_URL = process.env.GROEI_COCKPIT_FILE_VIA_URL === 'true'
+const SIGNED_URL_EXPIRES_SEC = 600
 
 /** Tools voor de agent: alleen eigen artifacts (owner_id = userId). */
 const GROEI_COCKPIT_TOOLS = [
@@ -229,8 +231,8 @@ router.post('/process', processLimiter, async (req, res) => {
     }
   }
 
-  // Bijlagen: via input_file base64 in /v1/responses. Backend haalt bestanden op uit Supabase en stuurt de bytes inline
-  // (geen signed URLs of /v1/media-endpoint nodig).
+  // Bijlagen: ofwel via input_file base64 in /v1/responses (backend haalt bestanden op uit Supabase en stuurt de bytes inline),
+  // of via input_file met signed URL (Gateway haalt zelf op), afhankelijk van GROEI_COCKPIT_FILE_VIA_URL.
   const refIds = Array.isArray(referencedArtifactIds) ? referencedArtifactIds : []
   if (refIds.length > 2) {
     console.warn('GroeiCockpit: te veel bijlagen in één bericht', { refIdsCount: refIds.length })
@@ -243,43 +245,92 @@ router.post('/process', processLimiter, async (req, res) => {
     return res.status(200).json({ ok: true })
   }
 
-  // Eerst alle artifacts ophalen en valideren; daarna base64 input_file-parts bouwen.
   let filePartsBase64 = []
+  let filePartsUrl = []
   if (refIds.length > 0) {
-    console.log('GroeiCockpit referenced_artifact_ids', { refIds })
-    const payloads = []
-    for (const artifactId of refIds) {
-      try {
-        const payload = await fetchArtifactStream({ artifactId, userId, supabase })
-        payloads.push(payload)
-      } catch (err) {
-        console.warn('GroeiCockpit attachment fetch failed', { artifactId, message: err.message })
-        await insertFallbackMessage(
-          supabase,
-          conversationId,
-          userId,
-          err.message || 'Bijlage kon niet worden meegestuurd. Controleer grootte (max 5 MB) en bestandstype.'
-        )
-        return res.status(200).json({ ok: true })
+    console.log('GroeiCockpit referenced_artifact_ids', { refIds, fileViaUrl: FILE_VIA_URL })
+
+    if (FILE_VIA_URL) {
+      // URL-variant: gebruik Supabase signed URLs; Gateway haalt bestanden zelf op.
+      const { data: artifacts, error: artError } = await supabase
+        .from('groei_cockpit_artifacts')
+        .select('id, storage_path, mime_type, title, owner_id, type')
+        .in('id', refIds)
+        .eq('owner_id', userId)
+        .eq('type', 'file')
+        .not('storage_path', 'is', null)
+
+      if (artError) {
+        console.warn('GroeiCockpit artifacts query failed voor refIds', { refIds, error: artError.message })
       }
-    }
-    if (payloads.length > 0) {
-      filePartsBase64 = payloads.map((p) => ({
-        type: 'input_file',
-        source: {
-          type: 'base64',
-          media_type: p.mediaType,
-          data: p.buffer.toString('base64'),
-          filename: p.filename
+      if (!artifacts || artifacts.length === 0) {
+        console.warn('GroeiCockpit geen artifacts gevonden voor refIds (URL-variant)', { refIds, userId })
+      } else {
+        for (const art of artifacts) {
+          const path = (art.storage_path || '').trim()
+          if (!path) continue
+          const mediaType = (art.mime_type || 'application/octet-stream').toLowerCase()
+          const filename = art.title || 'bestand'
+          const { data: signed, error: signErr } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_EXPIRES_SEC)
+          if (signErr || !signed) {
+            console.warn('GroeiCockpit createSignedUrl failed', { artifactId: art.id, error: signErr?.message })
+            continue
+          }
+          const signedUrl = signed.signedUrl || signed.signed_url
+          if (!signedUrl) {
+            console.warn('GroeiCockpit signed URL ontbreekt in response', { artifactId: art.id })
+            continue
+          }
+          filePartsUrl.push({
+            type: 'input_file',
+            source: {
+              type: 'url',
+              url: signedUrl,
+              media_type: mediaType,
+              filename
+            }
+          })
         }
-      }))
-    }
-    if (filePartsBase64.length > 0) {
-      console.log('GroeiCockpit input_file base64 parts', { count: filePartsBase64.length })
+      }
+      if (filePartsUrl.length > 0) {
+        console.log('GroeiCockpit input_file URL parts', { count: filePartsUrl.length })
+      }
+    } else {
+      // Base64-variant: backend downloadt bestanden uit Supabase en stuurt bytes inline.
+      const payloads = []
+      for (const artifactId of refIds) {
+        try {
+          const payload = await fetchArtifactStream({ artifactId, userId, supabase })
+          payloads.push(payload)
+        } catch (err) {
+          console.warn('GroeiCockpit attachment fetch failed', { artifactId, message: err.message })
+          await insertFallbackMessage(
+            supabase,
+            conversationId,
+            userId,
+            err.message || 'Bijlage kon niet worden meegestuurd. Controleer grootte (max 5 MB) en bestandstype.'
+          )
+          return res.status(200).json({ ok: true })
+        }
+      }
+      if (payloads.length > 0) {
+        filePartsBase64 = payloads.map((p) => ({
+          type: 'input_file',
+          source: {
+            type: 'base64',
+            media_type: p.mediaType,
+            data: p.buffer.toString('base64'),
+            filename: p.filename
+          }
+        }))
+      }
+      if (filePartsBase64.length > 0) {
+        console.log('GroeiCockpit input_file base64 parts', { count: filePartsBase64.length })
+      }
     }
   }
 
-  const attachmentInstruction = filePartsBase64.length > 0
+  const attachmentInstruction = (filePartsBase64.length > 0 || filePartsUrl.length > 0)
     ? `[Instructie: geef een samenvatting van de bijlage, tenzij de gebruiker specifiek om iets anders vraagt.]\n\n`
     : ''
   let lastUserIndex = -1
@@ -290,7 +341,7 @@ router.post('/process', processLimiter, async (req, res) => {
     }
   }
 
-  if (filePartsBase64.length > 0) {
+  if (filePartsBase64.length > 0 || filePartsUrl.length > 0) {
     if (lastUserIndex === -1) {
       inputItems.push({
         type: 'message',
@@ -318,11 +369,11 @@ router.post('/process', processLimiter, async (req, res) => {
     role: 'user',
     content: [{ type: 'input_text', text: lastUserContent || 'hoi' }]
   }]
-  if (filePartsBase64.length > 0) {
-    currentInput = [...currentInput, ...filePartsBase64]
+  if (filePartsBase64.length > 0 || filePartsUrl.length > 0) {
+    currentInput = [...currentInput, ...filePartsBase64, ...filePartsUrl]
   }
 
-  const totalAttachments = filePartsBase64.length
+  const totalAttachments = filePartsBase64.length + filePartsUrl.length
   console.log('GroeiCockpit OpenClaw calling', { agentId, conversation_id: conversationId, attachmentsCount: totalAttachments })
   let lastRequestId
   try {
