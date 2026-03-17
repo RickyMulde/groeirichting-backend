@@ -330,9 +330,30 @@ router.post('/process', processLimiter, async (req, res) => {
     }
   }
 
-  const attachmentInstruction = (filePartsBase64.length > 0 || filePartsUrl.length > 0)
-    ? `[Instructie: geef een samenvatting van de bijlage, tenzij de gebruiker specifiek om iets anders vraagt.]\n\n`
-    : ''
+  let attachmentInstruction = ''
+  if (filePartsUrl.length > 0) {
+    // Toon metadata zodat de agent weet welke bijlage bij welke URL hoort.
+    attachmentInstruction =
+      'Bijlage:\n' +
+      filePartsUrl
+        .map((p, idx) => {
+          const src = p.source || {}
+          return `- #${idx + 1}: ${src.filename || 'bestand'}\n  URL: ${src.url || '(onbekend)'}`
+        })
+        .join('\n') +
+      '\n\n'
+  } else if (filePartsBase64.length > 0) {
+    // Alleen bestandsnamen zichtbaar maken bij base64-variant.
+    attachmentInstruction =
+      'Bijlage:\n' +
+      filePartsBase64
+        .map((p, idx) => {
+          const src = p.source || {}
+          return `- #${idx + 1}: ${src.filename || 'bestand'}`
+        })
+        .join('\n') +
+      '\n\n'
+  }
   let lastUserIndex = -1
   for (let i = inputItems.length - 1; i >= 0; i--) {
     if (inputItems[i].type === 'message' && inputItems[i].role === 'user') {
