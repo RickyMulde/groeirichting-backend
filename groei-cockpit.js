@@ -231,6 +231,12 @@ router.post('/process', processLimiter, async (req, res) => {
     }
   }
 
+  // Zorg dat de conversatie altijd begint met een user/system/developer-bericht.
+  // Een assistant-bericht als allereerste item is volgens OpenResponses ongeldig.
+  while (inputItems.length > 0 && inputItems[0].type === 'message' && inputItems[0].role === 'assistant') {
+    inputItems.shift()
+  }
+
   // Bijlagen: ofwel via input_file base64 in /v1/responses (backend haalt bestanden op uit Supabase en stuurt de bytes inline),
   // of via input_file met signed URL (Gateway haalt zelf op), afhankelijk van GROEI_COCKPIT_FILE_VIA_URL.
   const refIds = Array.isArray(referencedArtifactIds) ? referencedArtifactIds : []
